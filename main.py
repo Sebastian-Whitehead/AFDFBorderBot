@@ -9,7 +9,9 @@ from nextcord import Member, NotFound, Interaction
 with open('config.json') as config_file:
     config = json.load(config_file)
 
-bot = commands.Bot()
+intents = nextcord.Intents.all()
+
+bot = commands.Bot(intents=intents)
 
 
 @bot.event
@@ -41,6 +43,7 @@ async def on_application_command_error(ctx: Interaction, error):
 # ---- Load token and run ----
 bot.load_extension("checkpointManagement")
 bot.load_extension("enlistment")
+bot.load_extension("BorderOfficerMonitor")
 
 bot.run(config['token'])
 # -------------------

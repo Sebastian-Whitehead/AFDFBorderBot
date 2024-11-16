@@ -1,7 +1,9 @@
 # checkpointManagement.py
 import json
-from nextcord import Interaction, Member, NotFound, slash_command
+
+import nextcord
 from nextcord.ext import commands
+from nextcord import Interaction, Member, NotFound, slash_command
 
 with open('config.json') as config_file:
     config = json.load(config_file)
@@ -11,7 +13,7 @@ JOINING_ROLE = 1206607575899181168
 # BORDER_OFFICER_ROLE = "Border Officer"
 BORDER_OFFICER_ROLE = 1205844937233666049
 BORDER_APPROVED_ROLE = [1140584332247957615, 1140616787050889286]
-BORDER_VISA_ROLE = 1306665176635805789
+MAIN_CHANNEL = 1140617864110411776
 
 
 class checkpointManagement(commands.Cog):
@@ -29,47 +31,43 @@ class checkpointManagement(commands.Cog):
 
             await user.add_roles(role_to_add, role_to_add1)
             await user.remove_roles(role_to_remove)
+            guild = ctx.guild
+            main_channel = guild.get_channel(MAIN_CHANNEL)
+
             await ctx.response.send_message(
-                f"{user.mention}'s request to enter the border has been Denied! Now fuck off to where you came from!")
+                f"{user.mention}'s request to enter the border has been Accepted! Welcome to the Federation")
+
+            with open('embeds/newcitizen-main.json') as embed_file:
+                embed_dict = json.load(embed_file)
+                print(embed_dict)
+            citizen_embed = nextcord.Embed.from_dict(embed_dict)
+
+            await main_channel.send(content=user.mention, embed=citizen_embed)
 
         except NotFound:
             await ctx.response.send_message("Member not found.", ephemeral=True)
 
-    @slash_command(description="Turn them around and deny their entry", guild_ids=[config['testing_guild']])
-    @commands.has_role(BORDER_OFFICER_ROLE)
-    async def approve(self, ctx: Interaction, user: Member):
-        try:
-            # Adjust the target user's roles
-            role_to_add = ctx.guild.get_role(JOINING_ROLE)
-            role_to_remove = ctx.guild.get_role(BORDER_APPROVED_ROLE[0])
-            role_to_remove1 = ctx.guild.get_role(BORDER_APPROVED_ROLE[1])
 
-            await user.add_roles(role_to_add)
-            await user.remove_roles(role_to_remove, role_to_remove1)
 
-            await ctx.response.send_message(
-                f"{user.mention}'s request to enter the border has been approved! Welcome to the federation!"
-            )
-        except NotFound:
-            await ctx.response.send_message("Member not found.", ephemeral=True)
 
-    @slash_command(description="Give them a visa", guild_ids=[config['testing_guild']])
-    @commands.has_role(BORDER_OFFICER_ROLE)
-    async def approve(self, ctx: Interaction, user: Member):
-        try:
-            # Adjust the target user's roles
-            role_to_remove = ctx.guild.get_role(JOINING_ROLE)
-            role_to_add = ctx.guild.get_role(BORDER_VISA_ROLE)
-
-            await user.add_roles(role_to_add)
-            await user.remove_roles(role_to_remove)
-
-            await ctx.response.send_message(
-                f"{user.mention}'s request to enter the country as a guest the border has been approved! Welcome to "
-                f"the federation! "
-            )
-        except NotFound:
-            await ctx.response.send_message("Member not found.", ephemeral=True)
+    # @slash_command(description="Turn them around and deny their entry", guild_ids=[config['testing_guild']])
+    # @commands.has_role(BORDER_OFFICER_ROLE)
+    # async def decline(self, ctx: Interaction, user: Member):
+    #     try:
+    #
+    #         # Adjust the target user's roles
+    #         role_to_add = ctx.guild.get_role(JOINING_ROLE)
+    #         role_to_remove = ctx.guild.get_role(BORDER_APPROVED_ROLE[0])
+    #         role_to_remove1 = ctx.guild.get_role(BORDER_APPROVED_ROLE[1])
+    #
+    #         await user.add_roles(role_to_add)
+    #         await user.remove_roles(role_to_remove, role_to_remove1)
+    #
+    #         await ctx.response.send_message(
+    #             f"{user.mention}'s request to enter the border has been approved! Welcome to the federation!"
+    #         )
+    #     except NotFound:
+    #         await ctx.response.send_message("Member not found.", ephemeral=True)
 
 
 # Function to set up the Cog

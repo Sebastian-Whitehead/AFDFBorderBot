@@ -1,0 +1,15 @@
+{
+  "title": "CITIZENSHIP HAS BEEN GRANTED TO {username}",
+  "description": "Everyone, please welcome {username} to the Federation.",
+  "color": 5814783,
+  "fields": [
+    {
+      "name": "Quick Appraisal",
+      "value": "[Our Modpack & How to Join](https://discord.com/channels/1140569342619168778/1229466005059801179)\n[Our Upcoming Events](https://discord.com/channels/1140569342619168778/1283891323161804912)\n\nInterested in a more organised MILSIM that partakes in PVP and our official timeline playthrough? Join the **Aegean Federation Defence Forces**, contact a First Private or above to start your enrollment into our premier fighting force."
+    }
+  ],
+  "author": {
+    "name": "AEGEAN FEDERATION",
+    "icon_url": "https://cdn.discordapp.com/attachments/1205842634082484255/1229470638494715944/Untitled_design_23.png?ex=67382182&is=6736d002&hm=080e94611bb4d7b8fc920e1fed6083edaa88e2b3ec61ba101903a8c1d70820ec&"
+  }
+}
