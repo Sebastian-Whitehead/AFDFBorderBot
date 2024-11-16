@@ -8,7 +8,7 @@ with open('config.json') as config_file:
     config = json.load(config_file)
 
 MILITARY_MANAGEMENT_ROLE = 1215619605834371093
-ENLISTED_ROLE = 1206596239379005490
+ENLISTED_ROLE = [1206596239379005490, 1205882493987979346]
 
 
 class enlistment(commands.Cog):
@@ -19,8 +19,9 @@ class enlistment(commands.Cog):
     @commands.has_role(MILITARY_MANAGEMENT_ROLE)
     async def enlist(self, ctx: Interaction, user: Member):
         try:
-            enlistment_role = ctx.guild.get_role(ENLISTED_ROLE)
-            await user.add_roles(enlistment_role)
+            enlistment_role = ctx.guild.get_role(ENLISTED_ROLE[0])
+            mil_dep_role = ctx.guild.get_role(ENLISTED_ROLE[1])
+            await user.add_roles(enlistment_role, mil_dep_role)
             await ctx.response.send_message(f"{user.mention} has been enlisted in the army!")
 
         except NotFound:

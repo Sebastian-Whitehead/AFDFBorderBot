@@ -39,7 +39,8 @@ class checkpointManagement(commands.Cog):
 
             with open('embeds/newcitizen-main.json') as embed_file:
                 embed_dict = json.load(embed_file)
-                print(embed_dict)
+                embed_dict['title'] = embed_dict['title'].format(username=user.name)
+                embed_dict['description'] = embed_dict['description'].format(username=user.mention)
             citizen_embed = nextcord.Embed.from_dict(embed_dict)
 
             await main_channel.send(content=user.mention, embed=citizen_embed)
