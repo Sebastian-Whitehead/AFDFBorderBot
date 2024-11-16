@@ -1,3 +1,4 @@
+import datetime
 import json
 
 import nextcord
@@ -40,7 +41,8 @@ class BorderOfficerMonitor(commands.Cog):
 
     @tasks.loop(seconds=CHECK_INTERVAL)
     async def check_online_status(self):
-        print("Checking online status...")
+        print("------------------------------------------")
+        print("Checking online status... ")
 
         guild = self.bot.get_guild(config['testing_guild'])  # Get the guild by ID
         if not guild:
@@ -68,8 +70,7 @@ class BorderOfficerMonitor(commands.Cog):
             if member.status not in [nextcord.Status.offline, nextcord.Status.invisible, nextcord.Status.dnd]:
                 online_members.append(member)
 
-        print(f"{len(online_members)} Online members")
-
+        
         current_status = len(online_members) > 0  # Determine if any members are online
         if self.LastOnlineStatus == current_status:
             print("No change in status")
@@ -86,7 +87,8 @@ class BorderOfficerMonitor(commands.Cog):
             if self.msg:
                 await self.msg.delete()
                 self.msg = None
-        print("check complete")
+        print(f"check complete. {len(online_members)} Online border agents")
+        print("------------------------------------------")
 
     @check_online_status.before_loop
     async def before_check(self):

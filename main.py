@@ -9,8 +9,8 @@ from nextcord import Member, NotFound, Interaction
 with open('config.json') as config_file:
     config = json.load(config_file)
 
-intents = nextcord.Intents.all()
 
+intents = nextcord.Intents.all()
 bot = commands.Bot(intents=intents)
 
 
