@@ -1,3 +1,4 @@
+import datetime
 import json
 import os
 import random
@@ -12,7 +13,6 @@ with open('config.json') as config_file:
 
 intents = nextcord.Intents.all()
 bot = commands.Bot(intents=intents)
-
 
 @bot.event
 async def on_ready():

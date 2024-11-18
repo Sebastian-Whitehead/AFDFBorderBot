@@ -39,8 +39,16 @@ class checkpointManagement(commands.Cog):
 
             with open('embeds/newcitizen-main.json') as embed_file:
                 embed_dict = json.load(embed_file)
-                embed_dict['title'] = embed_dict['title'].format(username=user.name)
+                
+                # Title management
+                if user.global_name is None:
+                    embed_dict['title'] = "A NEW CITIZEN HAS ARRIVED!"
+                else:
+                    embed_dict['title'] = embed_dict['title'].format(username=user.global_name)
+                    
+                
                 embed_dict['description'] = embed_dict['description'].format(username=user.mention)
+                embed_dict['thumbnail']['url'] = embed_dict['thumbnail']['url'].format(profile_picture=user.avatar.url)
             citizen_embed = nextcord.Embed.from_dict(embed_dict)
 
             await main_channel.send(content=user.mention, embed=citizen_embed)
