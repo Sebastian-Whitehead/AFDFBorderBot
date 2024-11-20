@@ -44,6 +44,7 @@ async def on_application_command_error(ctx: Interaction, error):
 bot.load_extension("checkpointManagement")
 bot.load_extension("enlistment")
 bot.load_extension("BorderOfficerMonitor")
+bot.load_extension("events")
 
 bot.run(config['token'])
 # -------------------

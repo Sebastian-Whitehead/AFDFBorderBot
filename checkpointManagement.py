@@ -40,12 +40,12 @@ class checkpointManagement(commands.Cog):
             with open('embeds/newcitizen-main.json') as embed_file:
                 embed_dict = json.load(embed_file)
                 
-                # Title management
+                
+                embed_dict['title'] = embed_dict['title'].format(username=user.global_name)
+
+                # Catch none value for global_name
                 if user.global_name is None:
                     embed_dict['title'] = "A NEW CITIZEN HAS ARRIVED!"
-                else:
-                    embed_dict['title'] = embed_dict['title'].format(username=user.global_name)
-                    
                 
                 embed_dict['description'] = embed_dict['description'].format(username=user.mention)
                 embed_dict['thumbnail']['url'] = embed_dict['thumbnail']['url'].format(profile_picture=user.avatar.url)
