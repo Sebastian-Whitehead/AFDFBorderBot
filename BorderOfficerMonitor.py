@@ -7,9 +7,9 @@ from nextcord.ext import commands, tasks
 with open('config.json') as config_file:
     config = json.load(config_file)
 
-BORDER_OFFICER_ROLE = 1205844937233666049  # Replace with your role ID
-CHECK_CHANNEL_ID = 1205850873616539709
-CHECK_INTERVAL = 60  # 1 minute
+BORDER_OFFICER_ROLE = config['roles']['border_officer']
+CHECK_CHANNEL_ID = config['channels']['checkpoint_txt']
+CHECK_INTERVAL = 120  # 1 minute
 
 
 class BorderOfficerMonitor(commands.Cog):
