@@ -11,9 +11,9 @@ with open('config.json') as config_file:
 # Replace these with the actual IDs or import them if defined elsewhere
 JOINING_ROLE = 1206607575899181168
 # BORDER_OFFICER_ROLE = "Border Officer"
-BORDER_OFFICER_ROLE = 1205844937233666049
+BORDER_OFFICER_ROLE = config['roles']['border_officer']
 BORDER_APPROVED_ROLE = [1140584332247957615, 1140616787050889286]
-MAIN_CHANNEL = 1140617864110411776
+MAIN_CHANNEL = config['channels']['main_txt']
 
 
 class checkpointManagement(commands.Cog):

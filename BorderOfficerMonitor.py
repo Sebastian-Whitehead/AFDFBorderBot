@@ -35,13 +35,14 @@ class BorderOfficerMonitor(commands.Cog):
         self.bot = bot
         self.check_online_status.start()  # Start the online status checking loop
         self.msg = None  # Initialize the message attribute
+        self.check_count = 0
 
     def cog_unload(self):
         self.check_online_status.cancel()  # Cancel the online status checking loop
 
     @tasks.loop(seconds=CHECK_INTERVAL)
     async def check_online_status(self):
-        
+        self.check_count += 1
         #print(f"{datetime.datetime.now().strftime()}Checking online status... ")
 
         guild = self.bot.get_guild(config['testing_guild'])  # Get the guild by ID
@@ -73,7 +74,7 @@ class BorderOfficerMonitor(commands.Cog):
         
         current_status = len(online_members) > 0  # Determine if any members are online
         if self.LastOnlineStatus == current_status:
-            print("No change in status")
+            print(f"{self.check_count} - No change in status")
             return
 
         print(f"Status changed! to {current_status}")
@@ -87,7 +88,7 @@ class BorderOfficerMonitor(commands.Cog):
             if self.msg:
                 await self.msg.delete()
                 self.msg = None
-        print(f"check complete. {len(online_members)} Online border agents")
+        print(f"{self.check_count} - check complete. {len(online_members)} Online border agents")
         
 
     @check_online_status.before_loop

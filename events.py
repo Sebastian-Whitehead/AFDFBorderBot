@@ -9,8 +9,8 @@ from nextcord import Interaction, Member, NotFound, slash_command
 with open('config.json') as config_file:
     config = json.load(config_file)
 
-LEADERSHIP_ROLE = 1215619605834371093
-EVENT_CHANNEL = 1142560963606880286
+LEADERSHIP_ROLE = config['roles']['leadership']
+EVENT_CHANNEL = config['channels']['events_vc']
 
 class event_management(commands.Cog):
     def __init__(self, bot):
@@ -29,8 +29,7 @@ class event_management(commands.Cog):
         await guild.create_scheduled_event(name="Sunday", start_time=next_sunday, description="Optional Event 3.", channel=event_channel, entity_type=nextcord.ScheduledEventEntityType.voice)
         
         await interaction.response.send_message("Event series created successfully!", ephemeral=True)
-    
-    
+        
     def get_next_weekend(self, fri: int, sat: int, sun: int):
         today = datetime.datetime.now()
         days_until_friday = (4 - today.weekday() + 7) % 7 or 7
@@ -47,11 +46,11 @@ class event_management(commands.Cog):
         return next_friday, next_saturday, next_sunday
     
     @slash_command(description="Takes attendance of players present in discord vc", guild_ids=[config['testing_guild']])
-    @commands.has_role(LEADERSHIP_ROLE)
+    @commands.has_role(config['roles']['civil_servant'])
     async def attendance(self, interaction: Interaction):
         guild = interaction.guild
         
-        log_text = guild.get_channel(config['log_channel'])
+        log_text = guild.get_channel(config['channels']['log_txt'])
         event_voice = guild.get_channel(EVENT_CHANNEL)
         
         # Get members in voice channel
