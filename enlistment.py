@@ -26,6 +26,7 @@ class enlistment(commands.Cog):
 
         except NotFound:
             await ctx.response.send_message(f"User not found", ephemeral=True)
+    
 
 
 # Function to set up the Cog

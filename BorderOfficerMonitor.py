@@ -41,8 +41,8 @@ class BorderOfficerMonitor(commands.Cog):
 
     @tasks.loop(seconds=CHECK_INTERVAL)
     async def check_online_status(self):
-        print("------------------------------------------")
-        print("Checking online status... ")
+        
+        #print(f"{datetime.datetime.now().strftime()}Checking online status... ")
 
         guild = self.bot.get_guild(config['testing_guild'])  # Get the guild by ID
         if not guild:
@@ -82,13 +82,13 @@ class BorderOfficerMonitor(commands.Cog):
         # Send or delete the message based on the current status
         if not current_status:
             if not self.msg:
-                self.msg = await check_channel.send(f"Border Officers are currently out of office.")
+                self.msg = await check_channel.send(f":roundel2: The Aegean Federation immigration department is closing shop for the night, apologies for any inconveniences. :roundel2:")
         else:
             if self.msg:
                 await self.msg.delete()
                 self.msg = None
         print(f"check complete. {len(online_members)} Online border agents")
-        print("------------------------------------------")
+        
 
     @check_online_status.before_loop
     async def before_check(self):

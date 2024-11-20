@@ -10,7 +10,7 @@ with open('config.json') as config_file:
     config = json.load(config_file)
 
 LEADERSHIP_ROLE = 1215619605834371093
-
+EVENT_CHANNEL = 1142560963606880286
 
 class event_management(commands.Cog):
     def __init__(self, bot):
@@ -22,7 +22,7 @@ class event_management(commands.Cog):
         guild = interaction.guild
         next_friday, next_saturday, next_sunday = self.get_next_weekend(friday_hour, saturday_hour, sunday_hour)
         
-        event_channel = guild.get_channel(1142560963606880286)
+        event_channel = guild.get_channel(EVENT_CHANNEL)
         
         await guild.create_scheduled_event(name="Friday", start_time=next_friday, description="Optional Event 1.", channel=event_channel, entity_type=nextcord.ScheduledEventEntityType.voice)
         await guild.create_scheduled_event(name="Saturday", start_time=next_saturday, description="Optional Event 2.", channel=event_channel, entity_type=nextcord.ScheduledEventEntityType.voice)
@@ -45,6 +45,23 @@ class event_management(commands.Cog):
         next_sunday = next_sunday.replace(hour=sun, minute=0, second=0, microsecond=0)
         
         return next_friday, next_saturday, next_sunday
+    
+    @slash_command(description="Takes attendance of players present in discord vc", guild_ids=[config['testing_guild']])
+    @commands.has_role(LEADERSHIP_ROLE)
+    async def attendance(self, interaction: Interaction):
+        guild = interaction.guild
+        
+        log_text = guild.get_channel(config['log_channel'])
+        event_voice = guild.get_channel(EVENT_CHANNEL)
+        
+        # Get members in voice channel
+        present = event_voice.members
+        
+        # convert the present list into a bullet point list
+        present_list = "\n".join([f"- {member.mention}" for member in present])
+        
+        await log_text.send(f"**Attendance for {datetime.datetime.now().strftime('%A %B %d, %Y')}**\n{present_list}")
+        await interaction.response.send_message("Attendance Registered and Logged", ephemeral=True)
 
 # Function to set up the Cog
 def setup(bot):
