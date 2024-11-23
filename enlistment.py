@@ -7,7 +7,7 @@ from nextcord.ext import commands
 with open('config.json') as config_file:
     config = json.load(config_file)
 
-MILITARY_MANAGEMENT_ROLE = 1215619605834371093
+MILITARY_MANAGEMENT_ROLE = config['roles']['leadership']
 ENLISTED_ROLE = [1206596239379005490, 1205882493987979346]
 
 
