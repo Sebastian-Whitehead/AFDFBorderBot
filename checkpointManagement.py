@@ -57,27 +57,23 @@ class checkpointManagement(commands.Cog):
         except NotFound:
             await ctx.response.send_message("Member not found.", ephemeral=True)
 
+    #@commands.Cog.listener() # Uncomment this to activate this feature.
+    async def on_member_join(self, member: Member):
+        # Adjust the target user's roles
+        role_to_add = member.guild.get_role(JOINING_ROLE)
+        await member.add_roles(role_to_add)
+        
+        #Send embed from embeds
+        with open('embeds/member_join-welcome.json') as embed_file:
+                embed_dict = json.load(embed_file)
 
-
-
-    # @slash_command(description="Turn them around and deny their entry", guild_ids=[config['testing_guild']])
-    # @commands.has_role(BORDER_OFFICER_ROLE)
-    # async def decline(self, ctx: Interaction, user: Member):
-    #     try:
-    #
-    #         # Adjust the target user's roles
-    #         role_to_add = ctx.guild.get_role(JOINING_ROLE)
-    #         role_to_remove = ctx.guild.get_role(BORDER_APPROVED_ROLE[0])
-    #         role_to_remove1 = ctx.guild.get_role(BORDER_APPROVED_ROLE[1])
-    #
-    #         await user.add_roles(role_to_add)
-    #         await user.remove_roles(role_to_remove, role_to_remove1)
-    #
-    #         await ctx.response.send_message(
-    #             f"{user.mention}'s request to enter the border has been approved! Welcome to the federation!"
-    #         )
-    #     except NotFound:
-    #         await ctx.response.send_message("Member not found.", ephemeral=True)
+    #If not work use on_raw_member_remove
+    #@commands.Cog.listener() # Uncomment this to activate this feature.
+    async def on_member_remove(self, member: Member):
+        
+        #Send embed from embeds
+        with open('embeds/member_leave-welcome.json') as embed_file:
+                embed_dict = json.load(embed_file)
 
 
 # Function to set up the Cog

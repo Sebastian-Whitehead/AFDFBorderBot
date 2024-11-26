@@ -61,7 +61,18 @@ class event_management(commands.Cog):
         
         await log_text.send(f"**Attendance for {datetime.datetime.now().strftime('%A %B %d, %Y')}**\n{present_list}")
         await interaction.response.send_message("Attendance Registered and Logged", ephemeral=True)
-
+        
+    @commands.Cog.listener()
+    async def on_event_start(self, event: nextcord.ScheduledEvent):
+        guild = event.guild
+        main_channel = guild.get_channel(config['channels']['main_txt'])
+        
+        # Get the members of the next event
+        members = await event.fetch_users()
+        
+        # Ping all members of the next event
+        await main_channel.send(f"{event.name} IS STARTING!: {', '.join([member.mention for member in members])}")
+        
 # Function to set up the Cog
 def setup(bot):
     bot.add_cog(event_management(bot))
