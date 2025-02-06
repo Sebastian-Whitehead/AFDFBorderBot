@@ -26,13 +26,15 @@ const commandHandlers = new Map();
 // Load command files
 const commandFiles = fs.readdirSync(path.join(__dirname, 'commands')).filter(file => file.endsWith('.js'));
 
-for (const file of commandFiles) {
-    const { command, handler } = await import(`./commands/${file}`);
-    commands.push(command);
-    commandHandlers.set(command.name, handler);
-}
+(async () => {
+    for (const file of commandFiles) {
+        const { command, handler } = await import(`./commands/${file}`);
+        commands.push(command);
+        commandHandlers.set(command.name, handler);
+    }
+})();
 
-const rest = new REST({ version: '9' }).setToken(process.env.DISCORD_TOKEN);
+const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
 
 (async () => {
     try {
@@ -53,11 +55,14 @@ client.on(Events.InteractionCreate, async interaction => {
     if (!interaction.isCommand()) return;
 
     const handler = commandHandlers.get(interaction.commandName);
-    if (handler) {
-        await handler(interaction);
-    } else {
+    if (!handler) {
         await interaction.reply('Unknown command');
+        return;
     }
+
+    await handler(interaction);
 });
 
-client.login(process.env.DISCORD_TOKEN);
+(async () => {
+    await client.login(process.env.DISCORD_TOKEN);
+})();
