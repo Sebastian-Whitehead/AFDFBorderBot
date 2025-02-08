@@ -1,4 +1,6 @@
 import roles from './roles.json';
+const channels = require('./channels.json');
+const fs = require('fs').promises;
 
 export const command = {
     name: 'approve',
@@ -16,8 +18,32 @@ export const handler = async (interaction, user) => {
         await member.roles.add(rolesToAdd);
         await member.roles.remove(roleToRemove);
 
-        await interaction.reply(`User ${user.username} has been approved and roles have been updated.`);
+        await interaction.reply({ content: `User ${user.username} has been approved and roles have been updated.`, ephemeral: true });
+
+        // Send an enlistment embed message based on the content of a json file in ./embeds/enlist.json
+        try {
+            // Load and parse the embed json file
+            const embed = await fs.readFile('./embeds/border_approve.json', 'utf8');
+            let embedDict = JSON.parse(embed);
+
+            // Replace placeholders with user data
+            embedDict.title = embedDict.title.replace('{username}', user.global_name || 'A NEW CITIZEN HAS ARRIVED!');
+            embedDict.description = embedDict.description.replace('{username}', user.toString());
+            embedDict.thumbnail.url = embedDict.thumbnail.url.replace('{profile_picture}', user.avatarURL());
+            const compiled_embed = { embeds: [embedDict] };
+
+            // Send the embed to the main channel
+            const channel = guild.channels.cache.get(channels.main);
+            if (channel) {
+                await channel.send({ content: user.toString(), ...compiled_embed });
+            } else {
+                console.error('Main channel not found.');
+            }
+
+        } catch (error) {
+            console.error('Error reading or parsing embed file:', error);
+        }
     } else {
-        await interaction.reply('User not found in the guild.');
+        await interaction.reply({content: 'User not found in the guild.', ephemeral: true});
     }
 };
