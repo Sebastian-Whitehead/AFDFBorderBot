@@ -10,6 +10,9 @@ import {
 } from 'discord.js';
 import fs from 'fs';
 import path from 'path';
+import { setupMemberLeaveListener } from './routines/member_leave';
+import { setupBorderOfficerMonitor } from './routines/immigrationStaff';
+import { setupMemberJoinListener } from './routines/member_join';
 
 const client = new Client({
     intents:[
@@ -62,6 +65,11 @@ client.on(Events.InteractionCreate, async interaction => {
 
     await handler(interaction);
 });
+
+setupMemberLeaveListener(client);
+setupMemberJoinListener(client);
+setupBorderOfficerMonitor(client);
+
 
 (async () => {
     await client.login(process.env.DISCORD_TOKEN);
