@@ -1,6 +1,12 @@
-import roles from './roles.json';
-const channels = require('./channels.json');
-const fs = require('fs').promises;
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const channels = JSON.parse(fs.readFileSync(path.join(__dirname, '../channels.json'), 'utf8'));
+const roles = JSON.parse(fs.readFileSync(path.join(__dirname, '../roles.json'), 'utf8'));
 
 export const command = {
     name: 'enlist',

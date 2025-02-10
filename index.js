@@ -10,15 +10,21 @@ import {
 } from 'discord.js';
 import fs from 'fs';
 import path from 'path';
-import { setupMemberLeaveListener } from './routines/member_leave';
-import { setupBorderOfficerMonitor } from './routines/immigrationStaff';
-import { setupMemberJoinListener } from './routines/member_join';
+import { fileURLToPath } from 'url';
+
+import { setupMemberLeaveListener } from './routines/member_leave.js';
+import { setupBorderOfficerMonitor } from './routines/immigrationStaff.js';
+import { setupMemberJoinListener } from './routines/member_join.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const client = new Client({
     intents:[
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.GuildMembers,
+        GatewayIntentBits.GuildPresences,
         GatewayIntentBits.DirectMessages
     ],
 });
@@ -44,7 +50,7 @@ const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
         console.log('Started refreshing application (/) commands.');
 
         await rest.put(
-            Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID),
+            Routes.applicationGuildCommands(process.env.DISCORD_CLIENT_ID, process.env.AEGEAN_FED),
             { body: commands }
         );
 
@@ -66,10 +72,12 @@ client.on(Events.InteractionCreate, async interaction => {
     await handler(interaction);
 });
 
-setupMemberLeaveListener(client);
-setupMemberJoinListener(client);
-setupBorderOfficerMonitor(client);
-
+client.once('ready', () => {
+    console.log(`Logged in as ${client.user.tag}!`);
+    setupMemberLeaveListener(client);
+    setupMemberJoinListener(client);
+    setupBorderOfficerMonitor(client);
+});
 
 (async () => {
     await client.login(process.env.DISCORD_TOKEN);

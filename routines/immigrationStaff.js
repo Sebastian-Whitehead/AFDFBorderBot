@@ -1,25 +1,30 @@
 import { Client } from 'discord.js';
 import fs from 'fs';
 import path from 'path';
-import roles from './roles.json';
-import channels from './channels.json';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const roles = JSON.parse(fs.readFileSync(path.join(__dirname, '../roles.json'), 'utf8'));
+const channels = JSON.parse(fs.readFileSync(path.join(__dirname, '../channels.json'), 'utf8'));
 
 const immigrationStaff_role = roles.immigrationStaff_role;
 const CHECK_INTERVAL = 120000; // 2 minutes
 
 class BorderOfficerMonitor {
     /**
-     * A Discord bot class that monitors the online status of members with a specific role
+     * A Discord client class that monitors the online status of members with a specific role
      * and sends a message to a designated channel if no members are online.
-     * @param {Client} bot - The bot instance.
+     * @param {Client} client - The client instance.
      */
-    constructor(bot) {
-        this.bot = bot;
+    constructor(client) {
+        this.client = client;
         this.lastOnlineStatus = false; // Track the last known online status
         this.msg = null; // Store the message sent to the channel
 
         // Get the guild (server) by ID
-        this.guild = this.bot.guilds.cache.get(process.env.AEGEAN_FED);
+        this.guild = this.client.guilds.cache.get(process.env.AEGEAN_FED);
         this.role = this.guild.roles.cache.get(immigrationStaff_role);
         this.channel = this.guild.channels.cache.get(channels.checkpoint);
 
@@ -58,7 +63,7 @@ class BorderOfficerMonitor {
 
         const staffOnline = onlineMembers.size > 0; // Determine if any members are online
         if (this.lastOnlineStatus === staffOnline) {
-            console.log(`No change in status`);
+            console.log(`No change in status ${staffOnline ? 'Online' + onlineMembers.size : 'Offline'}`);
             return; // Exit if there is no change in status
         }
 
@@ -82,6 +87,6 @@ class BorderOfficerMonitor {
 }
 
 // Function to set up the BorderOfficerMonitor
-export function setupBorderOfficerMonitor(bot) {
-    new BorderOfficerMonitor(bot);
+export function setupBorderOfficerMonitor(client) {
+    new BorderOfficerMonitor(client);
 }
