@@ -2,10 +2,14 @@ import datetime
 import json
 import os
 import random
+from dotenv import load_dotenv
 
 import nextcord
 from nextcord.ext import commands
 from nextcord import Member, NotFound, Interaction
+
+# Load environment variables
+load_dotenv()
 
 with open('config.json') as config_file:
     config = json.load(config_file)
@@ -46,5 +50,5 @@ bot.load_extension("enlistment")
 bot.load_extension("BorderOfficerMonitor")
 bot.load_extension("events")
 
-bot.run(config['token'])
+bot.run(os.getenv('DISCORD_TOKEN'))
 # -------------------
