@@ -35,6 +35,12 @@ A Discord bot designed for the Aegean Federation Defense Forces (AFDF) server to
 
 ## 🚀 Installation
 
+### Quick Start with Docker (Recommended)
+
+The easiest way to run the bot is using Docker. See **[DOCKER.md](DOCKER.md)** for detailed Docker setup and usage instructions.
+
+### Manual Installation
+
 ### Prerequisites
 
 - Python 3.10 or higher
