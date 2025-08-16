@@ -20,3 +20,16 @@ ENV/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Docker volumes and runtime data
+pgadmin-data/
+postgres-data/
+
+# Log files
+*.log
+logs/
+
+# Database files (if any local sqlite)
+*.db
+*.sqlite
+*.sqlite3
