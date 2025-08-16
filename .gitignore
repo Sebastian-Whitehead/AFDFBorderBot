@@ -24,7 +24,6 @@ Thumbs.db
 # Docker volumes and runtime data
 pgadmin-data/
 postgres-data/
-lavalink/logs/
 
 # Log files
 *.log

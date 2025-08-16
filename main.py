@@ -53,6 +53,5 @@ bot.load_extension("src.listeners.JoinLeaveHandler")
 bot.load_extension("src.commands.Checkpoint")
 bot.load_extension("src.commands.Enlistment")
 bot.load_extension("src.commands.GuildEvent")
-bot.load_extension("src.commands.MusicPlayer")
 
 bot.run(os.getenv('DISCORD_TOKEN'))

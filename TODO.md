@@ -53,12 +53,12 @@
 
 ## 💡 Future Ideas
 
-- [x] Music player (Lavalink) - **IMPLEMENTED** 🎵
-  - [x] YouTube support
-  - [x] Spotify support (tracks, albums, playlists)
-  - [x] SoundCloud support
-  - [x] Advanced queue management
-  - [x] Volume controls and now playing info
+- [ ] **Music Player (Lavalink)** 🎵
+  - [ ] YouTube support
+  - [ ] Spotify support (tracks, albums, playlists)
+  - [ ] SoundCloud support
+  - [ ] Advanced queue management
+  - [ ] Volume controls and now playing info
 - [ ] Statistics dashboard
 - [ ] Web admin interface
 - [ ] Steam Workshop integration
