@@ -4,6 +4,7 @@ Handles music playback using Lavalink
 """
 
 import asyncio
+import os
 import nextcord
 from nextcord.ext import commands
 import wavelink
@@ -24,8 +25,8 @@ class MusicPlayer(commands.Cog):
         
         try:
             node = wavelink.Node(
-                uri=f"http://{self.bot.config.get('LAVALINK_HOST', 'localhost')}:{self.bot.config.get('LAVALINK_PORT', '2333')}",
-                password=self.bot.config.get('LAVALINK_PASSWORD', 'youshallnotpass')
+                uri=f"http://{os.getenv('LAVALINK_HOST', 'localhost')}:{os.getenv('LAVALINK_PORT', '2333')}",
+                password=os.getenv('LAVALINK_PASSWORD', 'youshallnotpass')
             )
             await wavelink.Pool.connect(client=self.bot, nodes=[node])
             print("✅ Connected to Lavalink")
