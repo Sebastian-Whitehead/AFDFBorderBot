@@ -4,6 +4,8 @@ CREATE TABLE users (
     name TEXT NOT NULL,
     steam_id TEXT NOT NULL,
     discord_id TEXT,
+    joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    enlisted_at TIMESTAMP,
     money DECIMAL(15,2) DEFAULT 0,
     rank TEXT,
     notes TEXT,

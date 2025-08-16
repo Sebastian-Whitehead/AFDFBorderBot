@@ -44,11 +44,30 @@ services:
     environment:
       DISCORD_TOKEN: ${DISCORD_TOKEN}
       DATABASE_URL: postgres://postgres:admin@postgres:5432/AFdb
+      LAVALINK_HOST: lavalink
+      LAVALINK_PORT: 2333
+      LAVALINK_PASSWORD: youshallnotpass
     depends_on:
       postgres:
         condition: service_healthy
+      lavalink:
+        condition: service_started
     volumes:
       - ./embeds:/app/embeds:ro
+    profiles:
+      - bot
+      - full
+
+  lavalink:
+    image: fredboat/lavalink:4.0.8
+    restart: unless-stopped
+    environment:
+      - _JAVA_OPTIONS=-Xmx1G
+      - LAVALINK_SERVER_PASSWORD=youshallnotpass
+    volumes:
+      - ./lavalink/application.yml:/opt/Lavalink/application.yml:ro
+    ports:
+      - "2333:2333"
     profiles:
       - bot
       - full

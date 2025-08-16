@@ -33,6 +33,14 @@ A Discord bot designed for the Aegean Federation Defense Forces (AFDF) server to
 - **Error Handling**: Comprehensive error handling for role/permission issues
 - **Configuration-Based**: All settings managed through `config.json`
 
+### Music Player 🎵
+
+- **Multi-Platform Support**: Play music from YouTube, Spotify, SoundCloud, and more
+- **Queue Management**: Advanced queue system with playlist support
+- **Volume Control**: Adjustable volume with real-time controls
+- **Now Playing Info**: Detailed track information with progress bars
+- **Search Features**: Platform-specific search and auto-detection
+
 ## 🚀 Installation
 
 ### Quick Start with Docker (Recommended)
@@ -68,6 +76,10 @@ The easiest way to run the bot is using Docker. See **[DOCKER.md](DOCKER.md)** f
 
    ```env
    DISCORD_TOKEN=your_discord_bot_token_here
+   
+   # Optional: For music player Spotify support
+   SPOTIFY_CLIENT_ID=your_spotify_client_id_here
+   SPOTIFY_CLIENT_SECRET=your_spotify_client_secret_here
    ```
 
 4. **Configure the bot**
@@ -103,21 +115,33 @@ The easiest way to run the bot is using Docker. See **[DOCKER.md](DOCKER.md)** f
 ```text
 AFDFBorderBot/
 ├── main.py                    # Main bot file and entry point
-├── config.json               # Configuration file with IDs
+├── config.json               # Configuration file with IDs (legacy)
 ├── requirements.txt          # Python dependencies
 ├── .env                      # Environment variables (create this)
+├── .env.example              # Environment template
+├── docker-compose.yml        # Docker services configuration
+├── Dockerfile               # Bot container definition
+├── app.bat                  # Control script for Docker services
+├── MUSIC_SETUP.md          # Music player setup guide
+├── MUSIC_COMMANDS.md       # Quick music commands reference
 ├── src/
-│   ├── checkpointManagement.py    # Border control commands
-│   ├── enlistment.py             # Military enlistment system
-│   ├── events.py                 # Event management commands
-│   ├── passport_edit.py          # Image processing utilities
-│   └── Routines/
-│       └── BorderOfficerMonitor.py   # Background monitoring task
+│   ├── config.py            # Centralized configuration management
+│   ├── commands/           # Bot commands (cogs)
+│   │   ├── Checkpoint.py   # Border control commands
+│   │   ├── Enlistment.py   # Military enlistment system
+│   │   ├── GuildEvent.py   # Event management commands
+│   │   └── MusicPlayer.py  # Music player commands
+│   └── listeners/          # Event listeners (cogs)
+│       ├── BorderOfficerMonitor.py   # Background monitoring
+│       └── JoinLeaveHandler.py       # Join/leave events
 ├── embeds/
 │   ├── newcitizen-main.json     # Welcome message embed
 │   ├── member_join-welcome.json  # Join message template
 │   └── member_leave-welcome.json # Leave message template
-└── __pycache__/              # Python cache files
+├── lavalink/
+│   └── application.yml      # Lavalink music server configuration
+├── pgadmin-data/           # pgAdmin data volume
+└── __pycache__/            # Python cache files
 ```
 
 ## 🤖 Commands
@@ -150,6 +174,42 @@ AFDFBorderBot/
   - **Available to**: Everyone
   - **Description**: Responds with "Pong!" (with rare easter egg)
 
+### Music Player Commands 🎵
+
+- `/play <query>` - Play music from any supported source
+  - **Available to**: Everyone
+  - **Description**: Play songs from YouTube, Spotify, SoundCloud, or search by name
+
+- `/pause` / `/resume` - Control playback
+  - **Available to**: Everyone
+  - **Description**: Pause or resume the current song
+
+- `/skip` / `/stop` - Playback control
+  - **Available to**: Everyone
+  - **Description**: Skip current song or stop and disconnect
+
+- `/queue` - Show music queue
+  - **Available to**: Everyone
+  - **Description**: Display current queue with detailed information
+
+- `/volume <0-100>` - Set volume
+  - **Available to**: Everyone
+  - **Description**: Adjust playback volume
+
+- `/nowplaying` - Current song info
+  - **Available to**: Everyone
+  - **Description**: Show detailed information about the current song
+
+- `/search <query> <platform>` - Search specific platforms
+  - **Available to**: Everyone
+  - **Description**: Search for music on YouTube, SoundCloud, or auto-detect
+
+- `/sources` - Show supported sources
+  - **Available to**: Everyone
+  - **Description**: Display all supported music sources and usage instructions
+
+For detailed music setup instructions, see **[MUSIC_SETUP.md](MUSIC_SETUP.md)**
+
 ## ⚙️ Configuration
 
 ### Required Discord Permissions
@@ -159,9 +219,11 @@ AFDFBorderBot/
 - Manage Messages
 - View Channels
 - Connect to Voice Channels
+- Speak in Voice Channels (for music playback)
 - Manage Events
 - Embed Links
 - Use Slash Commands
+- Use Voice Activity (for music bot functionality)
 
 ### Role Hierarchy
 
@@ -207,6 +269,8 @@ Update role and channel IDs in `config.json` to match your server setup.
 - **Pillow**: Image processing capabilities
 - **psycopg**: PostgreSQL database adapter
 - **SQLAlchemy**: Database ORM
+- **wavelink**: Lavalink audio wrapper for music functionality
+- **yt-dlp**: YouTube and media downloader
 
 ## 🤝 Contributing
 
