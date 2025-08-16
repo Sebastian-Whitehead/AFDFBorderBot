@@ -7,11 +7,12 @@ CREATE TABLE users (
     money DECIMAL(15,2) DEFAULT 0,
     rank TEXT,
     notes TEXT,
-    extra_data JSONB,
     achievements TEXT[],
     last_death DATE,
     kills INTEGER DEFAULT 0,
-    deaths INTEGER DEFAULT 0
+    deaths INTEGER DEFAULT 0,
+    reprimands JSONB,
+    extra_data JSONB
 );
 
 -- Create characters table

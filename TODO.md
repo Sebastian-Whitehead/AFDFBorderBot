@@ -1,0 +1,8 @@
+- Promotion command
+- Add member command
+- Add member when new play join
+- Assign Steam ID command ()
+- Modify Member command (modify db)
+- Reprimand command (add to db)
+- Settings commands (save changes to settings- and id.json)
+- 

@@ -1,22 +1,23 @@
 # checkpointManagement.py
 import datetime
 import json
+import warnings
 
 import nextcord
 from nextcord.ext import commands
 from nextcord import Interaction, Member, NotFound, slash_command
 
-with open('config.json') as config_file:
-    config = json.load(config_file)
+warnings.warn("src.events is deprecated. Functionality moved to other modules.", DeprecationWarning, stacklevel=2)
+from config import IDS, ROLES, CHANNELS
 
-LEADERSHIP_ROLE = config['roles']['leadership']
-EVENT_CHANNEL = config['channels']['events_vc']
+LEADERSHIP_ROLE = ROLES['leadership']
+EVENT_CHANNEL = CHANNELS['events_vc']
 
 class event_management(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @slash_command(description="created the standard set of three events with a simple command", guild_ids=[config['testing_guild']])
+    @slash_command(description="created the standard set of three events with a simple command", guild_ids=[IDS['testing_guild']])
     @commands.has_role(LEADERSHIP_ROLE)
     async def create_weekend_events(self, interaction: Interaction, friday_hour: int, saturday_hour: int, sunday_hour: int):
         guild = interaction.guild
@@ -44,13 +45,13 @@ class event_management(commands.Cog):
         next_sunday = next_sunday.replace(hour=sun, minute=0, second=0, microsecond=0)
         
         return next_friday, next_saturday, next_sunday
-    
-    @slash_command(description="Takes attendance of players present in discord vc", guild_ids=[config['testing_guild']])
-    @commands.has_role(config['roles']['civil_servant'])
+
+    @slash_command(description="Takes attendance of players present in discord vc", guild_ids=[IDS['testing_guild']])
+    @commands.has_role(IDS['roles']['civil_servant'])
     async def attendance(self, interaction: Interaction):
         guild = interaction.guild
-        
-        log_text = guild.get_channel(config['channels']['log_txt'])
+
+        log_text = guild.get_channel(IDS['channels']['log_txt'])
         event_voice = guild.get_channel(EVENT_CHANNEL)
         
         # Get members in voice channel
@@ -65,8 +66,8 @@ class event_management(commands.Cog):
     @commands.Cog.listener()
     async def on_event_start(self, event: nextcord.ScheduledEvent):
         guild = event.guild
-        main_channel = guild.get_channel(config['channels']['main_txt'])
-        
+        main_channel = guild.get_channel(IDS['channels']['main_txt'])
+
         # Get the members of the next event
         members = await event.fetch_users()
         

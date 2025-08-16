@@ -1,0 +1,5 @@
+{
+    "listen-for-join-leave": true,
+    "listen-for-border-officer": true,
+    "listen-for-event-start": false
+}

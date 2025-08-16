@@ -70,6 +70,25 @@ docker-compose logs -f
 docker-compose down
 ```
 
+### Easy Shutdown Commands
+
+```bash
+# Stop everything (all services)
+docker-compose down
+
+# Stop only bot (keeps database running)
+docker-compose stop bot
+
+# Stop only database services (keeps bot if running standalone)
+docker-compose stop postgres pgadmin
+
+# Stop bot and start database services (switch to database-only mode)
+docker-compose stop bot && docker-compose --profile database up -d
+
+# Stop database and start bot (switch to bot-only mode)  
+docker-compose stop postgres pgadmin && docker-compose --profile bot up -d
+```
+
 ### Maintenance
 
 ```bash

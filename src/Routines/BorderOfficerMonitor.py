@@ -4,32 +4,14 @@ import json
 import nextcord
 from nextcord.ext import commands, tasks
 
-with open('config.json') as config_file:
-    config = json.load(config_file)
+from config import IDS, ROLES, CHANNELS
 
-BORDER_OFFICER_ROLE = config['roles']['border_officer']
-CHECK_CHANNEL_ID = config['channels']['checkpoint_txt']
+BORDER_OFFICER_ROLE = ROLES['border_officer']
+CHECK_CHANNEL_ID = CHANNELS['checkpoint_txt']
 CHECK_INTERVAL = 120  # 1 minute
 
 
 class BorderOfficerMonitor(commands.Cog):
-    """
-    A Discord bot cog that monitors the online status of members with a specific role
-    and sends a message to a designated channel if no members are online.
-    Attributes:
-        bot (commands.Bot): The bot instance.
-        LastOnlineStatus (bool): The last known online status of the monitored role members.
-        msg (nextcord.Message): The message sent to the channel when no members are online.
-    Methods:
-        cog_unload():
-            Cancels the online status checking loop when the cog is unloaded.
-        check_online_status():
-            Periodically checks the online status of members with the specified role
-            and updates the channel message accordingly.
-        before_check():
-            Waits until the bot is ready before starting the online status checking loop.
-    """
-
     def __init__(self, bot):
         self.LastOnlineStatus = False  # Initialize the last known online status
         self.bot = bot
@@ -45,9 +27,9 @@ class BorderOfficerMonitor(commands.Cog):
         self.check_count += 1
         #print(f"{datetime.datetime.now().strftime()}Checking online status... ")
 
-        guild = self.bot.get_guild(config['testing_guild'])  # Get the guild by ID
+        guild = self.bot.get_guild(IDS['testing_guild'])  # Get the guild by ID
         if not guild:
-            print(f"Guild with ID {config['testing_guild']} not found!")
+            print(f"Guild with ID {IDS['testing_guild']} not found!")
             return
 
         role = guild.get_role(BORDER_OFFICER_ROLE)  # Get the role by ID

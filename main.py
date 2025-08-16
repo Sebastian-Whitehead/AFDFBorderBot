@@ -2,6 +2,8 @@ import datetime
 import json
 import os
 import random
+from config import IDS
+
 from dotenv import load_dotenv
 
 import nextcord
@@ -11,19 +13,16 @@ from nextcord import Member, NotFound, Interaction
 # Load environment variables
 load_dotenv()
 
-with open('config.json') as config_file:
-    config = json.load(config_file)
-
-
 intents = nextcord.Intents.all()
 bot = commands.Bot(intents=intents)
+
 
 @bot.event
 async def on_ready():
     print(f'We have logged in as {bot.user}')
 
 
-@bot.slash_command(description="My first slash command", guild_ids=[config['testing_guild']])
+@bot.slash_command(description="My first slash command", guild_ids=[IDS['testing_guild']])
 async def ping(ctx: Interaction):
     random_number = random.randint(1, 50)
     if random_number == 3:
@@ -44,11 +43,14 @@ async def on_application_command_error(ctx: Interaction, error):
         await ctx.response.send_message(f"An error occurred: {error}", ephemeral=True)
 
 
-# ---- Load token and run ----
-bot.load_extension("checkpointManagement")
-bot.load_extension("enlistment")
-bot.load_extension("BorderOfficerMonitor")
-bot.load_extension("events")
+
+
+# ---- Load extensions ----
+bot.load_extension("src.Routines.BorderOfficerMonitor")
+bot.load_extension("src.Routines.JoinLeaveMonitor")
+bot.load_extension("src.checkpointManagement")
+bot.load_extension("src.enlistment")
+#bot.load_extension("src.events")  # DEPRECATED: Module deprecated as of v1.0.0
 
 bot.run(os.getenv('DISCORD_TOKEN'))
 # -------------------

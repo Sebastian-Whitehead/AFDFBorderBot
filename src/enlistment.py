@@ -4,18 +4,15 @@ import json
 from nextcord import Interaction, Member, NotFound, slash_command
 from nextcord.ext import commands
 
-with open('config.json') as config_file:
-    config = json.load(config_file)
-
-MILITARY_MANAGEMENT_ROLE = config['roles']['leadership']
-ENLISTED_ROLE = [1206596239379005490, 1205882493987979346]
-
+from config import ROLES, IDS
+ENLISTED_ROLE = ROLES['enlisted']
+MILITARY_MANAGEMENT_ROLE = ROLES['leadership']
 
 class enlistment(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @slash_command(description="Enlist in the army", guild_ids=[config['testing_guild']])
+    @slash_command(description="Enlist in the army", guild_ids=[IDS['testing_guild']])
     @commands.has_role(MILITARY_MANAGEMENT_ROLE)
     async def enlist(self, ctx: Interaction, user: Member):
         try:
