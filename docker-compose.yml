@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   postgres:
     image: postgres:16
@@ -50,7 +48,6 @@ services:
       postgres:
         condition: service_healthy
     volumes:
-      - ./config.json:/app/config.json:ro
       - ./embeds:/app/embeds:ro
     profiles:
       - bot
