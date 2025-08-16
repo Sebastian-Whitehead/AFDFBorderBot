@@ -1,14 +1,11 @@
-import datetime
-import json
-
 import nextcord
 from nextcord.ext import commands, tasks
 
-from config import IDS, ROLES, CHANNELS
+from src.config import IDS, ROLES, CHANNELS
 
 BORDER_OFFICER_ROLE = ROLES['border_officer']
 CHECK_CHANNEL_ID = CHANNELS['checkpoint_txt']
-CHECK_INTERVAL = 120  # 1 minute
+CHECK_INTERVAL = 120  # 2 minutes
 
 
 class BorderOfficerMonitor(commands.Cog):

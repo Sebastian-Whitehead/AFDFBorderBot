@@ -1,20 +1,19 @@
-# checkpointManagement.py
+# Checkpoint.py
 import json
 
 import nextcord
 from nextcord.ext import commands
 from nextcord import Interaction, Member, NotFound, slash_command
 
-from config import IDS, ROLES, CHANNELS
+from src.config import IDS, ROLES, CHANNELS
 
-# Replace these with the actual IDs or import them if defined elsewhere
 JOINING_ROLE = ROLES['join_role']
 BORDER_OFFICER_ROLE = ROLES['border_officer']
 BORDER_APPROVED_ROLE = ROLES['citizen']
 MAIN_CHANNEL = CHANNELS['main_txt']
 
 
-class checkpointManagement(commands.Cog):
+class Checkpoint(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
@@ -38,7 +37,6 @@ class checkpointManagement(commands.Cog):
             with open('embeds/newcitizen-main.json') as embed_file:
                 embed_dict = json.load(embed_file)
                 
-                
                 embed_dict['title'] = embed_dict['title'].format(username=user.global_name)
 
                 # Catch none value for global_name
@@ -56,4 +54,4 @@ class checkpointManagement(commands.Cog):
 
 # Function to set up the Cog
 def setup(bot):
-    bot.add_cog(checkpointManagement(bot))
+    bot.add_cog(Checkpoint(bot))

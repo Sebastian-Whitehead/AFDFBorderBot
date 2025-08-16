@@ -1,14 +1,12 @@
-# enlistment.py
-import json
-
+# Enlistment.py
 from nextcord import Interaction, Member, NotFound, slash_command
 from nextcord.ext import commands
 
-from config import ROLES, IDS
+from src.config import ROLES, IDS
 ENLISTED_ROLE = ROLES['enlisted']
 MILITARY_MANAGEMENT_ROLE = ROLES['leadership']
 
-class enlistment(commands.Cog):
+class Enlistment(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
@@ -28,4 +26,4 @@ class enlistment(commands.Cog):
 
 # Function to set up the Cog
 def setup(bot):
-    bot.add_cog(enlistment(bot))
+    bot.add_cog(Enlistment(bot))

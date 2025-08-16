@@ -1,23 +1,18 @@
-# checkpointManagement.py
+# GuildEvent.py
 import datetime
-import json
-import warnings
-
 import nextcord
 from nextcord.ext import commands
-from nextcord import Interaction, Member, NotFound, slash_command
+from nextcord import Interaction, slash_command
 
-warnings.warn("src.events is deprecated. Functionality moved to other modules.", DeprecationWarning, stacklevel=2)
-from config import IDS, ROLES, CHANNELS
-
+from src.config import IDS, ROLES, CHANNELS
 LEADERSHIP_ROLE = ROLES['leadership']
 EVENT_CHANNEL = CHANNELS['events_vc']
 
-class event_management(commands.Cog):
+class GuildEvent(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @slash_command(description="created the standard set of three events with a simple command", guild_ids=[IDS['testing_guild']])
+    @slash_command(description="Create the standard set of three weekend events", guild_ids=[IDS['testing_guild']])
     @commands.has_role(LEADERSHIP_ROLE)
     async def create_weekend_events(self, interaction: Interaction, friday_hour: int, saturday_hour: int, sunday_hour: int):
         guild = interaction.guild
@@ -63,17 +58,6 @@ class event_management(commands.Cog):
         await log_text.send(f"**Attendance for {datetime.datetime.now().strftime('%A %B %d, %Y')}**\n{present_list}")
         await interaction.response.send_message("Attendance Registered and Logged", ephemeral=True)
         
-    @commands.Cog.listener()
-    async def on_event_start(self, event: nextcord.ScheduledEvent):
-        guild = event.guild
-        main_channel = guild.get_channel(IDS['channels']['main_txt'])
-
-        # Get the members of the next event
-        members = await event.fetch_users()
-        
-        # Ping all members of the next event
-        await main_channel.send(f"{event.name} IS STARTING!: {', '.join([member.mention for member in members])}")
-        
 # Function to set up the Cog
 def setup(bot):
-    bot.add_cog(event_management(bot))
+    bot.add_cog(GuildEvent(bot))

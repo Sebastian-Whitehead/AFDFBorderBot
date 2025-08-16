@@ -2,7 +2,7 @@ import datetime
 import json
 import os
 import random
-from config import IDS
+from src.config import IDS
 
 from dotenv import load_dotenv
 
@@ -43,14 +43,16 @@ async def on_application_command_error(ctx: Interaction, error):
         await ctx.response.send_message(f"An error occurred: {error}", ephemeral=True)
 
 
-
-
 # ---- Load extensions ----
-bot.load_extension("src.Routines.BorderOfficerMonitor")
-bot.load_extension("src.Routines.JoinLeaveMonitor")
-bot.load_extension("src.checkpointManagement")
-bot.load_extension("src.enlistment")
-#bot.load_extension("src.events")  # DEPRECATED: Module deprecated as of v1.0.0
+# Listeners
+bot.load_extension("src.listeners.BorderOfficerMonitor")
+bot.load_extension("src.listeners.JoinLeaveHandler")
+#bot.load_extension("src.listeners.GuildEventListener")  # DEPRECATED: Converted to commands
+
+# Commands
+bot.load_extension("src.commands.Checkpoint")
+bot.load_extension("src.commands.Enlistment")
+bot.load_extension("src.commands.GuildEvent")
 
 bot.run(os.getenv('DISCORD_TOKEN'))
 # -------------------
