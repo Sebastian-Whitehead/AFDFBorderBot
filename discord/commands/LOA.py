@@ -2,16 +2,19 @@ import nextcord
 from nextcord.ext import commands
 from nextcord import Interaction, SlashOption
 from datetime import datetime
+import logging
 
+from ..config import LOA_CHANNEL_ID, TESTING_GUILD_ID
 from ..utils import send_processed_embed
+from database.loa_functions import LOAManager
+
+logger = logging.getLogger(__name__)
 
 class LOA(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        # Store LOA requests in memory for now (will be replaced with database later)
-        self.loa_requests = {}
 
-    @nextcord.slash_command(name="loa", description="Submit a Leave of Absence request")
+    @nextcord.slash_command(name="loa", description="Submit a Leave of Absence request", guild_ids=[TESTING_GUILD_ID] if TESTING_GUILD_ID else None)
     async def loa_command(
         self,
         interaction: Interaction,
@@ -26,152 +29,218 @@ class LOA(commands.Cog):
     ):
         """Submit a Leave of Absence request."""
         
-        # Check if user already has an active LOA
-        user_id = interaction.user.id
-        submit_date = datetime.now()
-        
-        if user_id in self.loa_requests:
-            # Update existing LOA
-            self.loa_requests[user_id]['end_date'] = end_date
-            self.loa_requests[user_id]['reason'] = reason
-            # Keep the original start date and submitted_at, but update a "last_modified" field
-            self.loa_requests[user_id]['last_modified'] = submit_date
-            action_text = "updated"
-        else:
-            # Create new LOA
-            self.loa_requests[user_id] = {
-                'user': interaction.user,
-                'end_date': end_date,
-                'reason': reason,
-                'submitted_at': submit_date,
-                'start_date': submit_date.strftime("%Y-%m-%d")
-            }
-            action_text = "submitted"
-        
-        # Prepare replacements for the embed
-        replacements = {
-            '{user}': interaction.user.mention,
-            '{username}': interaction.user.display_name,
-            '{User}': interaction.user.mention,
-            '{Username}': interaction.user.display_name,
-            '{userid}': str(interaction.user.id),
-            '{usertag}': str(interaction.user),
-            '{end_date}': end_date,
-            '{reason}': reason if reason else "No reason provided",
-            '{submitted_date}': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        }
-        
-        # Send the processed embed publicly to the channel
-        await send_processed_embed(interaction.channel, 'loa.json', replacements)
-        
-        # Send a confirmation to the user privately
-        await interaction.response.send_message(f"✅ Your LOA request has been {action_text}!", ephemeral=True)
-
-    @nextcord.slash_command(name="loa-list", description="List all current active LOAs")
-    async def loa_list_command(self, interaction: Interaction):
-        """List all current active Leave of Absence requests."""
-        
-        if not self.loa_requests:
-            await interaction.response.send_message("📋 **Current LOAs**\nNo active LOAs found.", ephemeral=True)
-            return
-        
-        # Get today's date for comparison
-        today = datetime.now().date()
-        
-        # Filter active LOAs
-        active_loas = []
-        for user_id, loa_data in self.loa_requests.items():
-            try:
-                # Parse the end date (support multiple formats)
-                end_date_str = loa_data['end_date']
-                if '/' in end_date_str:  # MM/DD/YYYY format
-                    end_date = datetime.strptime(end_date_str, "%m/%d/%Y").date()
-                else:  # YYYY-MM-DD format
-                    end_date = datetime.strptime(end_date_str, "%Y-%m-%d").date()
-                
-                # Check if LOA is still active (end date is today or in the future)
-                if end_date >= today:
-                    active_loas.append({
-                        'user': loa_data['user'],
-                        'end_date': end_date,
-                        'end_date_str': end_date_str,
-                        'reason': loa_data['reason'],
-                        'submitted_at': loa_data['submitted_at'],
-                        'start_date': loa_data.get('start_date', loa_data['submitted_at'].strftime("%Y-%m-%d"))
-                    })
-            except ValueError:
-                # If date parsing fails, assume it's still active and include it
-                active_loas.append({
-                    'user': loa_data['user'],
-                    'end_date': None,
-                    'end_date_str': end_date_str,
-                    'reason': loa_data['reason'],
-                    'submitted_at': loa_data['submitted_at'],
-                    'start_date': loa_data.get('start_date', loa_data['submitted_at'].strftime("%Y-%m-%d"))
-                })
-        
-        if not active_loas:
-            await interaction.response.send_message("📋 **Current LOAs**\nNo active LOAs found.", ephemeral=True)
-            return
-        
-        # Create text message with active LOAs
-        message = f"📋 **Current Active LOAs** ({len(active_loas)} active)\n\n"
-        
-        for loa in active_loas:
-            user_name = loa['user'].display_name
-            start_date = loa['start_date']
-            end_date_display = loa['end_date_str']
-            reason = loa['reason'] if loa['reason'] else "No reason provided"
-            
-            # Calculate days remaining if possible
-            days_remaining = ""
-            if loa['end_date']:
-                days_diff = (loa['end_date'] - today).days
-                if days_diff == 0:
-                    days_remaining = " (ends today)"
-                elif days_diff == 1:
-                    days_remaining = " (1 day remaining)"
-                else:
-                    days_remaining = f" ({days_diff} days remaining)"
-            
-            message += f"**{user_name}**\n"
-            message += f"Start: {start_date} | End: {end_date_display}{days_remaining}\n"
-            message += f"Reason: {reason}\n\n"
-        
-        message += f"*As of {today.strftime('%Y-%m-%d')}*"
-        
-        await interaction.response.send_message(message, ephemeral=True)
-
-    @nextcord.slash_command(name="loa-cancel", description="Cancel your active Leave of Absence")
-    async def loa_cancel_command(self, interaction: Interaction):
-        """Cancel your active Leave of Absence request."""
-        
-        user_id = interaction.user.id
-        
-        # Check if user has an active LOA
-        if user_id not in self.loa_requests:
+        # Check if command is being used in the correct channel
+        if LOA_CHANNEL_ID and interaction.channel.id != LOA_CHANNEL_ID:
             await interaction.response.send_message(
-                "❌ You don't have an active LOA to cancel.", 
+                f"❌ This command can only be used in <#{LOA_CHANNEL_ID}>.", 
                 ephemeral=True
             )
             return
         
-        # Get LOA details before removing
-        loa_data = self.loa_requests[user_id]
-        user_name = interaction.user.display_name
+        try:
+            # Validate that the end date is not in the past
+            try:
+                parsed_end_date = await LOAManager.parse_end_date(end_date)
+                if parsed_end_date is None:
+                    await interaction.response.send_message(
+                        "❌ Invalid date format. Please use YYYY-MM-DD or MM/DD/YYYY format.", 
+                        ephemeral=True
+                    )
+                    return
+                
+                today = datetime.now().date()
+                if parsed_end_date < today:
+                    await interaction.response.send_message(
+                        "❌ End date cannot be in the past. Please choose a date from today onwards.", 
+                        ephemeral=True
+                    )
+                    return
+                    
+            except Exception as e:
+                logger.error(f"Error parsing end date: {e}")
+                await interaction.response.send_message(
+                    "❌ Invalid date format. Please use YYYY-MM-DD or MM/DD/YYYY format.", 
+                    ephemeral=True
+                )
+                return
+            
+            # Create or update LOA in database
+            discord_id = str(interaction.user.id)
+            username = interaction.user.display_name
+            
+            is_update, action_text = await LOAManager.create_or_update_loa(
+                discord_id, username, end_date, reason
+            )
+            
+            # If updating and no reason provided, get the current reason for the embed
+            display_reason = reason
+            if is_update and reason is None:
+                existing_loa = await LOAManager.get_active_loa_by_discord_id(discord_id)
+                display_reason = existing_loa['reason'] if existing_loa else None
+            
+            # Prepare replacements for the embed
+            replacements = {
+                '{user}': interaction.user.mention,
+                '{username}': interaction.user.display_name,
+                '{User}': interaction.user.mention,
+                '{Username}': interaction.user.display_name,
+                '{userid}': str(interaction.user.id),
+                '{usertag}': str(interaction.user),
+                '{end_date}': end_date,
+                '{reason}': display_reason if display_reason else "No reason provided",
+                '{submitted_date}': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            }
+            
+            # Send the processed embed publicly to the channel
+            await send_processed_embed(interaction.channel, 'loa.json', replacements)
+            
+            # Send a confirmation to the user privately
+            await interaction.response.send_message(f"✅ Your LOA request has been {action_text}!", ephemeral=True)
+            
+        except Exception as e:
+            logger.error(f"Error processing LOA command: {e}")
+            await interaction.response.send_message(
+                "❌ An error occurred while processing your LOA request. Please try again.", 
+                ephemeral=True
+            )
+
+    @nextcord.slash_command(name="loa-list", description="List all current active LOAs", guild_ids=[TESTING_GUILD_ID] if TESTING_GUILD_ID else None)
+    async def loa_list_command(self, interaction: Interaction):
+        """List all current active Leave of Absence requests."""
         
-        # Remove the LOA
-        del self.loa_requests[user_id]
+        # Check if command is being used in the correct channel
+        if LOA_CHANNEL_ID and interaction.channel.id != LOA_CHANNEL_ID:
+            await interaction.response.send_message(
+                f"❌ This command can only be used in <#{LOA_CHANNEL_ID}>.", 
+                ephemeral=True
+            )
+            return
         
-        # Send public cancellation message
-        cancel_message = f"📋 **LOA Canceled**\n{interaction.user.mention} has canceled their Leave of Absence."
-        await interaction.channel.send(cancel_message)
+        try:
+            # Clean up expired LOAs first
+            await LOAManager.cleanup_expired_loas()
+            
+            # Get all active LOAs from database
+            active_loas_data = await LOAManager.get_all_active_loas()
+            
+            if not active_loas_data:
+                await interaction.response.send_message("📋 **Current LOAs**\nNo active LOAs found.", ephemeral=True)
+                return
+            
+            # Get today's date for comparison
+            today = datetime.now().date()
+            
+            # Process LOAs and filter active ones
+            active_loas = []
+            for loa_data in active_loas_data:
+                try:
+                    # Parse the end date
+                    end_date = await LOAManager.parse_end_date(loa_data['end_date'])
+                    
+                    # Check if LOA is still active (end date is today or in the future)
+                    if end_date and end_date >= today:
+                        active_loas.append({
+                            'username': loa_data['username'],
+                            'discord_id': loa_data['discord_id'],
+                            'end_date': end_date,
+                            'end_date_str': loa_data['end_date'],
+                            'reason': loa_data['reason'],
+                            'start_date': loa_data['start_date'].strftime("%Y-%m-%d") if isinstance(loa_data['start_date'], datetime) else str(loa_data['start_date'])
+                        })
+                    elif not end_date:
+                        # If date parsing fails, include it but mark as unparseable
+                        active_loas.append({
+                            'username': loa_data['username'],
+                            'discord_id': loa_data['discord_id'],
+                            'end_date': None,
+                            'end_date_str': loa_data['end_date'],
+                            'reason': loa_data['reason'],
+                            'start_date': loa_data['start_date'].strftime("%Y-%m-%d") if isinstance(loa_data['start_date'], datetime) else str(loa_data['start_date'])
+                        })
+                except Exception as e:
+                    logger.warning(f"Error processing LOA data: {e}")
+                    continue
+            
+            if not active_loas:
+                await interaction.response.send_message("📋 **Current LOAs**\nNo active LOAs found.", ephemeral=True)
+                return
+            
+            # Create text message with active LOAs
+            message = f"📋 **Current Active LOAs** ({len(active_loas)} active)\n\n"
+            
+            for loa in active_loas:
+                user_name = loa['username']
+                start_date = loa['start_date']
+                end_date_display = loa['end_date_str']
+                reason = loa['reason'] if loa['reason'] else "No reason provided"
+                
+                # Calculate days remaining if possible
+                days_remaining = ""
+                if loa['end_date']:
+                    days_diff = (loa['end_date'] - today).days
+                    if days_diff == 0:
+                        days_remaining = " (ends today)"
+                    elif days_diff == 1:
+                        days_remaining = " (1 day remaining)"
+                    else:
+                        days_remaining = f" ({days_diff} days remaining)"
+                
+                message += f"**{user_name}**\n"
+                message += f"Start: {start_date} | End: {end_date_display}{days_remaining}\n"
+                message += f"Reason: {reason}\n\n"
+            
+            message += f"*As of {today.strftime('%Y-%m-%d')}*"
+            
+            await interaction.response.send_message(message, ephemeral=True)
+            
+        except Exception as e:
+            logger.error(f"Error processing LOA list command: {e}")
+            await interaction.response.send_message(
+                "❌ An error occurred while fetching LOA list. Please try again.", 
+                ephemeral=True
+            )
+
+    @nextcord.slash_command(name="loa-cancel", description="Cancel your active Leave of Absence", guild_ids=[TESTING_GUILD_ID] if TESTING_GUILD_ID else None)
+    async def loa_cancel_command(self, interaction: Interaction):
+        """Cancel your active Leave of Absence request."""
         
-        # Send private confirmation
-        await interaction.response.send_message(
-            "✅ Your LOA has been successfully canceled!", 
-            ephemeral=True
-        )
+        # Check if command is being used in the correct channel
+        if LOA_CHANNEL_ID and interaction.channel.id != LOA_CHANNEL_ID:
+            await interaction.response.send_message(
+                f"❌ This command can only be used in <#{LOA_CHANNEL_ID}>.", 
+                ephemeral=True
+            )
+            return
+        
+        try:
+            discord_id = str(interaction.user.id)
+            
+            # Try to cancel the LOA
+            was_cancelled = await LOAManager.cancel_loa(discord_id)
+            
+            if not was_cancelled:
+                await interaction.response.send_message(
+                    "❌ You don't have an active LOA to cancel.", 
+                    ephemeral=True
+                )
+                return
+            
+            # Send public cancellation message
+            cancel_message = f"📋 **LOA Canceled**\n{interaction.user.mention} has canceled their Leave of Absence."
+            await interaction.channel.send(cancel_message)
+            
+            # Send private confirmation
+            await interaction.response.send_message(
+                "✅ Your LOA has been successfully canceled!", 
+                ephemeral=True
+            )
+            
+        except Exception as e:
+            logger.error(f"Error processing LOA cancel command: {e}")
+            await interaction.response.send_message(
+                "❌ An error occurred while canceling your LOA. Please try again.", 
+                ephemeral=True
+            )
 
 # Function to set up the Cog
 def setup(bot):
