@@ -7,7 +7,7 @@ CREATE TABLE users (
     joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     enlisted_at TIMESTAMP,
     money DECIMAL(15,2) DEFAULT 0,
-    rank TEXT,
+    rank INTEGER DEFAULT 0,
     notes TEXT,
     achievements TEXT[],
     last_death DATE,
@@ -32,7 +32,7 @@ CREATE TABLE users (
 -- );
 
 -- Insert sample data
-INSERT INTO users (name, steam_id, discord_id, rank, notes, extra_data, lore_character_id) 
+INSERT INTO users (name, steam_id, discord_id, rank, notes, extra_data) 
 VALUES 
-    ('senwk', '76561198070202465', '805449866971971594', 'president', NULL, NULL, NULL),
-    ('Parz1val', '76561198150696236', '142876809992601601', 'EN3', 'Head of medical department', NULL, NULL);
+    ('senwk', '76561198070202465', '805449866971971594', 9, 'President - Special rank', NULL),
+    ('Parz1val', '76561198150696236', '142876809992601601', 3, 'Head of medical department', NULL);
