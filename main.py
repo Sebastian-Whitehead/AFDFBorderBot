@@ -2,7 +2,7 @@ import datetime
 import json
 import os
 import random
-from src.config import IDS
+from src.config import TESTING_GUILD_ID
 
 from dotenv import load_dotenv
 
@@ -22,7 +22,7 @@ async def on_ready():
     print(f'We have logged in as {bot.user}')
 
 
-@bot.slash_command(description="My first slash command", guild_ids=[IDS['testing_guild']])
+@bot.slash_command(description="My first slash command", guild_ids=[TESTING_GUILD_ID] if TESTING_GUILD_ID else None)
 async def ping(ctx: Interaction):
     random_number = random.randint(1, 50)
     if random_number == 3:

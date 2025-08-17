@@ -1,10 +1,8 @@
 import nextcord
 from nextcord.ext import commands, tasks
 
-from src.config import IDS, ROLES, CHANNELS
+from src.config import TESTING_GUILD_ID, BORDER_OFFICER_ROLE_ID, CHECKPOINT_CHANNEL_ID, ENABLE_BORDER_OFFICER
 
-BORDER_OFFICER_ROLE = ROLES['border_officer']
-CHECK_CHANNEL_ID = CHANNELS['checkpoint_txt']
 CHECK_INTERVAL = 120  # 2 minutes
 
 
@@ -21,20 +19,29 @@ class BorderOfficerMonitor(commands.Cog):
 
     @tasks.loop(seconds=CHECK_INTERVAL)
     async def check_online_status(self):
+        # Check if border officer monitoring is enabled
+        if not ENABLE_BORDER_OFFICER:
+            return
+            
+        # Check if required config is available
+        if not TESTING_GUILD_ID or not BORDER_OFFICER_ROLE_ID or not CHECKPOINT_CHANNEL_ID:
+            print("BorderOfficerMonitor: Missing required configuration")
+            return
+            
         self.check_count += 1
         #print(f"{datetime.datetime.now().strftime()}Checking online status... ")
 
-        guild = self.bot.get_guild(IDS['testing_guild'])  # Get the guild by ID
+        guild = self.bot.get_guild(TESTING_GUILD_ID)  # Get the guild by ID
         if not guild:
-            print(f"Guild with ID {IDS['testing_guild']} not found!")
+            print(f"Guild with ID {TESTING_GUILD_ID} not found!")
             return
 
-        role = guild.get_role(BORDER_OFFICER_ROLE)  # Get the role by ID
+        role = guild.get_role(BORDER_OFFICER_ROLE_ID)  # Get the role by ID
         if not role:
-            print(f"Role with ID {BORDER_OFFICER_ROLE} not found!")
+            print(f"Role with ID {BORDER_OFFICER_ROLE_ID} not found!")
             return
 
-        check_channel = guild.get_channel(CHECK_CHANNEL_ID)  # Get the channel by ID
+        check_channel = guild.get_channel(CHECKPOINT_CHANNEL_ID)  # Get the channel by ID
         if not check_channel:
             print("Channel not found!")
             return  # Exit if the channel is not found
