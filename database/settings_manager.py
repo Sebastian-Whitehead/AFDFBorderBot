@@ -20,8 +20,7 @@ class SettingsManager:
     
     def __init__(self):
         self._cache: Dict[str, Any] = {}
-        # Eager load - start loading immediately
-        asyncio.create_task(self._load_cache())
+        self._cache_loaded = False
     
     async def _load_cache(self):
         """Load all settings from database using SQLAlchemy ORM."""
