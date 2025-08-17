@@ -1,0 +1,28 @@
+{
+  "content": "",
+  "tts": false,
+  "embeds": [
+    {
+      "id": 652627557,
+      "title": "Αντίο / Goodbye",
+      "description": "{user} has left to start his life anew somewhere else, but perhaps it never truly began here. The Malden Ministry of Retention will ensure his house is properly warmed with gifts from the islands most respected citizen, Knightry.",
+      "color": 2326507,
+      "fields": [],
+      "image": {
+        "url": "https://i.postimg.cc/13n799Rk/plane-departure.png"
+      },
+      "thumbnail": {
+        "url": "https://i.postimg.cc/2SjdK1Qr/Untitled-design-23.png"
+      },
+      "footer": {
+        "text": "AEGEAN FEDERATION",
+        "icon_url": "https://i.postimg.cc/2SjdK1Qr/Untitled-design-23.png"
+      }
+    }
+  ],
+  "components": [],
+  "actions": {},
+  "flags": 0,
+  "username": "Aegean Immigration",
+  "avatar_url": "https://i.postimg.cc/FHCv6FWw/Civilian-Shield.png"
+}

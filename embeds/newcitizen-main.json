@@ -1,19 +1,30 @@
 {
-  "title": "CITIZENSHIP HAS BEEN GRANTED TO {username}",
-  "description": "Everyone, please welcome {username} to the Federation.",
-  "color": 5814783,
-  "fields": [
+  "content": "",
+  "tts": false,
+  "embeds": [
     {
-      "name": "Quick Appraisal",
-      "value": "[Our Modpack & How to Join](https://discord.com/channels/1140569342619168778/1229466005059801179)\n[Our Upcoming Events](https://discord.com/channels/1140569342619168778/1283891323161804912)\n\nInterested in a more organised MILSIM that partakes in PVP and our official timeline playthrough? Join the **Aegean Federation Defence Forces**, contact a First Private or above to start your enrollment into our premier fighting force."
+      "id": 652627557,
+      "title": "CITIZENSHIP HAS BEEN GRANTED TO {username}",
+      "description": "Everyone, please welcome {username} to the Federation.",
+      "color": 2326507,
+      "author": {
+        "name": "NEW PASSPORT ISSUED"
+      },
+      "thumbnail": {
+        "url": "https://i.postimg.cc/2j7GQ0SX/passport.png"
+      },
+      "fields": [
+        {
+          "id": 178376649,
+          "name": "Quick Appraisal",
+          "value": "[Our Modpack & How to Join](https://discord.com/channels/1140569342619168778/1229466005059801179)\n[Our Upcoming Events](https://discord.com/channels/1140569342619168778/1283891323161804912)\n\nInterested in a more organised MILSIM that partakes in PVP and our official timeline playthrough? Join the **Aegean Federation Defence Forces**, contact a First Private or above to start your enrollment into our premier fighting force.\""
+        }
+      ]
     }
   ],
-  "author": {
-    "name": "NEW PASSPORT ISSUED",
-    "icon_url": ""
-  },
-  "thumbnail": {
-    "url": "{profile_picture}"
-  }
+  "components": [],
+  "actions": {},
+  "flags": 0,
+  "username": "Aegean Immigration",
+  "avatar_url": "https://i.postimg.cc/FHCv6FWw/Civilian-Shield.png"
 }
-

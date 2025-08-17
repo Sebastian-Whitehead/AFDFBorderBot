@@ -1,0 +1,43 @@
+{
+  "content": "Welcome, {user}.\nPlease wait for one of our {Immigration Department} officers to contact you to begin the check-in process.\nPlease, proceed to the [checkpoint](https://discord.com/channels/1140569342619168778/1205850873616539709). and type something so we know you can send a message.",
+  "tts": false,
+  "embeds": [
+    {
+      "id": 652627557,
+      "title": "**GENERAL INFORMATION**",
+      "description": "Greetings, please prepare all your questions for the [Checkpoint](https://discord.com/channels/1140569342619168778/1205850873616539709)\n\nMessage them first or deported for social anxiety.",
+      "color": 2326507,
+      "footer": {
+        "text": " WELCOME TO THE AEGEAN FEDERATION",
+        "icon_url": "https://i.postimg.cc/2SjdK1Qr/Untitled-design-23.png"
+      },
+      "author": {
+        "name": "🛃 IMMIGRATION DEPARTMENT"
+      },
+      "image": {
+        "url": "https://i.postimg.cc/Lswz5vr8/plane-landed.png"
+      },
+      "thumbnail": {
+        "url": "https://i.postimg.cc/2SjdK1Qr/Untitled-design-23.png"
+      },
+      "fields": [
+        {
+          "id": 627968075,
+          "name": "🕒 **TIMING SCHEDULE**",
+          "value": "We have a voting system, that sees us play two days out of Friday, Saturday or Sunday. The times are as listed:\n\n>>> Friday will always have a later start time, usually at <t:1755446400:t>.\nSaturday & Sunday will start earlier, usually at <t:1755439200:t>",
+          "inline": false
+        },
+        {
+          "id": 741863167,
+          "name": "❕ **TIMELINES**",
+          "value": "We have 2 Active Timelines, (A) & (B). + one variable Timeline (C)\n\n- A is our MILSIM Timeline, played by our subunit, the AFDF, you can join by inquiring, the join requirement is to have attended one public event prior to inquiring. The events cannot be reloaded, and the Timeline is entirely permadeath, operations are usually one-life events.\n\n- B is our relaxed Timeline, although our AI is still present on its realism preset, it is hard, but little is expected of you.\n\n- C is our variable Timeline, where we play off one-time events or a short campaign around anything in any fictional universe."
+        }
+      ]
+    }
+  ],
+  "components": [],
+  "actions": {},
+  "flags": 0,
+  "username": "Aegean Immigration",
+  "avatar_url": "https://i.postimg.cc/FHCv6FWw/Civilian-Shield.png"
+}
