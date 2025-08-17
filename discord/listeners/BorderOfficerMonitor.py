@@ -1,7 +1,7 @@
 import nextcord
 from nextcord.ext import commands, tasks
 
-from ..config import TESTING_GUILD_ID, BORDER_OFFICER_ROLE_ID, CHECKPOINT_CHANNEL_ID, ENABLE_BORDER_OFFICER
+from ..config import TESTING_GUILD_ID, BORDER_OFFICER_ROLE_ID, CHECKPOINT_CHANNEL_ID, get_setting
 
 CHECK_INTERVAL = 120  # 2 minutes
 
@@ -20,7 +20,7 @@ class BorderOfficerMonitor(commands.Cog):
     @tasks.loop(seconds=CHECK_INTERVAL)
     async def check_online_status(self):
         # Check if border officer monitoring is enabled
-        if not ENABLE_BORDER_OFFICER:
+        if not get_setting('listen-for-border-officer', False):
             return
             
         # Check if required config is available

@@ -2,7 +2,7 @@ import nextcord
 from nextcord.ext import commands
 from nextcord import Interaction, Member, NotFound, slash_command
 
-from ..config import MAIN_CHANNEL_ID, ENABLE_EVENT_START
+from ..config import MAIN_CHANNEL_ID, get_setting
 
 
 class GuildEventListener(commands.Cog):
@@ -12,7 +12,7 @@ class GuildEventListener(commands.Cog):
     @commands.Cog.listener()
     async def on_event_start(self, event: nextcord.ScheduledEvent):
         # Check if event listening is enabled
-        if not ENABLE_EVENT_START:
+        if not get_setting('listen-for-event-start', False):
             return
             
         # Check if main channel is configured
