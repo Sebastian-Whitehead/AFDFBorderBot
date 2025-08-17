@@ -17,7 +17,7 @@ RUN pip install --no-cache-dir --trusted-host pypi.org --trusted-host pypi.pytho
 # Copy the entire application
 COPY . .
 
-# Create a non-root user for security
+# Create a non-root user for security and fix file ownership
 RUN useradd -m -u 1000 botuser && chown -R botuser:botuser /app
 USER botuser
 

@@ -4,20 +4,32 @@
   "embeds": [
     {
       "id": 652627557,
-      "title": "{user} LOA",
-      "description": "*{username} has notified of an LOA lasting until: {end_date}.*\n\nYour participation will be missed and we hope to see you again soon.\n",
+      "title": "LEAVE OF ABSENCE NOTIFICATION FROM {username}",
+      "description": "*Submitted LOA lasts until: {end_date}.*\n",
       "color": 10289176,
-      "fields": [],
-      "thumbnail": {
-        "url": "https://i.postimg.cc/R0Q790yV/absence-icon.png"
-      },
       "footer": {
-        "text": "-- AFDF COMMAND --"
+        "text": "-- Logothete of the Military --"
       },
       "author": {
-        "icon_url": "https://i.postimg.cc/3RzmFDD1/2.png",
-        "name": "NOTICE!"
-      }
+        "name": "NOTICE!",
+        "icon_url": "https://i.postimg.cc/3RzmFDD1/2.png"
+      },
+      "thumbnail": {
+        "url": "https://i.postimg.cc/QMqrJ7Y3/absence-icon-scaled.png"
+      },
+      "fields": [
+        {
+          "id": 471793579,
+          "name": "Reason:",
+          "value": "{reason}"
+        },
+        {
+          "id": 815043462,
+          "name": "‎ ",
+          "value": "*Your participation will be missed and we hope to see you again soon.*",
+          "inline": false
+        }
+      ]
     }
   ],
   "components": [],

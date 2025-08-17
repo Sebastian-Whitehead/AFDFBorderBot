@@ -30,6 +30,15 @@ class DatabaseManager:
         
     def _build_database_url(self) -> str:
         """Build database URL from environment variables or defaults."""
+        # Check if DATABASE_URL is provided (for Docker)
+        database_url = os.getenv("DATABASE_URL")
+        if database_url:
+            # Convert postgres:// to postgresql+asyncpg://
+            if database_url.startswith("postgres://"):
+                database_url = database_url.replace("postgres://", "postgresql+asyncpg://", 1)
+            return database_url
+        
+        # Fallback to building from individual environment variables
         host = os.getenv("DB_HOST", "localhost")
         port = os.getenv("DB_PORT", "5432")
         user = os.getenv("DB_USER", "postgres")
@@ -90,10 +99,38 @@ class DatabaseManager:
             try:
                 result = await session.execute(text(query), params or {})
                 await session.commit()
-                return [dict(row._mapping) for row in result.fetchall()]
+                
+                # Check if this is a SELECT query by looking at the query string
+                query_lower = query.strip().lower()
+                if query_lower.startswith('select') or query_lower.startswith('with'):
+                    return [dict(row._mapping) for row in result.fetchall()]
+                else:
+                    # For INSERT, UPDATE, DELETE operations, return empty list
+                    return []
             except Exception as e:
                 await session.rollback()
                 logger.error(f"Query failed: {e}")
+                raise
+
+    async def execute_dml_query(self, query: str, params: Optional[Dict[str, Any]] = None) -> None:
+        """Execute a DML query (INSERT, UPDATE, DELETE) that doesn't return rows."""
+        async with self.get_session() as session:
+            try:
+                await session.execute(text(query), params or {})
+                await session.commit()
+            except Exception as e:
+                await session.rollback()
+                logger.error(f"DML Query failed: {e}")
+                raise
+
+    async def execute_select_query(self, query: str, params: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+        """Execute a SELECT query and return results."""
+        async with self.get_session() as session:
+            try:
+                result = await session.execute(text(query), params or {})
+                return [dict(row._mapping) for row in result.fetchall()]
+            except Exception as e:
+                logger.error(f"SELECT Query failed: {e}")
                 raise
 
 
