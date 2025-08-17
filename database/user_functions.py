@@ -12,10 +12,12 @@ from typing import Optional, Dict, Any, Union, List
 from datetime import datetime, date
 from decimal import Decimal
 
-# Add discord folder to path
-sys.path.append(str(Path(__file__).parent.parent / "discord"))
-
-from .db_manager import get_db_manager
+# Import from same directory
+try:
+    from .db_manager import get_db_manager
+except ImportError:
+    # Fallback for direct execution
+    from db_manager import get_db_manager
 
 
 async def create_user(

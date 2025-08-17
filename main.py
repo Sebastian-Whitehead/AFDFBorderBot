@@ -4,6 +4,7 @@ import os
 import random
 import sys
 from pathlib import Path
+import importlib.util
 
 from dotenv import load_dotenv
 
@@ -11,12 +12,16 @@ import nextcord
 from nextcord.ext import commands
 from nextcord import Member, NotFound, Interaction
 
-# Add discord folder to path and import config
-sys.path.append(str(Path(__file__).parent / "discord"))
-from config import TESTING_GUILD_ID
-
 # Load environment variables
 load_dotenv()
+
+# Load config from discord folder
+config_path = Path(__file__).parent / "discord" / "config.py"
+spec = importlib.util.spec_from_file_location("config", config_path)
+config_module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(config_module)
+
+TESTING_GUILD_ID = getattr(config_module, 'TESTING_GUILD_ID', None)
 
 intents = nextcord.Intents.all()
 bot = commands.Bot(intents=intents)
