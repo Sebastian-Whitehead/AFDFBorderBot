@@ -15,7 +15,7 @@ import nextcord
 from nextcord.ext import commands
 from nextcord import Member, NotFound, Interaction
 
-from .config import TESTING_GUILD_ID
+from .config import TESTING_GUILD_ID, load_settings
 
 
 def create_bot():
@@ -26,6 +26,9 @@ def create_bot():
     @bot.event
     async def on_ready():
         print(f'We have logged in as {bot.user}')
+        # Load settings from database
+        await load_settings()
+        print("Settings loaded from database")
 
     @bot.slash_command(description="My first slash command", guild_ids=[TESTING_GUILD_ID] if TESTING_GUILD_ID else None)
     async def ping(ctx: Interaction):
@@ -60,6 +63,9 @@ def load_extensions(bot):
     bot.load_extension("discord.commands.Checkpoint")
     bot.load_extension("discord.commands.Enlistment")
     bot.load_extension("discord.commands.GuildEvent")
+    bot.load_extension("discord.commands.LOA")
+    bot.load_extension("discord.commands.SettingsManagement")
+    #bot.load_extension("discord.commands.UserManagement")
 
 
 def run_bot():

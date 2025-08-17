@@ -1,5 +1,12 @@
 import json
 import logging
+import asyncio
+import sys
+import os
+
+# Add the parent directory to the path so we can import from database
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from database.settings_manager import get_setting as get_db_setting, update_setting as update_db_setting, get_settings_manager
 
 # Set up logging for config issues
 logger = logging.getLogger(__name__)
@@ -12,13 +19,8 @@ except (FileNotFoundError, json.JSONDecodeError) as e:
     logger.error(f"Error loading ids.json: {e}")
     IDS = {}
 
-# Load SETTINGS with error handling
-try:
-    with open('Settings.json') as f:
-        SETTINGS = json.load(f)
-except (FileNotFoundError, json.JSONDecodeError) as e:
-    logger.error(f"Error loading Settings.json: {e}")
-    SETTINGS = {}
+# Settings will be loaded from database - initialize placeholders
+SETTINGS = {}
 
 # Extract configuration with safe defaults
 ROLES = IDS.get('roles', {})
@@ -42,8 +44,32 @@ MAIN_CHANNEL_ID = CHANNELS.get('main_txt', None)
 CHECKPOINT_CHANNEL_ID = CHANNELS.get('checkpoint_txt', None)
 EVENTS_CHANNEL_ID = CHANNELS.get('events_vc', None)
 WELCOME_CHANNEL_ID = CHANNELS.get('welcome_txt', None)
+LOA_CHANNEL_ID = CHANNELS.get('loa_txt', None)
 
-# Settings (Feature Flags)
-ENABLE_JOIN_LEAVE = SETTINGS.get('listen-for-join-leave', True)
-ENABLE_BORDER_OFFICER = SETTINGS.get('listen-for-border-officer', True)
-ENABLE_EVENT_START = SETTINGS.get('listen-for-event-start', False)
+# Async function to load settings from database
+async def load_settings():
+    """Load settings from database and update global variables."""
+    global SETTINGS
+    
+    try:
+        manager = await get_settings_manager()
+        SETTINGS = await manager.get_all_settings()
+        
+        logger.info("Settings loaded from database")
+    except Exception as e:
+        logger.error(f"Error loading settings from database: {e}")
+        # Keep default values if database fails
+
+def get_setting(key: str, default=None):
+    """Get a setting value from the cached settings."""
+    return SETTINGS.get(key, default)
+
+def update_setting(key: str, value) -> bool:
+    """Update a setting."""
+    try:
+        SETTINGS[key] = value
+        logger.info(f"Setting {key} updated")
+        return True
+    except Exception as e:
+        logger.error(f"Error updating setting {key}: {e}")
+        return False
