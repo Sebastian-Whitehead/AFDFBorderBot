@@ -1,11 +1,14 @@
 """
 Utilities package for Discord bot
 
-Contains rank manager utilities for Discord functionality.
+Contains utilities for Discord functionality including rank management and embed processing.
 """
 
 from .rank_manager import RankManager
+from .embed_processor import EmbedProcessor, send_processed_embed
 
 __all__ = [
-    'RankManager'
+    'RankManager',
+    'EmbedProcessor',
+    'send_processed_embed'
 ]
