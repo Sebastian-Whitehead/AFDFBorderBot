@@ -46,7 +46,8 @@ class SettingsManagement(commands.Cog):
             settings_to_check = [
                 ('listen-for-join-leave', 'Join/Leave Messages'),
                 ('listen-for-border-officer', 'Border Officer Monitor'),
-                ('listen-for-event-start', 'Event Start Listener')
+                ('listen-for-event-start', 'Event Start Listener'),
+                ('border-officer-check-interval', 'Border Officer Check Interval (seconds)')
             ]
             
             embed = nextcord.Embed(
@@ -58,14 +59,23 @@ class SettingsManagement(commands.Cog):
             for key, description in settings_to_check:
                 value = get_setting(key, None)
                 if value is not None:
-                    status = "✅ Enabled" if value else "❌ Disabled"
-                    embed.add_field(
-                        name=description,
-                        value=f"`{key}`: {status}",
-                        inline=False
-                    )
+                    if key == 'border-officer-check-interval':
+                        # Special handling for numeric settings
+                        embed.add_field(
+                            name=description,
+                            value=f"`{key}`: {value} seconds ({value//60} minutes)",
+                            inline=False
+                        )
+                    else:
+                        # Boolean settings
+                        status = "✅ Enabled" if value else "❌ Disabled"
+                        embed.add_field(
+                            name=description,
+                            value=f"`{key}`: {status}",
+                            inline=False
+                        )
             
-            embed.set_footer(text="Use /settings set to modify these values")
+            embed.set_footer(text="Use /settings set for boolean values or /settings set-interval for check interval")
             await interaction.response.send_message(embed=embed, ephemeral=True)
             
         except Exception as e:
@@ -126,6 +136,78 @@ class SettingsManagement(commands.Cog):
                 embed = nextcord.Embed(
                     title="❌ Error",
                     description=f"Failed to update setting `{setting}`",
+                    color=0xff0000
+                )
+            
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            
+        except Exception as e:
+            embed = nextcord.Embed(
+                title="❌ Error",
+                description=f"Failed to update setting: {str(e)}",
+                color=0xff0000
+            )
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    @settings.subcommand(
+        name="set-interval",
+        description="Set the Border Officer Monitor check interval"
+    )
+    async def settings_set_interval(
+        self,
+        interaction: Interaction,
+        minutes: int = SlashOption(
+            description="Check interval in minutes (minimum 1, maximum 60)",
+            min_value=1,
+            max_value=60
+        )
+    ):
+        """Set the Border Officer Monitor check interval."""
+        
+        # Check if user has leadership role
+        if LEADERSHIP_ROLE_ID and not any(role.id == LEADERSHIP_ROLE_ID for role in interaction.user.roles):
+            embed = nextcord.Embed(
+                title="❌ Permission Denied",
+                description="You need the Leadership role to use this command.",
+                color=0xff0000
+            )
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            return
+        
+        try:
+            # Convert minutes to seconds
+            seconds = minutes * 60
+            
+            # Update the setting
+            success = update_setting('border-officer-check-interval', seconds)
+            
+            if success:
+                # Try to immediately update the BorderOfficerMonitor if it's loaded
+                try:
+                    border_monitor = self.bot.get_cog('BorderOfficerMonitor')
+                    if border_monitor and hasattr(border_monitor, 'update_check_interval'):
+                        border_monitor.update_check_interval()
+                        footer_text = "Setting saved to database and applied immediately."
+                    else:
+                        footer_text = "Setting saved to database. The change will take effect on the next check cycle."
+                except Exception as e:
+                    footer_text = "Setting saved to database. The change will take effect on the next check cycle."
+                
+                embed = nextcord.Embed(
+                    title="✅ Setting Updated",
+                    description=f"Border Officer Monitor check interval has been set to {minutes} minutes",
+                    color=0x00ff00
+                )
+                embed.add_field(
+                    name="New Interval",
+                    value=f"{minutes} minutes ({seconds} seconds)",
+                    inline=True
+                )
+                embed.set_footer(text=footer_text)
+            else:
+                embed = nextcord.Embed(
+                    title="❌ Error",
+                    description="Failed to update the check interval setting",
                     color=0xff0000
                 )
             

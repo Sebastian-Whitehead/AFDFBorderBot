@@ -3,23 +3,37 @@ from nextcord.ext import commands, tasks
 
 from ..config import TESTING_GUILD_ID, BORDER_OFFICER_ROLE_ID, CHECKPOINT_CHANNEL_ID, get_setting
 
-CHECK_INTERVAL = 120  # 2 minutes
+DEFAULT_CHECK_INTERVAL = 300  # 5 minutes (in seconds)
 
 
 class BorderOfficerMonitor(commands.Cog):
     def __init__(self, bot):
         self.LastOnlineStatus = False  # Initialize the last known online status
         self.bot = bot
-        self.check_online_status.start()  # Start the online status checking loop
         self.msg = None  # Initialize the message attribute
         self.check_count = 0
+        self.current_interval = DEFAULT_CHECK_INTERVAL  # Track current interval
+        self.check_online_status.start()  # Start the online status checking loop
 
     def cog_unload(self):
         self.check_online_status.cancel()  # Cancel the online status checking loop
 
-    @tasks.loop(seconds=CHECK_INTERVAL)
+    @tasks.loop(seconds=DEFAULT_CHECK_INTERVAL)
     async def check_online_status(self):
-        # Check if border officer monitoring is enabled
+        # Check if border officer monitoring is enabled first
+        if not get_setting('listen-for-border-officer', False):
+            return
+        
+        # Check and update interval setting (only check every 10th iteration to reduce overhead)
+        if self.check_count % 10 == 0:  # Check every 10 cycles
+            check_interval = get_setting('border-officer-check-interval', DEFAULT_CHECK_INTERVAL)
+            
+            # Update the loop interval if it has changed
+            if self.current_interval != check_interval:
+                print(f"BorderOfficerMonitor: Updating check interval from {self.current_interval}s to {check_interval}s")
+                self.current_interval = check_interval
+                self.check_online_status.change_interval(seconds=check_interval)
+                return  # Exit this iteration to let the new interval take effect
         if not get_setting('listen-for-border-officer', False):
             return
             
@@ -80,6 +94,14 @@ class BorderOfficerMonitor(commands.Cog):
     @check_online_status.before_loop
     async def before_check(self):
         await self.bot.wait_until_ready()  # Wait until the bot is ready before starting the loop
+
+    def update_check_interval(self):
+        """Force an immediate update of the check interval from settings."""
+        check_interval = get_setting('border-officer-check-interval', DEFAULT_CHECK_INTERVAL)
+        if self.current_interval != check_interval:
+            print(f"BorderOfficerMonitor: Force updating check interval from {self.current_interval}s to {check_interval}s")
+            self.current_interval = check_interval
+            self.check_online_status.change_interval(seconds=check_interval)
 
 
 def setup(bot):

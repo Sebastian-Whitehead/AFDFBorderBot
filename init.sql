@@ -46,19 +46,26 @@ CREATE INDEX idx_loa_discord_id ON loa_requests(discord_id);
 CREATE INDEX idx_loa_status ON loa_requests(status);
 CREATE INDEX idx_loa_end_date ON loa_requests(end_date);
 
--- Create characters table
--- CREATE TABLE characters (
---     id SERIAL PRIMARY KEY,
---     user_character BOOLEAN,
---     first_name TEXT,
---     last_name TEXT,
---     date_of_birth DATE,
---     control_date DATE,
---     money DECIMAL(15,2),
---     family TEXT[],
---     notes TEXT,
---     additional JSONB
--- );
+
+-- Create transaction_log table
+CREATE TABLE transaction_log (
+    id SERIAL PRIMARY KEY,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    from_user_id TEXT,  -- NULL for system transactions (earning money)
+    to_user_id TEXT,    -- Can be discord_id or character name for in-universe transactions
+    amount DECIMAL(15,2) NOT NULL,
+    transaction_type TEXT NOT NULL,  -- 'payment', 'casino', 'stock_market', 'salary', 'fine', 'transfer', etc.
+    description TEXT,   -- Optional description of the transaction
+    processed BOOLEAN DEFAULT FALSE,  -- Whether the transaction has been processed
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create indexes for faster queries
+CREATE INDEX idx_transaction_log_from_user ON transaction_log(from_user_id);
+CREATE INDEX idx_transaction_log_to_user ON transaction_log(to_user_id);
+CREATE INDEX idx_transaction_log_type ON transaction_log(transaction_type);
+CREATE INDEX idx_transaction_log_timestamp ON transaction_log(timestamp);
+CREATE INDEX idx_transaction_log_processed ON transaction_log(processed);
 
 -- Insert sample data
 INSERT INTO users (name, steam_id, discord_id, rank, notes, extra_data) 
