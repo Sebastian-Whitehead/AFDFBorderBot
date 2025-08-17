@@ -2,13 +2,18 @@ import datetime
 import json
 import os
 import random
-from src.config import TESTING_GUILD_ID
+import sys
+from pathlib import Path
 
 from dotenv import load_dotenv
 
 import nextcord
 from nextcord.ext import commands
 from nextcord import Member, NotFound, Interaction
+
+# Add discord folder to path and import config
+sys.path.append(str(Path(__file__).parent / "discord"))
+from config import TESTING_GUILD_ID
 
 # Load environment variables
 load_dotenv()
@@ -45,13 +50,13 @@ async def on_application_command_error(ctx: Interaction, error):
 
 # ---- Load extensions ----
 # Listeners
-bot.load_extension("src.listeners.BorderOfficerMonitor")
-bot.load_extension("src.listeners.JoinLeaveHandler")
-#bot.load_extension("src.listeners.GuildEventListener")  # DEPRECATED: Converted to commands
+bot.load_extension("discord.listeners.BorderOfficerMonitor")
+bot.load_extension("discord.listeners.JoinLeaveHandler")
+#bot.load_extension("discord.listeners.GuildEventListener")  # DEPRECATED: Converted to commands
 
 # Commands
-bot.load_extension("src.commands.Checkpoint")
-bot.load_extension("src.commands.Enlistment")
-bot.load_extension("src.commands.GuildEvent")
+bot.load_extension("discord.commands.Checkpoint")
+bot.load_extension("discord.commands.Enlistment")
+bot.load_extension("discord.commands.GuildEvent")
 
 bot.run(os.getenv('DISCORD_TOKEN'))

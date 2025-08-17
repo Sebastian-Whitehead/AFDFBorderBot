@@ -11,7 +11,6 @@ CREATE TABLE users (
     notes TEXT,
     achievements TEXT[],
     last_death DATE,
-    kills INTEGER DEFAULT 0,
     deaths INTEGER DEFAULT 0,
     reprimands JSONB,
     extra_data JSONB
