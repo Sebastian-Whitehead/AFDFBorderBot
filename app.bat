@@ -6,6 +6,7 @@ if "%1"=="help" goto help
 if "%1"=="start" goto start
 if "%1"=="stop" goto stop
 if "%1"=="restart" goto restart
+if "%1"=="rebuild" goto rebuild
 if "%1"=="logs" goto logs
 if "%1"=="status" goto status
 if "%1"=="clean" goto clean
@@ -24,6 +25,7 @@ echo Commands:
 echo   start [profile]   - Start services (database/bot/all)
 echo   stop [service]    - Stop services (all/bot/database)
 echo   restart [profile] - Restart services  
+echo   rebuild [service] - Rebuild and restart services (all/bot)
 echo   logs [service]    - View logs (all/bot/postgres/pgadmin)
 echo   status           - Show running containers
 echo   clean            - Stop everything and remove volumes (WARNING: deletes data!)
@@ -41,6 +43,8 @@ echo   ./app start bot         - Start bot services
 echo   ./app start all         - Start all services
 echo   ./app stop              - Stop everything (keeps data)
 echo   ./app stop bot          - Stop only bot
+echo   ./app rebuild bot       - Rebuild and restart bot with latest code
+echo   ./app rebuild all       - Rebuild all services
 echo   ./app clean             - Stop and remove ALL data (WARNING!)
 echo.
 echo Short examples:
@@ -108,6 +112,34 @@ if "%2"=="" (
     echo Restarting %2...
     docker-compose restart %2
 )
+goto end
+
+:rebuild
+if "%2"=="" goto rebuild_all
+if "%2"=="all" goto rebuild_all
+if "%2"=="bot" goto rebuild_bot
+goto rebuild_all
+
+:rebuild_all
+echo Rebuilding all services with latest code...
+echo Step 1: Stopping services...
+docker-compose down --remove-orphans
+echo Step 2: Rebuilding images with no cache...
+docker-compose build --no-cache
+echo Step 3: Starting all services...
+docker-compose --profile full up -d
+echo All services rebuilt and started!
+goto end
+
+:rebuild_bot
+echo Rebuilding bot service with latest code...
+echo Step 1: Stopping bot...
+docker-compose stop bot
+echo Step 2: Rebuilding bot image with no cache...
+docker-compose build --no-cache bot
+echo Step 3: Starting bot...
+docker-compose up -d bot
+echo Bot rebuilt and started!
 goto end
 
 :logs
