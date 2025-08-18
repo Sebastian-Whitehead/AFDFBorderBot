@@ -64,10 +64,12 @@ def get_setting(key: str, default=None):
     """Get a setting value from the cached settings."""
     return SETTINGS.get(key, default)
 
-def update_setting(key: str, value) -> bool:
+async def update_setting(key: str, value) -> bool:
     """Update a setting."""
     try:
-        SETTINGS[key] = value
+        await update_db_setting(key, value) #update the setting in the database
+        await load_settings() # Reload settings from database to update cache
+        
         logger.info(f"Setting {key} updated")
         return True
     except Exception as e:

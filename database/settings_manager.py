@@ -78,6 +78,7 @@ class SettingsManager:
     
     async def get_all_settings(self) -> Dict[str, Any]:
         """Get all settings."""
+        await self._load_cache()
         return self._cache.copy()
 
 

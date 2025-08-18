@@ -8,7 +8,7 @@ import nextcord
 from nextcord.ext import commands
 from nextcord import Interaction, SlashOption
 
-from ..config import LEADERSHIP_ROLE_ID, TESTING_GUILD_ID, get_setting, update_setting
+from ..config import LEADERSHIP_ROLE_ID, TESTING_GUILD_ID, get_setting, update_setting, load_settings
 
 class SettingsManagement(commands.Cog):
     """Commands for managing bot settings."""
@@ -41,7 +41,8 @@ class SettingsManagement(commands.Cog):
             )
             await interaction.response.send_message(embed=embed, ephemeral=True)
             return
-        
+        # update the cache
+        await load_settings()
         try:
             settings_to_check = [
                 ('listen-for-join-leave', 'Join/Leave Messages'),
@@ -117,7 +118,7 @@ class SettingsManagement(commands.Cog):
         
         try:
             # Update the setting
-            success = update_setting(setting, value)
+            success = await update_setting(setting, value)
             
             if success:
                 status = "✅ Enabled" if value else "❌ Disabled"
@@ -179,7 +180,7 @@ class SettingsManagement(commands.Cog):
             seconds = minutes * 60
             
             # Update the setting
-            success = update_setting('border-officer-check-interval', seconds)
+            success = await update_setting('border-officer-check-interval', seconds)
             
             if success:
                 # Try to immediately update the BorderOfficerMonitor if it's loaded

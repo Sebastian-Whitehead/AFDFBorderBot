@@ -90,7 +90,7 @@ class JoinLeaveHandler(commands.Cog):
             return
         
         if action == "enable":
-            if update_setting('listen-for-join-leave', True):
+            if await update_setting('listen-for-join-leave', True):
                 embed = nextcord.Embed(
                     title="✅ Join/Leave Messages Enabled",
                     description="Join and leave messages will now be sent to the welcome channel.\n*Setting saved to database*",
@@ -105,7 +105,7 @@ class JoinLeaveHandler(commands.Cog):
             await interaction.response.send_message(embed=embed, ephemeral=True)
             
         elif action == "disable":
-            if update_setting('listen-for-join-leave', False):
+            if await update_setting('listen-for-join-leave', False):
                 embed = nextcord.Embed(
                     title="❌ Join/Leave Messages Disabled",
                     description="Join and leave messages have been disabled.\n*Setting saved to database*",
