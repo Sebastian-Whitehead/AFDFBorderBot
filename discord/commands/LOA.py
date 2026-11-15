@@ -42,6 +42,8 @@ class LOA(commands.Cog):
             )
             return
         
+        await interaction.response.defer(ephemeral=True)
+        
         try:
             # One date means a single-day LOA
             end_date = end_date or start_date
@@ -50,14 +52,14 @@ class LOA(commands.Cog):
                 parsed_start_date = await LOAManager.parse_end_date(start_date)
                 parsed_end_date = await LOAManager.parse_end_date(end_date)
                 if parsed_start_date is None or parsed_end_date is None:
-                    await interaction.response.send_message(
+                    await interaction.followup.send(
                         "❌ Invalid date format. Please use YYYY-MM-DD or MM/DD/YYYY format.", 
                         ephemeral=True
                     )
                     return
                 
                 if parsed_end_date < parsed_start_date:
-                    await interaction.response.send_message(
+                    await interaction.followup.send(
                         "❌ End date cannot be before the start date.",
                         ephemeral=True
                     )
@@ -65,7 +67,7 @@ class LOA(commands.Cog):
 
                 today = datetime.now().date()
                 if parsed_end_date < today:
-                    await interaction.response.send_message(
+                    await interaction.followup.send(
                         "❌ End date cannot be in the past. Please choose a date from today onwards.", 
                         ephemeral=True
                     )
@@ -73,7 +75,7 @@ class LOA(commands.Cog):
                     
             except Exception as e:
                 logger.error(f"Error parsing end date: {e}")
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     "❌ Invalid date format. Please use YYYY-MM-DD or MM/DD/YYYY format.", 
                     ephemeral=True
                 )
@@ -112,11 +114,11 @@ class LOA(commands.Cog):
             await send_processed_embed(interaction.channel, 'loa.json', replacements)
             
             # Send a confirmation to the user privately
-            await interaction.response.send_message(f"✅ Your LOA request has been {action_text}!", ephemeral=True)
+            await interaction.followup.send(f"✅ Your LOA request has been {action_text}!", ephemeral=True)
             
         except Exception as e:
             logger.error(f"Error processing LOA command: {e}")
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "❌ An error occurred while processing your LOA request. Please try again.", 
                 ephemeral=True
             )
@@ -133,6 +135,8 @@ class LOA(commands.Cog):
             )
             return
         
+        await interaction.response.defer(ephemeral=True)
+        
         try:
             # Clean up expired LOAs first
             await LOAManager.cleanup_expired_loas()
@@ -141,7 +145,7 @@ class LOA(commands.Cog):
             active_loas_data = await LOAManager.get_all_active_loas()
             
             if not active_loas_data:
-                await interaction.response.send_message("📋 **Current LOAs**\nNo active LOAs found.", ephemeral=True)
+                await interaction.followup.send("📋 **Current LOAs**\nNo active LOAs found.", ephemeral=True)
                 return
             
             # Get today's date for comparison
@@ -179,7 +183,7 @@ class LOA(commands.Cog):
                     continue
             
             if not active_loas:
-                await interaction.response.send_message("📋 **Current LOAs**\nNo active LOAs found.", ephemeral=True)
+                await interaction.followup.send("📋 **Current LOAs**\nNo active LOAs found.", ephemeral=True)
                 return
             
             # Create text message with active LOAs
@@ -208,11 +212,11 @@ class LOA(commands.Cog):
             
             message += f"*As of {today.strftime('%Y-%m-%d')}*"
             
-            await interaction.response.send_message(message, ephemeral=True)
+            await interaction.followup.send(message, ephemeral=True)
             
         except Exception as e:
             logger.error(f"Error processing LOA list command: {e}")
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "❌ An error occurred while fetching LOA list. Please try again.", 
                 ephemeral=True
             )
@@ -229,6 +233,8 @@ class LOA(commands.Cog):
             )
             return
         
+        await interaction.response.defer(ephemeral=True)
+        
         try:
             discord_id = str(interaction.user.id)
             
@@ -236,7 +242,7 @@ class LOA(commands.Cog):
             was_cancelled = await LOAManager.cancel_loa(discord_id)
             
             if not was_cancelled:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     "❌ You don't have an active LOA to cancel.", 
                     ephemeral=True
                 )
@@ -247,14 +253,14 @@ class LOA(commands.Cog):
             await interaction.channel.send(cancel_message)
             
             # Send private confirmation
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "✅ Your LOA has been successfully canceled!", 
                 ephemeral=True
             )
             
         except Exception as e:
             logger.error(f"Error processing LOA cancel command: {e}")
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "❌ An error occurred while canceling your LOA. Please try again.", 
                 ephemeral=True
             )

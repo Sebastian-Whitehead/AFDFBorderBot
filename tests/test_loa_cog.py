@@ -13,7 +13,7 @@ def env(monkeypatch):
     create = AsyncMock(return_value=(False, "submitted"))
     monkeypatch.setattr(m.LOAManager, "create_or_update_loa", create)
     i = MagicMock()
-    i.response.send_message = AsyncMock()
+    i.response.defer = AsyncMock(); i.followup.send = AsyncMock()
     i.user.id = 1
     return m, m.LOA(bot=MagicMock()), i, create
 
@@ -39,4 +39,4 @@ async def test_end_before_start_rejected(env):
     m, cog, i, create = env
     await _loa(m, cog, i, "2099-05-10", "2099-05-04")
     create.assert_not_awaited()
-    assert i.response.send_message.call_args.kwargs["ephemeral"] is True
+    assert i.followup.send.call_args.kwargs["ephemeral"] is True

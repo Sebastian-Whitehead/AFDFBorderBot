@@ -17,13 +17,13 @@ def env():
     import discord.commands.UserManagement as um
     interaction = MagicMock()
     interaction.id = 42
-    interaction.response.send_message = AsyncMock()
+    interaction.response.defer = AsyncMock(); interaction.followup.send = AsyncMock()
     user = MagicMock(id=int(DISCORD), mention="<@x>", global_name="zz_test_bob")
     return um, interaction, user, um.UserManagement(bot=MagicMock())
 
 
 def _sent(interaction):
-    return interaction.response.send_message.call_args
+    return interaction.followup.send.call_args
 
 
 def _member(rank="EN2", **kw):

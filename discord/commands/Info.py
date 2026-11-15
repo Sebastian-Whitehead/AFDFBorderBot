@@ -58,11 +58,12 @@ class Info(commands.Cog):
         user: nextcord.User = SlashOption(description="User to view profile for")
     ):
         """View a member's profile and statistics."""
+        await interaction.response.defer()
         try:
             member = await get_user_info(str(user.id))
 
             if not member:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     f"❌ {user.mention} is not found in the database.",
                     ephemeral=True
                 )
@@ -119,11 +120,11 @@ class Info(commands.Cog):
             
             embed.set_thumbnail(url=user.avatar.url if user.avatar else user.default_avatar.url)
             
-            await interaction.response.send_message(embed=embed)
+            await interaction.followup.send(embed=embed)
             
         except Exception as e:
             logger.error(f"Error viewing profile: {e}")
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"❌ Failed to load profile: {str(e)}", 
                 ephemeral=True
             )
@@ -139,13 +140,14 @@ class Info(commands.Cog):
         user: nextcord.User = SlashOption(description="Member to look up"),
         rows: int = SlashOption(description="How many events to show (default 10)", default=10, min_value=1, max_value=20)
     ):
+        await interaction.response.defer()
         events = await get_service_events(str(user.id), rows)
         if events is None:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"❌ {user.mention} has no service record (or the database is unavailable).", ephemeral=True)
             return
         if not events:
-            await interaction.response.send_message(f"{user.mention} has no events on their service record.")
+            await interaction.followup.send(f"{user.mention} has no events on their service record.")
             return
         # Discord doesn't render markdown tables, so pad the columns inside a code block.
         table = [("Date", "Event", "Rank", "Notes")] + [
@@ -154,7 +156,7 @@ class Info(commands.Cog):
         w = [max(len(r[i]) for r in table) for i in range(4)]
         lines = ["| " + " | ".join(c.ljust(w[i]) for i, c in enumerate(r)) + " |" for r in table]
         lines.insert(1, "|" + "|".join("-" * (n + 2) for n in w) + "|")
-        await interaction.response.send_message(
+        await interaction.followup.send(
             f"Last {len(events)} service events for {user.mention}:\n```\n" + "\n".join(lines) + "\n```")
 
 

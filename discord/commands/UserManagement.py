@@ -45,11 +45,12 @@ class UserManagement(commands.Cog):
         notes: Optional[str] = SlashOption(description="Additional notes", required=False)
     ):
         """Add a new member to the database."""
+        await interaction.response.defer()
         try:
             if steam_id:
                 steam_id = await resolve_steam_id(steam_id)
                 if steam_id is None:
-                    await interaction.response.send_message(
+                    await interaction.followup.send(
                         "❌ Steam ID must be numeric (SteamID64) or a Steam profile link that can be resolved.",
                         ephemeral=True
                     )
@@ -63,7 +64,7 @@ class UserManagement(commands.Cog):
             existing_user = existing_user or (await get_user_info(steam_id) if steam_id else None)
 
             if existing_user:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     f"❌ User already exists in database: {existing_user['name']}",
                     ephemeral=True
                 )
@@ -78,7 +79,7 @@ class UserManagement(commands.Cog):
                 notes=notes
             )
             if new_user is None:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     "❌ Failed to add member (already exists or invalid data).",
                     ephemeral=True
                 )
@@ -96,11 +97,11 @@ class UserManagement(commands.Cog):
             if notes:
                 embed.add_field(name="Notes", value=notes, inline=False)
             
-            await interaction.response.send_message(embed=embed)
+            await interaction.followup.send(embed=embed)
             
         except Exception as e:
             logger.error(f"Error adding member: {e}")
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"❌ Failed to add member: {str(e)}", 
                 ephemeral=True
             )
@@ -117,6 +118,7 @@ class UserManagement(commands.Cog):
         rank: str = SlashOption(description="Starting rank", choices=rank_choices())
     ):
         """Create just the service record (no enlistment event, no Discord role changes)."""
+        await interaction.response.defer()
         result = await create_service_record(str(user.id), rank)
         messages = {
             "created": f"✅ Service record created for {user.mention} at {self._rank_text(rank)}.",
@@ -124,7 +126,7 @@ class UserManagement(commands.Cog):
             "no_identity": f"❌ {user.mention} has no player record yet. Approve them (or /add_member) first.",
             "error": "❌ Database error, nothing changed.",
         }
-        await interaction.response.send_message(messages[result], ephemeral=result != "created")
+        await interaction.followup.send(messages[result], ephemeral=result != "created")
 
     @nextcord.slash_command(
         name="add_steam",
@@ -138,9 +140,10 @@ class UserManagement(commands.Cog):
         steam_url: str = SlashOption(description="Steam profile URL (/profiles/ or /id/) or SteamID64")
     ):
         """Attach a Steam ID to an existing player identity."""
+        await interaction.response.defer()
         steam_id = await resolve_steam_id(steam_url)
         if steam_id is None:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "❌ Couldn't get a Steam ID from that. Use a steamcommunity.com profile link "
                 "(public profile) or the SteamID64.",
                 ephemeral=True
@@ -155,7 +158,7 @@ class UserManagement(commands.Cog):
             "steam_in_use": "❌ That Steam ID already belongs to another player.",
             "error": "❌ Database error, nothing changed.",
         }
-        await interaction.response.send_message(messages[result], ephemeral=result not in ("updated", "already_set"))
+        await interaction.followup.send(messages[result], ephemeral=result not in ("updated", "already_set"))
 
     @nextcord.slash_command(
         name="promote",
@@ -170,11 +173,12 @@ class UserManagement(commands.Cog):
         reason: Optional[str] = SlashOption(description="Reason for promotion", required=False)
     ):
         """Promote a member to a higher rank."""
+        await interaction.response.defer()
         try:
             member = await get_user_info(str(user.id))
 
             if not member:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     f"❌ {user.mention} is not found in the database. Use `/add_member` first.",
                     ephemeral=True
                 )
@@ -182,7 +186,7 @@ class UserManagement(commands.Cog):
 
             # Validate promotion
             if not self.rank_manager.is_valid_promotion(member["rank"], new_rank):
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     f"❌ Cannot promote from {self.rank_manager.get_rank(member['rank'])['name']} "
                     f"to {self.rank_manager.get_rank(new_rank)['name']}. "
                     f"Invalid rank progression.",
@@ -219,16 +223,16 @@ class UserManagement(commands.Cog):
                 if reason:
                     embed.add_field(name="Reason", value=reason, inline=False)
                 
-                await interaction.response.send_message(embed=embed)
+                await interaction.followup.send(embed=embed)
             else:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     "❌ Failed to update rank in database.", 
                     ephemeral=True
                 )
                 
         except Exception as e:
             logger.error(f"Error promoting member: {e}")
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"❌ Failed to promote member: {str(e)}", 
                 ephemeral=True
             )
@@ -246,18 +250,19 @@ class UserManagement(commands.Cog):
         reason: str = SlashOption(description="Reason for demotion")
     ):
         """Demote a member to a lower rank."""
+        await interaction.response.defer()
         try:
             member = await get_user_info(str(user.id))
 
             if not member:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     f"❌ {user.mention} is not found in the database.",
                     ephemeral=True
                 )
                 return
 
             if rank_index(new_rank) >= rank_index(member["rank"]):
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     f"❌ New rank must be lower than current rank ({member['rank']}).",
                     ephemeral=True
                 )
@@ -287,16 +292,16 @@ class UserManagement(commands.Cog):
                 embed.add_field(name="Member", value=user.mention, inline=True)
                 embed.add_field(name="Reason", value=reason, inline=False)
                 
-                await interaction.response.send_message(embed=embed)
+                await interaction.followup.send(embed=embed)
             else:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     "❌ Failed to update rank in database.", 
                     ephemeral=True
                 )
                 
         except Exception as e:
             logger.error(f"Error demoting member: {e}")
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"❌ Failed to demote member: {str(e)}", 
                 ephemeral=True
             )
@@ -313,13 +318,14 @@ class UserManagement(commands.Cog):
         reason: str = SlashOption(description="Reason for the reprimand")
     ):
         """Add a reprimand event to the member's service record."""
+        await interaction.response.defer()
         result = await add_reprimand(str(user.id), reason, str(interaction.user.id))
         messages = {
             "recorded": f"⚠️ Reprimand logged for {user.mention}: {reason}",
             "no_record": f"❌ {user.mention} has no service record, so nothing was logged.",
             "error": "❌ Database error, nothing changed.",
         }
-        await interaction.response.send_message(messages[result], ephemeral=result != "recorded")
+        await interaction.followup.send(messages[result], ephemeral=result != "recorded")
 
 
 def setup(bot):

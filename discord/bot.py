@@ -28,13 +28,16 @@ def create_bot():
     @bot.event
     async def on_application_command_error(ctx: Interaction, error):
         if isinstance(error, commands.MissingRole):
-            await ctx.response.send_message("You do not have the correct role to use this command.", ephemeral=True)
+            msg = "You do not have the correct role to use this command."
         elif isinstance(error, commands.MissingPermissions):
-            await ctx.response.send_message("You do not have the correct permissions to use this command.", ephemeral=True)
+            msg = "You do not have the correct permissions to use this command."
         elif isinstance(error, commands.MemberNotFound):
-            await ctx.response.send_message("Member not found.", ephemeral=True)
+            msg = "Member not found."
         else:
-            await ctx.response.send_message(f"An error occurred: {error}", ephemeral=True)
+            msg = f"An error occurred: {error}"
+        # Commands defer for slow DB calls, so the first response may already be used.
+        send = ctx.followup.send if ctx.response.is_done() else ctx.response.send_message
+        await send(msg, ephemeral=True)
 
     return bot
 
