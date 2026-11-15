@@ -275,3 +275,98 @@ async def get_user_count_by_rank() -> Dict[int, int]:
     except Exception as e:
         print(f"Error getting rank counts: {e}")
         return {}
+
+
+async def ensure_player_identity(name: str, steam_id: str, discord_id: str) -> bool:
+    """Create or adopt the identity for steam_id and link discord_id. No service record."""
+    try:
+        steam, discord = int(steam_id), int(discord_id)
+    except (ValueError, TypeError):
+        return False
+
+    try:
+        db = await get_shared_db_manager()
+        async with db.get_session() as session:
+            if (await session.execute(
+                text("SELECT 1 FROM public.identities_player WHERE discord_id = :d AND steam_id IS DISTINCT FROM :s"),
+                {"d": discord, "s": steam},
+            )).first():
+                return False
+            await session.execute(
+                text("SELECT public.fab_ensure_player_account(:name, :steam, :discord)"),
+                {"name": name, "steam": steam, "discord": discord},
+            )
+            ident = (await session.execute(
+                text("SELECT id, discord_id FROM public.identities_player WHERE steam_id = :s"), {"s": steam}
+            )).one()
+            if ident.discord_id is None:
+                await session.execute(
+                    text("UPDATE public.identities_player SET discord_id = :d WHERE id = :id"),
+                    {"d": discord, "id": ident.id},
+                )
+            elif ident.discord_id != discord:
+                return False  # rolled back on session close
+            await session.commit()
+            return True
+    except Exception as e:
+        print(f"Error ensuring player identity: {e}")
+        return False
+
+
+async def enlist_member(discord_id: str, rank: int = 0) -> str:
+    """Enlist an existing identity: 'enlisted', 'already_enlisted', 'no_identity' or 'error'."""
+    try:
+        discord = int(discord_id)
+        code = level_to_code(rank)
+        db = await get_shared_db_manager()
+        async with db.get_session() as session:
+            pid = (await session.execute(
+                text("SELECT id FROM public.identities_player WHERE discord_id = :d"), {"d": discord}
+            )).scalar_one_or_none()
+            if pid is None:
+                return "no_identity"
+
+            sr = (await session.execute(
+                text("""SELECT sr.id, sr.current_rank, ev.event_type
+                        FROM military.service_records sr
+                        JOIN public.identities_organizations o ON o.id = sr.organization_id AND o.name = :org
+                        LEFT JOIN LATERAL (
+                            SELECT e.event_type FROM military.service_events e
+                            WHERE e.service_record_id = sr.id
+                              AND e.event_type IN ('enlisted', 'reenlisted', 'discharged')
+                            ORDER BY e.occured_at DESC, e.id DESC LIMIT 1
+                        ) ev ON true
+                        WHERE sr.player_identity_id = :pid"""),
+                {"org": ORG, "pid": pid},
+            )).first()
+
+            if sr is None:
+                sr_id = (await session.execute(
+                    text("""INSERT INTO military.service_records
+                            (player_identity_id, organization_id, current_rank, service_status)
+                            SELECT :pid, o.id, :code, 'active'
+                            FROM public.identities_organizations o WHERE o.name = :org
+                            RETURNING id"""),
+                    {"pid": pid, "code": code, "org": ORG},
+                )).scalar_one()
+                etype, ev_rank = "enlisted", code
+            elif sr.event_type in ("enlisted", "reenlisted"):
+                return "already_enlisted"
+            else:
+                sr_id, ev_rank = sr.id, sr.current_rank
+                had_discharge = (await session.execute(
+                    text("SELECT 1 FROM military.service_events WHERE service_record_id = :sr AND event_type = 'discharged' LIMIT 1"),
+                    {"sr": sr_id},
+                )).first() is not None
+                etype = "reenlisted" if had_discharge else "enlisted"
+
+            await session.execute(
+                text("""INSERT INTO military.service_events (service_record_id, event_type, rank, occured_at)
+                        VALUES (:sr, :etype, :code, now())"""),
+                {"sr": sr_id, "etype": etype, "code": ev_rank},
+            )
+            await session.commit()
+            return "enlisted"
+    except Exception as e:
+        print(f"Error enlisting member: {e}")
+        return "error"

@@ -2,6 +2,7 @@
 from nextcord import Interaction, Member, NotFound, slash_command
 from nextcord.ext import commands
 
+from database import enlist_member
 from ..config import ENLISTED_ROLE_IDS, LEADERSHIP_ROLE_ID, TESTING_GUILD_ID
 
 class Enlistment(commands.Cog):
@@ -19,7 +20,15 @@ class Enlistment(commands.Cog):
         if len(ENLISTED_ROLE_IDS) < 2:
             await ctx.response.send_message("❌ Bot configuration error - not enough enlisted roles configured!", ephemeral=True)
             return
-            
+
+        result = await enlist_member(str(user.id))
+        if result == "no_identity":
+            await ctx.response.send_message(f"❌ {user.mention} has no player record yet. Approve them (or /add_member) first.", ephemeral=True)
+            return
+        if result == "error":
+            await ctx.response.send_message("❌ Database error, roles not changed.", ephemeral=True)
+            return
+
         try:
             enlistment_role = ctx.guild.get_role(ENLISTED_ROLE_IDS[0])
             mil_dep_role = ctx.guild.get_role(ENLISTED_ROLE_IDS[1])

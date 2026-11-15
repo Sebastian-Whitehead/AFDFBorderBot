@@ -3,8 +3,9 @@ import json
 
 import nextcord
 from nextcord.ext import commands
-from nextcord import Interaction, Member, NotFound, slash_command
+from nextcord import Interaction, Member, NotFound, SlashOption, slash_command
 
+from database import ensure_player_identity
 from ..config import TESTING_GUILD_ID, JOIN_ROLE_ID, BORDER_OFFICER_ROLE_ID, CITIZEN_ROLE_IDS, MAIN_CHANNEL_ID
 
 
@@ -14,7 +15,8 @@ class Checkpoint(commands.Cog):
 
     @slash_command(description="Let them through the border", guild_ids=[TESTING_GUILD_ID] if TESTING_GUILD_ID else None)
     @commands.has_role(BORDER_OFFICER_ROLE_ID)
-    async def approve(self, ctx: Interaction, user: Member):
+    async def approve(self, ctx: Interaction, user: Member,
+                      steam_id: str = SlashOption(description="Player's Steam ID (SteamID64)", required=True)):
         # Check if required roles/channels are configured
         if not JOIN_ROLE_ID or not CITIZEN_ROLE_IDS or not MAIN_CHANNEL_ID:
             await ctx.response.send_message("❌ Bot configuration error - missing required roles or channels!", ephemeral=True)
@@ -23,7 +25,15 @@ class Checkpoint(commands.Cog):
         if len(CITIZEN_ROLE_IDS) < 2:
             await ctx.response.send_message("❌ Bot configuration error - not enough citizen roles configured!", ephemeral=True)
             return
-            
+
+        if not steam_id.isdigit():
+            await ctx.response.send_message("❌ Steam ID must be numeric (SteamID64).", ephemeral=True)
+            return
+
+        if not await ensure_player_identity(name=user.global_name or user.name, steam_id=steam_id, discord_id=str(user.id)):
+            await ctx.response.send_message("❌ Could not save the player in the database (Steam or Discord ID already linked to someone else).", ephemeral=True)
+            return
+
         try:
             # Adjust the target user's roles
             role_to_remove = ctx.guild.get_role(JOIN_ROLE_ID)
