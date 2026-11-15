@@ -5,7 +5,7 @@ Contains database management utilities and functions.
 """
 
 from .db_manager import get_db_manager, get_shared_db_manager
-from .user_functions import create_user, get_user_info, modify_user, ensure_player_identity, enlist_member, set_steam_id, create_service_record
+from .user_functions import create_user, get_user_info, modify_user, ensure_player_identity, enlist_member, set_steam_id, create_service_record, add_reprimand, get_service_events
 from .loa_functions import LOAManager
 from .settings_manager import get_setting, update_setting, get_all_settings
 
@@ -19,6 +19,8 @@ __all__ = [
     'enlist_member',
     'set_steam_id',
     'create_service_record',
+    'add_reprimand',
+    'get_service_events',
     'LOAManager',
     'get_setting',
     'update_setting',

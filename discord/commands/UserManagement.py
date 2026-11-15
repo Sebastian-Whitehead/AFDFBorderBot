@@ -11,7 +11,7 @@ from nextcord import SlashOption
 from typing import Optional
 import logging
 
-from database import create_user, get_user_info, modify_user, set_steam_id, create_service_record
+from database import create_user, get_user_info, modify_user, set_steam_id, create_service_record, add_reprimand
 from database.rank_codes import rank_choices, rank_index
 from ..utils import RankManager
 from ..utils.steam import resolve_steam_id
@@ -301,85 +301,24 @@ class UserManagement(commands.Cog):
             )
 
     @nextcord.slash_command(
-        name="profile",
-        description="View a member's profile and statistics",
+        name="reprimand",
+        description="Log a reprimand on a member's service record",
         guild_ids=[GUILD_ID] if GUILD_ID else None
     )
-    async def view_profile(
+    async def reprimand(
         self,
         interaction: nextcord.Interaction,
-        user: nextcord.User = SlashOption(description="User to view profile for")
+        user: nextcord.User = SlashOption(description="Member to reprimand"),
+        reason: str = SlashOption(description="Reason for the reprimand")
     ):
-        """View a member's profile and statistics."""
-        try:
-            member = await get_user_info(str(user.id))
-
-            if not member:
-                await interaction.response.send_message(
-                    f"❌ {user.mention} is not found in the database.",
-                    ephemeral=True
-                )
-                return
-
-            embed = nextcord.Embed(
-                title=f"👤 Profile: {member['name']}",
-                color=0x0099ff
-            )
-
-            # Basic info
-            embed.add_field(name="Name", value=member["name"], inline=True)
-            embed.add_field(name="Discord", value=user.mention, inline=True)
-            embed.add_field(name="Steam ID", value=member["steam_id"], inline=True)
-            
-            # Rank and service
-            embed.add_field(
-                name="Rank", 
-                value=self._rank_text(member["rank"]), 
-                inline=True
-            )
-            embed.add_field(name="Deaths", value=str(member["deaths"]), inline=True)
-
-            # Dates
-            if member["joined_at"]:
-                embed.add_field(
-                    name="Joined",
-                    value=member["joined_at"].strftime("%Y-%m-%d"),
-                    inline=True
-                )
-
-            if member["enlisted_at"]:
-                embed.add_field(
-                    name="Enlisted",
-                    value=member["enlisted_at"].strftime("%Y-%m-%d"),
-                    inline=True
-                )
-
-            if member["last_death"]:
-                embed.add_field(
-                    name="Last Death",
-                    value=member["last_death"].strftime("%Y-%m-%d"),
-                    inline=True
-                )
-
-            # Achievements
-            if member["achievements"]:
-                achievements_text = "\n".join([f"• {achievement}" for achievement in member["achievements"]])
-                embed.add_field(name="Achievements", value=achievements_text[:1024], inline=False)
-
-            # Notes
-            if member["notes"]:
-                embed.add_field(name="Notes", value=member["notes"][:1024], inline=False)
-            
-            embed.set_thumbnail(url=user.avatar.url if user.avatar else user.default_avatar.url)
-            
-            await interaction.response.send_message(embed=embed)
-            
-        except Exception as e:
-            logger.error(f"Error viewing profile: {e}")
-            await interaction.response.send_message(
-                f"❌ Failed to load profile: {str(e)}", 
-                ephemeral=True
-            )
+        """Add a reprimand event to the member's service record."""
+        result = await add_reprimand(str(user.id), reason, str(interaction.user.id))
+        messages = {
+            "recorded": f"⚠️ Reprimand logged for {user.mention}: {reason}",
+            "no_record": f"❌ {user.mention} has no service record, so nothing was logged.",
+            "error": "❌ Database error, nothing changed.",
+        }
+        await interaction.response.send_message(messages[result], ephemeral=result != "recorded")
 
 
 def setup(bot):

@@ -116,9 +116,10 @@ def test_g8_no_money(env):
 
 
 async def test_g9_profile(env, monkeypatch):
-    um, i, user, cog = env
-    monkeypatch.setattr(um, "get_user_info", AsyncMock(return_value=_member("EN2")))
-    await um.UserManagement.view_profile.callback(cog, i, user)
+    _, i, user, _ = env
+    import discord.commands.Info as info
+    monkeypatch.setattr(info, "get_user_info", AsyncMock(return_value=_member("EN2")))
+    await info.Info.view_profile.callback(info.Info(bot=MagicMock()), i, user)
     embed = _sent(i).kwargs["embed"]
     assert "(EN2)" in {f.name: f.value for f in embed.fields}["Rank"]
     assert "Money" not in [f.name for f in embed.fields]
@@ -134,7 +135,8 @@ async def test_g11_flow_shared_db(shared_db, env):
     assert _sent(i).kwargs["embed"].title == "✅ Member Added Successfully"
     await um.UserManagement.promote_member.callback(cog, i, user, "EN3", None)
     assert _sent(i).kwargs["embed"].title == "🎉 Promotion Successful"
-    await um.UserManagement.view_profile.callback(cog, i, user)
+    import discord.commands.Info as info
+    await info.Info.view_profile.callback(info.Info(bot=MagicMock()), i, user)
     assert "Money" not in [f.name for f in _sent(i).kwargs["embed"].fields]
     assert (await get_user_info(discord_id))["rank"] == "EN3"
 
@@ -192,3 +194,32 @@ def test_rank_options_have_22_choices(env):
                        (um.UserManagement.promote_member, "new_rank"), (um.UserManagement.demote_member, "new_rank")]:
         opt = inspect.signature(cmd.callback).parameters[param].default
         assert len(opt.choices) == 22
+
+
+@pytest.mark.parametrize("result,text", [("recorded", "Reprimand logged"), ("no_record", "no service record"), ("error", "Database error")])
+async def test_reprimand_messages(env, monkeypatch, result, text):
+    um, i, user, cog = env
+    i.user.id = 1
+    add = AsyncMock(return_value=result)
+    monkeypatch.setattr(um, "add_reprimand", add)
+    await um.UserManagement.reprimand.callback(cog, i, user, "late")
+    add.assert_awaited_once_with(DISCORD, "late", "1")
+    assert text in _sent(i).args[0]
+    assert _sent(i).kwargs["ephemeral"] == (result != "recorded")
+
+
+async def test_service_record_table(env, monkeypatch):
+    import datetime
+    import discord.commands.Info as info
+    _, i, user, _ = env
+    ev = [{"occured_at": datetime.datetime(2026, 1, 2), "event_type": "reprimand", "rank": "EN2", "notes": "late\nagain"},
+          {"occured_at": datetime.datetime(2026, 1, 1), "event_type": "enlisted", "rank": None, "notes": None}]
+    get = AsyncMock(return_value=ev)
+    monkeypatch.setattr(info, "get_service_events", get)
+    await info.Info.service_record.callback(info.Info(bot=MagicMock()), i, user, 10)
+    get.assert_awaited_once_with(DISCORD, 10)
+    out = _sent(i).args[0]
+    assert "| 2026-01-02 | reprimand | EN2  | late again |" in out and out.count("```") == 2 and len(out) < 2000
+    monkeypatch.setattr(info, "get_service_events", AsyncMock(return_value=None))
+    await info.Info.service_record.callback(info.Info(bot=MagicMock()), i, user, 10)
+    assert "no service record" in _sent(i).args[0] and _sent(i).kwargs["ephemeral"]

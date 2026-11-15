@@ -329,6 +329,45 @@ async def create_service_record(discord_id: str, rank: str) -> str:
         return "error"
 
 
+async def add_reprimand(discord_id: str, reason: str, issued_by: str) -> str:
+    """Log a 'reprimand' service event: 'recorded', 'no_record' (no identity or service record) or 'error'."""
+    try:
+        db = await get_shared_db_manager()
+        async with db.get_session() as session:
+            row = await _find(session, discord_id)
+            if row is None:
+                return "no_record"
+            await session.execute(
+                text("""INSERT INTO military.service_events (service_record_id, event_type, rank, notes, details, occured_at)
+                        VALUES (:sr, 'reprimand', :rank, :reason, jsonb_build_object('issued_by', CAST(:by AS text)), now())"""),
+                {"sr": row.sr_id, "rank": row.current_rank, "reason": reason, "by": issued_by},
+            )
+            await session.commit()
+            return "recorded"
+    except Exception as e:
+        print(f"Error adding reprimand: {e}")
+        return "error"
+
+
+async def get_service_events(discord_id: str, limit: int = 10) -> Optional[list]:
+    """Newest-first service events for a user, or None if they have no service record (or on error)."""
+    try:
+        db = await get_shared_db_manager()
+        async with db.get_session() as session:
+            row = await _find(session, discord_id)
+            if row is None:
+                return None
+            res = await session.execute(
+                text("""SELECT occured_at, event_type, rank, notes FROM military.service_events
+                        WHERE service_record_id = :sr ORDER BY occured_at DESC, id DESC LIMIT :n"""),
+                {"sr": row.sr_id, "n": limit},
+            )
+            return [dict(r._mapping) for r in res]
+    except Exception as e:
+        print(f"Error getting service events: {e}")
+        return None
+
+
 async def set_steam_id(discord_id: str, steam_id: str) -> str:
     """Attach a Steam ID to an existing identity: 'updated', 'already_set', 'no_identity',
     'different_steam' (identity already has another), 'steam_in_use' (another identity has it) or 'error'."""
