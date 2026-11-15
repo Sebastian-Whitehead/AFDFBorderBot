@@ -9,11 +9,11 @@ import nextcord
 from nextcord.ext import commands
 from nextcord import SlashOption
 from typing import Optional
-from decimal import Decimal
 import logging
 
-from ..utils import get_db_manager, RankManager
-from ..config import GUILD_ID
+from database import create_user, get_user_info, modify_user, get_user_count_by_rank
+from ..utils import RankManager
+from ..config import TESTING_GUILD_ID as GUILD_ID
 
 logger = logging.getLogger(__name__)
 
@@ -42,40 +42,49 @@ class UserManagement(commands.Cog):
         """Add a new member to the database."""
         try:
             # Validate rank
-            if not self.rank_manager.is_valid_rank(rank):
+            if self.rank_manager.get_rank_by_level(rank) is None:
                 await interaction.response.send_message(
-                    f"❌ Invalid rank level: {rank}. Must be between 0-10.", 
+                    f"❌ Invalid rank level: {rank}. Must be between 0-10.",
                     ephemeral=True
                 )
                 return
-            
-            db = await get_db_manager()
+
+            if not steam_id.isdigit():
+                await interaction.response.send_message(
+                    "❌ Steam ID must be numeric (SteamID64).",
+                    ephemeral=True
+                )
+                return
+
             discord_id = str(discord_user.id) if discord_user else None
-            
+
             # Check if user already exists
-            existing_user = None
-            if discord_id:
-                existing_user = await db.get_user_by_discord_id(discord_id)
-            if not existing_user:
-                existing_user = await db.get_user_by_steam_id(steam_id)
-            
+            existing_user = await get_user_info(discord_id) if discord_id else None
+            existing_user = existing_user or await get_user_info(steam_id)
+
             if existing_user:
                 await interaction.response.send_message(
-                    f"❌ User already exists in database: {existing_user.name}",
+                    f"❌ User already exists in database: {existing_user['name']}",
                     ephemeral=True
                 )
                 return
-            
+
             # Create new user
-            new_user = await db.create_user(
+            new_user = await create_user(
                 name=name,
                 steam_id=steam_id,
                 discord_id=discord_id,
                 rank=rank,
                 notes=notes
             )
-            
-            rank_info = self.rank_manager.get_rank_info(rank)
+            if new_user is None:
+                await interaction.response.send_message(
+                    "❌ Failed to add member (already exists or invalid data).",
+                    ephemeral=True
+                )
+                return
+
+            rank_info = self.rank_manager.get_rank_by_level(rank)
             embed = nextcord.Embed(
                 title="✅ Member Added Successfully",
                 color=0x00ff00,
@@ -111,20 +120,19 @@ class UserManagement(commands.Cog):
     ):
         """Promote a member to a higher rank."""
         try:
-            db = await get_db_manager()
-            member = await db.get_user_by_discord_id(str(user.id))
-            
+            member = await get_user_info(str(user.id))
+
             if not member:
                 await interaction.response.send_message(
                     f"❌ {user.mention} is not found in the database. Use `/add_member` first.",
                     ephemeral=True
                 )
                 return
-            
+
             # Validate promotion
-            if not self.rank_manager.can_promote_to(member.rank, new_rank):
-                current_rank = self.rank_manager.get_rank_info(member.rank)
-                target_rank = self.rank_manager.get_rank_info(new_rank)
+            if not self.rank_manager.is_valid_promotion(member["rank"], new_rank):
+                current_rank = self.rank_manager.get_rank_by_level(member["rank"])
+                target_rank = self.rank_manager.get_rank_by_level(new_rank)
                 await interaction.response.send_message(
                     f"❌ Cannot promote from {current_rank['name']} to {target_rank['name']}. "
                     f"Invalid rank progression.",
@@ -133,20 +141,20 @@ class UserManagement(commands.Cog):
                 return
             
             # Update rank in database
-            notes = f"Promoted to {self.rank_manager.get_rank_info(new_rank)['name']}"
+            notes = f"Promoted to {self.rank_manager.get_rank_by_level(new_rank)['name']}"
             if reason:
                 notes += f" - Reason: {reason}"
-            
-            success = await db.update_user_rank(member.id, new_rank, notes)
-            
+
+            success = await modify_user(str(user.id), rank=new_rank, reason=notes)
+
             if success:
-                old_rank_info = self.rank_manager.get_rank_info(member.rank)
-                new_rank_info = self.rank_manager.get_rank_info(new_rank)
-                
+                old_rank_info = self.rank_manager.get_rank_by_level(member["rank"])
+                new_rank_info = self.rank_manager.get_rank_by_level(new_rank)
+
                 embed = nextcord.Embed(
                     title="🎉 Promotion Successful",
                     color=0x00ff00,
-                    description=f"**{member.name}** has been promoted!"
+                    description=f"**{member['name']}** has been promoted!"
                 )
                 embed.add_field(
                     name="Previous Rank", 
@@ -191,35 +199,34 @@ class UserManagement(commands.Cog):
     ):
         """Demote a member to a lower rank."""
         try:
-            db = await get_db_manager()
-            member = await db.get_user_by_discord_id(str(user.id))
-            
+            member = await get_user_info(str(user.id))
+
             if not member:
                 await interaction.response.send_message(
                     f"❌ {user.mention} is not found in the database.",
                     ephemeral=True
                 )
                 return
-            
-            if new_rank >= member.rank:
+
+            if new_rank >= member["rank"]:
                 await interaction.response.send_message(
-                    f"❌ New rank must be lower than current rank ({member.rank}).",
+                    f"❌ New rank must be lower than current rank ({member['rank']}).",
                     ephemeral=True
                 )
                 return
-            
+
             # Update rank in database
-            notes = f"Demoted to {self.rank_manager.get_rank_info(new_rank)['name']} - Reason: {reason}"
-            success = await db.update_user_rank(member.id, new_rank, notes)
-            
+            notes = f"Demoted to {self.rank_manager.get_rank_by_level(new_rank)['name']} - Reason: {reason}"
+            success = await modify_user(str(user.id), rank=new_rank, reason=notes)
+
             if success:
-                old_rank_info = self.rank_manager.get_rank_info(member.rank)
-                new_rank_info = self.rank_manager.get_rank_info(new_rank)
-                
+                old_rank_info = self.rank_manager.get_rank_by_level(member["rank"])
+                new_rank_info = self.rank_manager.get_rank_by_level(new_rank)
+
                 embed = nextcord.Embed(
                     title="⬇️ Demotion Applied",
                     color=0xff9900,
-                    description=f"**{member.name}** has been demoted."
+                    description=f"**{member['name']}** has been demoted."
                 )
                 embed.add_field(
                     name="Previous Rank", 
@@ -260,27 +267,26 @@ class UserManagement(commands.Cog):
     ):
         """View a member's profile and statistics."""
         try:
-            db = await get_db_manager()
-            member = await db.get_user_by_discord_id(str(user.id))
-            
+            member = await get_user_info(str(user.id))
+
             if not member:
                 await interaction.response.send_message(
                     f"❌ {user.mention} is not found in the database.",
                     ephemeral=True
                 )
                 return
-            
-            rank_info = self.rank_manager.get_rank_info(member.rank)
-            
+
+            rank_info = self.rank_manager.get_rank_by_level(member["rank"])
+
             embed = nextcord.Embed(
-                title=f"👤 Profile: {member.name}",
+                title=f"👤 Profile: {member['name']}",
                 color=0x0099ff
             )
-            
+
             # Basic info
-            embed.add_field(name="Name", value=member.name, inline=True)
+            embed.add_field(name="Name", value=member["name"], inline=True)
             embed.add_field(name="Discord", value=user.mention, inline=True)
-            embed.add_field(name="Steam ID", value=member.steam_id, inline=True)
+            embed.add_field(name="Steam ID", value=member["steam_id"], inline=True)
             
             # Rank and service
             embed.add_field(
@@ -288,39 +294,38 @@ class UserManagement(commands.Cog):
                 value=f"{rank_info['name']} ({rank_info['code']})", 
                 inline=True
             )
-            embed.add_field(name="Money", value=f"${member.money:,.2f}", inline=True)
-            embed.add_field(name="Deaths", value=str(member.deaths), inline=True)
-            
+            embed.add_field(name="Deaths", value=str(member["deaths"]), inline=True)
+
             # Dates
-            if member.joined_at:
+            if member["joined_at"]:
                 embed.add_field(
-                    name="Joined", 
-                    value=member.joined_at.strftime("%Y-%m-%d"), 
+                    name="Joined",
+                    value=member["joined_at"].strftime("%Y-%m-%d"),
                     inline=True
                 )
-            
-            if member.enlisted_at:
+
+            if member["enlisted_at"]:
                 embed.add_field(
-                    name="Enlisted", 
-                    value=member.enlisted_at.strftime("%Y-%m-%d"), 
+                    name="Enlisted",
+                    value=member["enlisted_at"].strftime("%Y-%m-%d"),
                     inline=True
                 )
-            
-            if member.last_death:
+
+            if member["last_death"]:
                 embed.add_field(
-                    name="Last Death", 
-                    value=member.last_death.strftime("%Y-%m-%d"), 
+                    name="Last Death",
+                    value=member["last_death"].strftime("%Y-%m-%d"),
                     inline=True
                 )
-            
+
             # Achievements
-            if member.achievements:
-                achievements_text = "\n".join([f"• {achievement}" for achievement in member.achievements])
+            if member["achievements"]:
+                achievements_text = "\n".join([f"• {achievement}" for achievement in member["achievements"]])
                 embed.add_field(name="Achievements", value=achievements_text[:1024], inline=False)
-            
+
             # Notes
-            if member.notes:
-                embed.add_field(name="Notes", value=member.notes[:1024], inline=False)
+            if member["notes"]:
+                embed.add_field(name="Notes", value=member["notes"][:1024], inline=False)
             
             embed.set_thumbnail(url=user.avatar.url if user.avatar else user.default_avatar.url)
             
@@ -334,65 +339,8 @@ class UserManagement(commands.Cog):
             )
 
     @nextcord.slash_command(
-        name="give_money",
-        description="Give money to a member",
-        guild_ids=[GUILD_ID] if GUILD_ID else None
-    )
-    async def give_money(
-        self,
-        interaction: nextcord.Interaction,
-        user: nextcord.User = SlashOption(description="User to give money to"),
-        amount: float = SlashOption(description="Amount to give"),
-        reason: Optional[str] = SlashOption(description="Reason for giving money", required=False)
-    ):
-        """Give money to a member."""
-        try:
-            if amount <= 0:
-                await interaction.response.send_message(
-                    "❌ Amount must be positive.", 
-                    ephemeral=True
-                )
-                return
-            
-            db = await get_db_manager()
-            member = await db.get_user_by_discord_id(str(user.id))
-            
-            if not member:
-                await interaction.response.send_message(
-                    f"❌ {user.mention} is not found in the database.",
-                    ephemeral=True
-                )
-                return
-            
-            success = await db.update_user_money(member.id, Decimal(str(amount)), "add")
-            
-            if success:
-                embed = nextcord.Embed(
-                    title="💰 Money Given",
-                    color=0x00ff00,
-                    description=f"Successfully gave **${amount:,.2f}** to {user.mention}"
-                )
-                
-                if reason:
-                    embed.add_field(name="Reason", value=reason, inline=False)
-                
-                await interaction.response.send_message(embed=embed)
-            else:
-                await interaction.response.send_message(
-                    "❌ Failed to update money in database.", 
-                    ephemeral=True
-                )
-                
-        except Exception as e:
-            logger.error(f"Error giving money: {e}")
-            await interaction.response.send_message(
-                f"❌ Failed to give money: {str(e)}", 
-                ephemeral=True
-            )
-
-    @nextcord.slash_command(
         name="leaderboard",
-        description="Show top members by money or rank",
+        description="Show member rank distribution",
         guild_ids=[GUILD_ID] if GUILD_ID else None
     )
     async def leaderboard(
@@ -400,31 +348,15 @@ class UserManagement(commands.Cog):
         interaction: nextcord.Interaction,
         category: str = SlashOption(
             description="Leaderboard category",
-            choices=["money", "rank"],
-            default="money"
+            choices=["rank"],
+            default="rank"
         ),
         limit: int = SlashOption(description="Number of members to show", default=10, min_value=1, max_value=25)
     ):
         """Show leaderboard of top members."""
         try:
-            db = await get_db_manager()
-            
-            if category == "money":
-                users = await db.get_top_users_by_money(limit)
-                embed = nextcord.Embed(
-                    title="💰 Money Leaderboard",
-                    color=0xffd700
-                )
-                
-                leaderboard_text = ""
-                for i, user in enumerate(users, 1):
-                    emoji = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else f"{i}."
-                    leaderboard_text += f"{emoji} **{user.name}** - ${user.money:,.2f}\n"
-                
-                embed.description = leaderboard_text or "No users found."
-                
-            elif category == "rank":
-                rank_counts = await db.get_user_count_by_rank()
+            if category == "rank":
+                rank_counts = await get_user_count_by_rank()
                 embed = nextcord.Embed(
                     title="🎖️ Rank Distribution",
                     color=0x4169e1
@@ -432,7 +364,7 @@ class UserManagement(commands.Cog):
                 
                 rank_text = ""
                 for rank in sorted(rank_counts.keys(), reverse=True):
-                    rank_info = self.rank_manager.get_rank_info(rank)
+                    rank_info = self.rank_manager.get_rank_by_level(rank)
                     count = rank_counts[rank]
                     rank_text += f"**{rank_info['name']}** ({rank_info['code']}) - {count} member{'s' if count != 1 else ''}\n"
                 
