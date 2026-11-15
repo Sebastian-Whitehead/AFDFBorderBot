@@ -10,12 +10,20 @@ from nextcord.ext import commands
 from nextcord import SlashOption
 from typing import Optional
 import logging
+import re
 
-from database import create_user, get_user_info, modify_user, get_user_count_by_rank
+from database import create_user, get_user_info, modify_user, get_user_count_by_rank, set_steam_id
 from ..utils import RankManager
 from ..config import TESTING_GUILD_ID as GUILD_ID
 
 logger = logging.getLogger(__name__)
+
+
+def parse_steam_id(text: str) -> Optional[str]:
+    """SteamID64 from a steamcommunity.com/profiles/<id> URL or a bare 17-digit ID.
+    shortcut: /id/<vanity> URLs need the Steam Web API to resolve, so they return None."""
+    m = re.fullmatch(r"(?:https?://)?(?:www\.)?steamcommunity\.com/profiles/(\d{17})/?(?:\?.*)?|(\d{17})", text.strip())
+    return (m.group(1) or m.group(2)) if m else None
 
 
 class UserManagement(commands.Cog):
@@ -105,6 +113,37 @@ class UserManagement(commands.Cog):
                 f"❌ Failed to add member: {str(e)}", 
                 ephemeral=True
             )
+
+    @nextcord.slash_command(
+        name="add_steam",
+        description="Add a Steam ID to an existing member",
+        guild_ids=[GUILD_ID] if GUILD_ID else None
+    )
+    async def add_steam(
+        self,
+        interaction: nextcord.Interaction,
+        user: nextcord.User = SlashOption(description="Member to update"),
+        steam_url: str = SlashOption(description="steamcommunity.com/profiles/<id> URL or SteamID64")
+    ):
+        """Attach a Steam ID to an existing player identity."""
+        steam_id = parse_steam_id(steam_url)
+        if steam_id is None:
+            await interaction.response.send_message(
+                "❌ Use a steamcommunity.com/profiles/<17-digit id> link or the SteamID64. "
+                "Custom /id/ links can't be resolved.",
+                ephemeral=True
+            )
+            return
+        result = await set_steam_id(str(user.id), steam_id)
+        messages = {
+            "updated": f"✅ Steam ID `{steam_id}` added to {user.mention}.",
+            "already_set": f"ℹ️ {user.mention} already has that Steam ID.",
+            "no_identity": f"❌ {user.mention} has no player record yet. Approve them (or /add_member) first.",
+            "different_steam": f"❌ {user.mention} already has a different Steam ID. Not overwritten.",
+            "steam_in_use": "❌ That Steam ID already belongs to another player.",
+            "error": "❌ Database error, nothing changed.",
+        }
+        await interaction.response.send_message(messages[result], ephemeral=result not in ("updated", "already_set"))
 
     @nextcord.slash_command(
         name="promote",

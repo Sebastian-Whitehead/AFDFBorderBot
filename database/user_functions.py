@@ -338,6 +338,36 @@ async def ensure_player_identity(name: str, steam_id: Optional[str], discord_id:
         return False
 
 
+async def set_steam_id(discord_id: str, steam_id: str) -> str:
+    """Attach a Steam ID to an existing identity: 'updated', 'already_set', 'no_identity',
+    'different_steam' (identity already has another), 'steam_in_use' (another identity has it) or 'error'."""
+    try:
+        discord, steam = int(discord_id), int(steam_id)
+        db = await get_shared_db_manager()
+        async with db.get_session() as session:
+            row = (await session.execute(
+                text("SELECT id, steam_id FROM public.identities_player WHERE discord_id = :d"), {"d": discord}
+            )).first()
+            if row is None:
+                return "no_identity"
+            if row.steam_id == steam:
+                return "already_set"
+            if row.steam_id is not None:
+                return "different_steam"
+            if (await session.execute(
+                text("SELECT 1 FROM public.identities_player WHERE steam_id = :s"), {"s": steam}
+            )).first():
+                return "steam_in_use"
+            await session.execute(
+                text("UPDATE public.identities_player SET steam_id = :s WHERE id = :id"), {"s": steam, "id": row.id}
+            )
+            await session.commit()
+            return "updated"
+    except Exception as e:
+        print(f"Error setting steam id: {e}")
+        return "error"
+
+
 async def enlist_member(discord_id: str, rank: int = 0) -> str:
     """Enlist an existing identity: 'enlisted', 'already_enlisted', 'no_identity' or 'error'."""
     try:

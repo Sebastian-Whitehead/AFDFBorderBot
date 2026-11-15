@@ -101,3 +101,18 @@ async def test_add_member_attaches_steam_to_null_steam_identity(shared_db):
     assert await create_user("zz_test_nosteam2", s, d)
     assert await _identities(s) == 1
     assert await _count("SELECT count(*) AS n FROM public.identities_player WHERE discord_id = :d", d=int(d)) == 1
+
+
+async def test_set_steam_id_outcomes(shared_db):
+    from database import set_steam_id
+    s, d = ids(72)
+    s2, _ = ids(73)
+    assert await set_steam_id(d, s) == "no_identity"
+    assert await ensure_player_identity("zz_test_ss", None, d)
+    assert await set_steam_id(d, s) == "updated"
+    assert await set_steam_id(d, s) == "already_set"
+    assert await set_steam_id(d, s2) == "different_steam"
+    s3, d3 = ids(74)
+    assert await ensure_player_identity("zz_test_ss2", None, d3)
+    assert await set_steam_id(d3, s) == "steam_in_use"
+    assert await set_steam_id("abc", s) == "error"

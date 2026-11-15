@@ -145,3 +145,26 @@ async def test_g11_flow_shared_db(shared_db, env):
     await um.UserManagement.view_profile.callback(cog, i, user)
     assert "Money" not in [f.name for f in _sent(i).kwargs["embed"].fields]
     assert (await get_user_info(discord_id))["rank"] == 3
+
+
+def test_add_steam_parse():
+    from discord.commands.UserManagement import parse_steam_id
+    s = "76561198150696236"
+    assert parse_steam_id(s) == s
+    assert parse_steam_id(f"https://steamcommunity.com/profiles/{s}/") == s
+    assert parse_steam_id(f"steamcommunity.com/profiles/{s}") == s
+    assert parse_steam_id("https://steamcommunity.com/id/someone") is None
+    assert parse_steam_id("abc") is None
+
+
+async def test_add_steam_command(env, monkeypatch):
+    um, i, user, cog = env
+    called = AsyncMock(return_value="updated")
+    monkeypatch.setattr(um, "set_steam_id", called)
+    await um.UserManagement.add_steam.callback(cog, i, user, "https://steamcommunity.com/profiles/76561198150696236")
+    called.assert_awaited_once_with(DISCORD, "76561198150696236")
+    assert "added" in _sent(i).args[0]
+    called.reset_mock()
+    await um.UserManagement.add_steam.callback(cog, i, user, "https://steamcommunity.com/id/vanity")
+    called.assert_not_awaited()
+    assert _sent(i).kwargs["ephemeral"] is True
