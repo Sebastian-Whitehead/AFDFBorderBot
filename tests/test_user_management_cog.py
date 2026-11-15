@@ -26,13 +26,13 @@ def _sent(interaction):
     return interaction.response.send_message.call_args
 
 
-def _member(rank=2, **kw):
+def _member(rank="EN2", **kw):
     return {"name": "zz_test_bob", "rank": rank, "steam_id": STEAM, "deaths": 0,
             "joined_at": None, "enlisted_at": None, "last_death": None,
             "achievements": [], "notes": None, **kw}
 
 
-async def _add(um, cog, interaction, user, rank=0, steam=STEAM):
+async def _add(um, cog, interaction, user, rank="EN0", steam=STEAM):
     await um.UserManagement.add_member.callback(cog, interaction, "zz_test_bob", steam, user, rank, None)
 
 
@@ -43,7 +43,7 @@ async def test_g1_add_member_new(env, monkeypatch):
     monkeypatch.setattr(um, "create_user", create)
     await _add(um, cog, i, user)
     kw = create.await_args.kwargs
-    assert kw["steam_id"] == STEAM and kw["discord_id"] == DISCORD and kw["rank"] == 0
+    assert kw["steam_id"] == STEAM and kw["discord_id"] == DISCORD and kw["rank"] == "EN0"
     assert _sent(i).kwargs["embed"].title == "✅ Member Added Successfully"
 
 
@@ -78,10 +78,10 @@ async def test_g4_add_member_create_fails(env, monkeypatch):
 async def test_g5_promote(env, monkeypatch):
     um, i, user, cog = env
     modify = AsyncMock(return_value=True)
-    monkeypatch.setattr(um, "get_user_info", AsyncMock(return_value=_member(2)))
+    monkeypatch.setattr(um, "get_user_info", AsyncMock(return_value=_member("EN2")))
     monkeypatch.setattr(um, "modify_user", modify)
-    await um.UserManagement.promote_member.callback(cog, i, user, 3, None)
-    assert modify.await_args.kwargs["rank"] == 3
+    await um.UserManagement.promote_member.callback(cog, i, user, "EN3", None)
+    assert modify.await_args.kwargs["rank"] == "EN3"
     assert "Promoted" in modify.await_args.kwargs["reason"]
     assert _sent(i).kwargs["embed"].title == "🎉 Promotion Successful"
 
@@ -89,9 +89,9 @@ async def test_g5_promote(env, monkeypatch):
 async def test_g6_promote_too_far(env, monkeypatch):
     um, i, user, cog = env
     modify = AsyncMock(return_value=True)
-    monkeypatch.setattr(um, "get_user_info", AsyncMock(return_value=_member(2)))
+    monkeypatch.setattr(um, "get_user_info", AsyncMock(return_value=_member("EN2")))
     monkeypatch.setattr(um, "modify_user", modify)
-    await um.UserManagement.promote_member.callback(cog, i, user, 6, None)
+    await um.UserManagement.promote_member.callback(cog, i, user, "EN6", None)
     assert "Invalid rank progression" in _sent(i).args[0] and _sent(i).kwargs["ephemeral"] is True
     modify.assert_not_awaited()
 
@@ -99,14 +99,14 @@ async def test_g6_promote_too_far(env, monkeypatch):
 async def test_g7_demote(env, monkeypatch):
     um, i, user, cog = env
     modify = AsyncMock(return_value=True)
-    monkeypatch.setattr(um, "get_user_info", AsyncMock(return_value=_member(3)))
+    monkeypatch.setattr(um, "get_user_info", AsyncMock(return_value=_member("EN3")))
     monkeypatch.setattr(um, "modify_user", modify)
-    await um.UserManagement.demote_member.callback(cog, i, user, 3, "because")
+    await um.UserManagement.demote_member.callback(cog, i, user, "EN3", "because")
     modify.assert_not_awaited()
     assert _sent(i).kwargs["ephemeral"] is True
-    await um.UserManagement.demote_member.callback(cog, i, user, 2, "because")
+    await um.UserManagement.demote_member.callback(cog, i, user, "EN2", "because")
     assert "because" in modify.await_args.kwargs["reason"]
-    assert modify.await_args.kwargs["rank"] == 2
+    assert modify.await_args.kwargs["rank"] == "EN2"
 
 
 def test_g8_no_money(env):
@@ -117,9 +117,10 @@ def test_g8_no_money(env):
 
 async def test_g9_profile(env, monkeypatch):
     um, i, user, cog = env
-    monkeypatch.setattr(um, "get_user_info", AsyncMock(return_value=_member(2)))
+    monkeypatch.setattr(um, "get_user_info", AsyncMock(return_value=_member("EN2")))
     await um.UserManagement.view_profile.callback(cog, i, user)
     embed = _sent(i).kwargs["embed"]
+    assert "(EN2)" in {f.name: f.value for f in embed.fields}["Rank"]
     assert "Money" not in [f.name for f in embed.fields]
 
 
@@ -129,13 +130,13 @@ async def test_g11_flow_shared_db(shared_db, env):
     um, i, user, cog = env
     steam, discord_id = ids(1)
     user.id = int(discord_id)
-    await _add(um, cog, i, user, rank=2, steam=steam)
+    await _add(um, cog, i, user, rank="EN2", steam=steam)
     assert _sent(i).kwargs["embed"].title == "✅ Member Added Successfully"
-    await um.UserManagement.promote_member.callback(cog, i, user, 3, None)
+    await um.UserManagement.promote_member.callback(cog, i, user, "EN3", None)
     assert _sent(i).kwargs["embed"].title == "🎉 Promotion Successful"
     await um.UserManagement.view_profile.callback(cog, i, user)
     assert "Money" not in [f.name for f in _sent(i).kwargs["embed"].fields]
-    assert (await get_user_info(discord_id))["rank"] == 3
+    assert (await get_user_info(discord_id))["rank"] == "EN3"
 
 
 def test_add_steam_parse():
@@ -165,7 +166,7 @@ async def test_add_steam_command(env, monkeypatch):
 
 async def test_add_member_accepts_steam_url(env, monkeypatch):
     um, i, user, cog = env
-    create = AsyncMock(return_value={"name": "zz_test_bob", "steam_id": STEAM, "discord_id": DISCORD, "rank": 0})
+    create = AsyncMock(return_value={"name": "zz_test_bob", "steam_id": STEAM, "discord_id": DISCORD, "rank": "EN0"})
     monkeypatch.setattr(um, "get_user_info", AsyncMock(return_value=None))
     monkeypatch.setattr(um, "create_user", create)
     await _add(um, cog, i, user, steam=f"https://steamcommunity.com/profiles/{STEAM}")
@@ -176,9 +177,18 @@ async def test_create_service_record_command(env, monkeypatch):
     um, i, user, cog = env
     create = AsyncMock(return_value="created")
     monkeypatch.setattr(um, "create_service_record", create)
-    await um.UserManagement.create_service_record_cmd.callback(cog, i, user, 3)
-    create.assert_awaited_once_with(DISCORD, 3)
+    await um.UserManagement.create_service_record_cmd.callback(cog, i, user, "OF1")
+    create.assert_awaited_once_with(DISCORD, "OF1")
     assert "created" in _sent(i).args[0]
     create.return_value = "no_identity"
-    await um.UserManagement.create_service_record_cmd.callback(cog, i, user, 3)
+    await um.UserManagement.create_service_record_cmd.callback(cog, i, user, "OF1")
     assert _sent(i).kwargs["ephemeral"] is True
+
+
+def test_rank_options_have_22_choices(env):
+    import inspect
+    um, _, _, _ = env
+    for cmd, param in [(um.UserManagement.add_member, "rank"), (um.UserManagement.create_service_record_cmd, "rank"),
+                       (um.UserManagement.promote_member, "new_rank"), (um.UserManagement.demote_member, "new_rank")]:
+        opt = inspect.signature(cmd.callback).parameters[param].default
+        assert len(opt.choices) == 22

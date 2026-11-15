@@ -11,7 +11,7 @@ Discord bot (nextcord) for the AFDF server: border approval, enlistment, events,
 - `discord/` is a LOCAL package, not the pip `discord` lib (the bot uses `nextcord`). Don't rename it or add a pip `discord.py`.
   - `bot.py` create_bot/load_extensions; `config.py` settings cache (load_settings/get_setting/update_setting).
   - `commands/` cogs (Checkpoint, Enlistment, GuildEvent, LOA, SettingsManagement, UserManagement); `listeners/` cogs (BorderOfficerMonitor, GuildEventListener, JoinLeaveHandler); `utils/` (EmbedProcessor, RankManager, steam.py: Steam ID/URL resolution).
-- `database/`: `db_manager.py` (global manager via `get_db_manager()`, local + shared engines), `models.py`, `user_functions.py`, `loa_functions.py`, `rank_codes.py` (ids.json level <-> Supabase rank code), `settings_manager.py`. Settings live in the local DB (`BotSetting`), loaded async at startup.
+- `database/`: `db_manager.py` (global manager via `get_db_manager()`, local + shared engines), `models.py`, `user_functions.py`, `loa_functions.py`, `rank_codes.py` (ordered rank codes from ids.json), `settings_manager.py`. Settings live in the local DB (`BotSetting`), loaded async at startup.
 - Data split: shared Supabase holds users (`public.identities_player`, `military.service_records`/`service_events`) and LOA (`military.leave_requests`); local DB holds `bot_settings` only. The bot never reads/writes `economy.*` and never handles money.
 - `embeds/`, `Settings.json`, `ids.json`: static config/data. `init.sql`: DB schema.
 

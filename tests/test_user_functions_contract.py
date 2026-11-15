@@ -24,15 +24,15 @@ async def test_u1_create_user(shared_db):
     assert u["name"] == "zz_test_a"
     assert u["steam_id"] == s and isinstance(u["steam_id"], str)
     assert u["discord_id"] == d and isinstance(u["discord_id"], str)
-    assert u["rank"] == 0
+    assert u["rank"] == "EN0"
     assert u["enlisted"] is False
 
 
 async def test_u2_create_enlisted(shared_db):
     s, d = ids(2)
-    assert await create_user(name="zz_test_a", steam_id=s, discord_id=d, rank=3, enlisted=True)
+    assert await create_user(name="zz_test_a", steam_id=s, discord_id=d, rank="EN3", enlisted=True)
     info = await get_user_info(d)
-    assert info["rank"] == 3
+    assert info["rank"] == "EN3"
     assert info["enlisted"] is True
     assert info["enlisted_at"] is not None
 
@@ -63,8 +63,8 @@ async def test_u5_modify_user(shared_db):
 
     assert await modify_user(d, name="zz_test_b") is True
     assert (await get_user_info(d))["name"] == "zz_test_b"
-    assert await modify_user(d, rank=4) is True
-    assert (await get_user_info(d))["rank"] == 4
+    assert await modify_user(d, rank="EN4") is True
+    assert (await get_user_info(d))["rank"] == "EN4"
     assert await modify_user(d, notes="hello") is True
     assert (await get_user_info(d))["notes"] == "hello"
 

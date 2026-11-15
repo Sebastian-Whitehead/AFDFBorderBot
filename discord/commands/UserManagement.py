@@ -12,6 +12,7 @@ from typing import Optional
 import logging
 
 from database import create_user, get_user_info, modify_user, set_steam_id, create_service_record
+from database.rank_codes import rank_choices, rank_index
 from ..utils import RankManager
 from ..utils.steam import resolve_steam_id
 from ..config import TESTING_GUILD_ID as GUILD_ID
@@ -26,6 +27,10 @@ class UserManagement(commands.Cog):
         self.bot = bot
         self.rank_manager = RankManager()
 
+    def _rank_text(self, code: str) -> str:
+        info = self.rank_manager.get_rank(code)
+        return f"{info['name']} ({info['code']})"
+
     @nextcord.slash_command(
         name="add_member",
         description="Add a new member to the database",
@@ -37,19 +42,11 @@ class UserManagement(commands.Cog):
         name: str = SlashOption(description="Member's name"),
         steam_id: str = SlashOption(description="Member's SteamID64 or Steam profile URL"),
         discord_user: Optional[nextcord.User] = SlashOption(description="Discord user (optional)", required=False),
-        rank: int = SlashOption(description="Starting rank (0-10)", default=0, min_value=0, max_value=10),
+        rank: str = SlashOption(description="Starting rank", default="EN0", choices=rank_choices()),
         notes: Optional[str] = SlashOption(description="Additional notes", required=False)
     ):
         """Add a new member to the database."""
         try:
-            # Validate rank
-            if self.rank_manager.get_rank_by_level(rank) is None:
-                await interaction.response.send_message(
-                    f"❌ Invalid rank level: {rank}. Must be between 0-10.",
-                    ephemeral=True
-                )
-                return
-
             steam_id = await resolve_steam_id(steam_id)
             if steam_id is None:
                 await interaction.response.send_message(
@@ -86,7 +83,6 @@ class UserManagement(commands.Cog):
                 )
                 return
 
-            rank_info = self.rank_manager.get_rank_by_level(rank)
             embed = nextcord.Embed(
                 title="✅ Member Added Successfully",
                 color=0x00ff00,
@@ -94,7 +90,7 @@ class UserManagement(commands.Cog):
             )
             embed.add_field(name="Steam ID", value=steam_id, inline=True)
             embed.add_field(name="Discord", value=discord_user.mention if discord_user else "Not linked", inline=True)
-            embed.add_field(name="Rank", value=f"{rank_info['name']} ({rank_info['code']})", inline=True)
+            embed.add_field(name="Rank", value=self._rank_text(rank), inline=True)
             
             if notes:
                 embed.add_field(name="Notes", value=notes, inline=False)
@@ -117,16 +113,12 @@ class UserManagement(commands.Cog):
         self,
         interaction: nextcord.Interaction,
         user: nextcord.User = SlashOption(description="Player to create the record for"),
-        rank: int = SlashOption(description="Starting rank (0-10)", min_value=0, max_value=10)
+        rank: str = SlashOption(description="Starting rank", choices=rank_choices())
     ):
         """Create just the service record (no enlistment event, no Discord role changes)."""
-        if self.rank_manager.get_rank_by_level(rank) is None:
-            await interaction.response.send_message(f"❌ Invalid rank level: {rank}.", ephemeral=True)
-            return
         result = await create_service_record(str(user.id), rank)
-        info = self.rank_manager.get_rank_by_level(rank)
         messages = {
-            "created": f"✅ Service record created for {user.mention} at {info['name']} ({info['code']}).",
+            "created": f"✅ Service record created for {user.mention} at {self._rank_text(rank)}.",
             "already_exists": f"❌ {user.mention} already has a service record.",
             "no_identity": f"❌ {user.mention} has no player record yet. Approve them (or /add_member) first.",
             "error": "❌ Database error, nothing changed.",
@@ -173,7 +165,7 @@ class UserManagement(commands.Cog):
         self,
         interaction: nextcord.Interaction,
         user: nextcord.User = SlashOption(description="User to promote"),
-        new_rank: int = SlashOption(description="New rank level (0-10)", min_value=0, max_value=10),
+        new_rank: str = SlashOption(description="New rank", choices=rank_choices()),
         reason: Optional[str] = SlashOption(description="Reason for promotion", required=False)
     ):
         """Promote a member to a higher rank."""
@@ -189,25 +181,22 @@ class UserManagement(commands.Cog):
 
             # Validate promotion
             if not self.rank_manager.is_valid_promotion(member["rank"], new_rank):
-                current_rank = self.rank_manager.get_rank_by_level(member["rank"])
-                target_rank = self.rank_manager.get_rank_by_level(new_rank)
                 await interaction.response.send_message(
-                    f"❌ Cannot promote from {current_rank['name']} to {target_rank['name']}. "
+                    f"❌ Cannot promote from {self.rank_manager.get_rank(member['rank'])['name']} "
+                    f"to {self.rank_manager.get_rank(new_rank)['name']}. "
                     f"Invalid rank progression.",
                     ephemeral=True
                 )
                 return
             
             # Update rank in database
-            notes = f"Promoted to {self.rank_manager.get_rank_by_level(new_rank)['name']}"
+            notes = f"Promoted to {self.rank_manager.get_rank(new_rank)['name']}"
             if reason:
                 notes += f" - Reason: {reason}"
 
             success = await modify_user(str(user.id), rank=new_rank, reason=notes)
 
             if success:
-                old_rank_info = self.rank_manager.get_rank_by_level(member["rank"])
-                new_rank_info = self.rank_manager.get_rank_by_level(new_rank)
 
                 embed = nextcord.Embed(
                     title="🎉 Promotion Successful",
@@ -216,12 +205,12 @@ class UserManagement(commands.Cog):
                 )
                 embed.add_field(
                     name="Previous Rank", 
-                    value=f"{old_rank_info['name']} ({old_rank_info['code']})", 
+                    value=self._rank_text(member["rank"]), 
                     inline=True
                 )
                 embed.add_field(
                     name="New Rank", 
-                    value=f"{new_rank_info['name']} ({new_rank_info['code']})", 
+                    value=self._rank_text(new_rank), 
                     inline=True
                 )
                 embed.add_field(name="Member", value=user.mention, inline=True)
@@ -252,7 +241,7 @@ class UserManagement(commands.Cog):
         self,
         interaction: nextcord.Interaction,
         user: nextcord.User = SlashOption(description="User to demote"),
-        new_rank: int = SlashOption(description="New rank level (0-10)", min_value=0, max_value=10),
+        new_rank: str = SlashOption(description="New rank", choices=rank_choices()),
         reason: str = SlashOption(description="Reason for demotion")
     ):
         """Demote a member to a lower rank."""
@@ -266,7 +255,7 @@ class UserManagement(commands.Cog):
                 )
                 return
 
-            if new_rank >= member["rank"]:
+            if rank_index(new_rank) >= rank_index(member["rank"]):
                 await interaction.response.send_message(
                     f"❌ New rank must be lower than current rank ({member['rank']}).",
                     ephemeral=True
@@ -274,12 +263,10 @@ class UserManagement(commands.Cog):
                 return
 
             # Update rank in database
-            notes = f"Demoted to {self.rank_manager.get_rank_by_level(new_rank)['name']} - Reason: {reason}"
+            notes = f"Demoted to {self.rank_manager.get_rank(new_rank)['name']} - Reason: {reason}"
             success = await modify_user(str(user.id), rank=new_rank, reason=notes)
 
             if success:
-                old_rank_info = self.rank_manager.get_rank_by_level(member["rank"])
-                new_rank_info = self.rank_manager.get_rank_by_level(new_rank)
 
                 embed = nextcord.Embed(
                     title="⬇️ Demotion Applied",
@@ -288,12 +275,12 @@ class UserManagement(commands.Cog):
                 )
                 embed.add_field(
                     name="Previous Rank", 
-                    value=f"{old_rank_info['name']} ({old_rank_info['code']})", 
+                    value=self._rank_text(member["rank"]), 
                     inline=True
                 )
                 embed.add_field(
                     name="New Rank", 
-                    value=f"{new_rank_info['name']} ({new_rank_info['code']})", 
+                    value=self._rank_text(new_rank), 
                     inline=True
                 )
                 embed.add_field(name="Member", value=user.mention, inline=True)
@@ -334,8 +321,6 @@ class UserManagement(commands.Cog):
                 )
                 return
 
-            rank_info = self.rank_manager.get_rank_by_level(member["rank"])
-
             embed = nextcord.Embed(
                 title=f"👤 Profile: {member['name']}",
                 color=0x0099ff
@@ -349,7 +334,7 @@ class UserManagement(commands.Cog):
             # Rank and service
             embed.add_field(
                 name="Rank", 
-                value=f"{rank_info['name']} ({rank_info['code']})", 
+                value=self._rank_text(member["rank"]), 
                 inline=True
             )
             embed.add_field(name="Deaths", value=str(member["deaths"]), inline=True)

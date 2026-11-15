@@ -18,61 +18,28 @@
       "citizen": [1140584332247957615, 1140616787050889286], 
       "enlisted": [1206596239379005490, 1205882493987979346],
       "ranks": {
-        "0": {
-          "name": "Voluntary-Conscript",
-          "code": "EN0",
-          "role_id": "1206596239379005490"
-        },
-        "1": {
-          "name": "Second Private",
-          "code": "EN1",
-          "role_id": "1206248630982279208"
-        },
-        "2": {
-          "name": "First Private",
-          "code": "EN2",
-          "role_id": "1206248629917061140"
-        },
-        "3": {
-          "name": "Senior Private",
-          "code": "EN3",
-          "role_id": "1206248627291422800"
-        },
-        "4": {
-          "name": "Corporal",
-          "code": "EN4",
-          "role_id": "1206248624577839124"
-        },
-        "5": {
-          "name": "Second Sergeant",
-          "code": "EN5",
-          "role_id": "1206248618214953042"
-        },
-        "6": {
-          "name": "First Sergeant",
-          "code": "EN6",
-          "role_id": "1206248421825183794"
-        },
-        "7": {
-          "name": " Senior Sergeant",
-          "code": "EN7",
-          "role_id": "1206248420424024186"
-        },
-        "8": {
-          "name": "Master Sergeant",
-          "code": "EN8",
-          "role_id": "1206248419727773736"
-        },
-        "9": {
-          "name": "Staff Under Officer",
-          "code": "UO",
-          "role_id": "1206248417508982814"
-        },
-        "10": {
-          "name": "President",
-          "code": "PRES",
-          "role_id": "1206351206293835837"
-        }
+        "EN0": { "abbr": "VC", "name": "Voluntary Conscript", "role_id": "1206596239379005490" },
+        "EN1": { "abbr": "2PTE", "name": "Second Private", "role_id": "1206248630982279208" },
+        "EN2": { "abbr": "PVT", "name": "Private", "role_id": "1206248629917061140" },
+        "EN3": { "abbr": "LCPL", "name": "Lance Corporal", "role_id": "1206248627291422800" },
+        "EN4": { "abbr": "CPL", "name": "Corporal", "role_id": "1206248624577839124" },
+        "EN5": { "abbr": "SGT", "name": "Sergeant", "role_id": "1206248618214953042" },
+        "EN6": { "abbr": "SSGT", "name": "Staff Sergeant", "role_id": "1206248421825183794" },
+        "EN7": { "abbr": "WO2", "name": "Warrant Officer Class Two", "role_id": "1206248420424024186" },
+        "EN8": { "abbr": "WO1", "name": "Warrant Officer Class One", "role_id": "1206248419727773736" },
+        "OF0": { "abbr": "OCDT", "name": "Cadet", "role_id": null },
+        "OF1": { "abbr": "2LT", "name": "Second Lieutenant", "role_id": null },
+        "OF2": { "abbr": "LT", "name": "Lieutenant", "role_id": null },
+        "OF3": { "abbr": "CPT", "name": "Captain", "role_id": null },
+        "OF4": { "abbr": "MAJ", "name": "Major", "role_id": null },
+        "OF5": { "abbr": "LT COL", "name": "Lieutenant Colonel", "role_id": null },
+        "OF6": { "abbr": "COL", "name": "Colonel", "role_id": null },
+        "OF7": { "abbr": "BRIG", "name": "Brigadier", "role_id": null },
+        "OF8": { "abbr": "MAJ GEN", "name": "Major General", "role_id": null },
+        "OF9": { "abbr": "LT GEN", "name": "Lieutenant General", "role_id": null },
+        "OF10": { "abbr": "GEN", "name": "General", "role_id": null },
+        "OF11": { "abbr": "FM", "name": "Field Marshal", "role_id": null },
+        "PRES": { "abbr": "PRES", "name": "President", "role_id": "1206351206293835837" }
       }
     }
 }

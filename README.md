@@ -38,11 +38,11 @@ Data split:
 
 - **Supabase (shared with the game)**: `public.identities_player`, `military.service_records`, `military.service_events`, `military.leave_requests`, organization `AFDF-Para Raiders`. The bot never reads or writes `economy.*` and never handles money.
 - **Local Postgres**: `bot_settings` only.
-- Ranks: `ids.json` levels 0-8 = `EN0-EN8`, 9 = `UO`, 10 = `PRES`; mapping in `database/rank_codes.py`.
+- Ranks are identified by code everywhere (`EN0`-`EN8`, `OF0`-`OF11`, `PRES`), defined in order in `ids.json` (`roles.ranks`: abbr, name, Discord role id) and read via `database/rank_codes.py`. Commands offer them as a dropdown.
 
 Design decisions:
 
-1. `UO` and `PRES` were added to the rank CHECK constraints in Supabase.
+1. The rank CHECK constraints in Supabase allow exactly those 22 codes (`UO` is not a rank).
 2. Extra identity data (notes, achievements, deaths, last_death, reprimands) lives in `identities_player.details` JSON.
 3. `enlisted` is derived from the newest enlisted/reenlisted/discharged service event.
 4. Tests use a local "shadow" Postgres 17 built from a schema-only dump of production.
@@ -52,8 +52,8 @@ Design decisions:
 | Command | Who | What |
 |---|---|---|
 | `/approve user [steam_id]` | Border Officers | Steam ID as SteamID64 or profile URL (custom `/id/` links work). Creates the player identity in Supabase before changing roles; no service record |
-| `/enlist user` | Leadership | Creates service record (rank 0) + `enlisted` event before adding roles; needs an identity |
-| `/add_member name steam_id [discord_user] [rank 0-10] [notes]` | | Identity + service record, no roles |
+| `/enlist user` | Leadership | Creates service record (rank `EN0`) + `enlisted` event before adding roles; needs an identity |
+| `/add_member name steam_id [discord_user] [rank code] [notes]` | | Identity + service record, no roles |
 | `/add_steam user steam_url` | | Attach a Steam ID to an existing identity; never overwrites a different one |
 | `/create_service_record user rank` | | Record only, no event, no roles |
 | `/promote user new_rank [reason]`, `/demote user new_rank reason` | | Update record rank + `rank_changed` event; no Discord role swap |

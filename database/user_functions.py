@@ -11,7 +11,7 @@ from typing import Optional, Dict, Any
 from sqlalchemy import text
 
 from .db_manager import get_shared_db_manager
-from .rank_codes import level_to_code, code_to_level
+from .rank_codes import is_valid_rank
 
 ORG = "AFDF-Para Raiders"
 
@@ -41,7 +41,7 @@ def _brief(row) -> Dict[str, Any]:
         "name": row.alias,
         "steam_id": str(row.steam_id) if row.steam_id is not None else None,
         "discord_id": str(row.discord_id) if row.discord_id is not None else None,
-        "rank": code_to_level(row.current_rank),
+        "rank": row.current_rank,
         "enlisted": _is_enlisted(row),
     }
 
@@ -77,7 +77,7 @@ async def create_user(
     name: str,
     steam_id: str,
     discord_id: Optional[str] = None,
-    rank: int = 0,
+    rank: str = "EN0",
     notes: Optional[str] = None,
     enlisted: bool = False
 ) -> Optional[Dict[str, Any]]:
@@ -85,9 +85,11 @@ async def create_user(
     try:
         steam = int(steam_id)
         discord = int(discord_id) if discord_id else None
-        code = level_to_code(rank)
-    except (ValueError, TypeError, KeyError):
+    except (ValueError, TypeError):
         return None
+    if not is_valid_rank(rank):
+        return None
+    code = rank
 
     try:
         db = await get_shared_db_manager()
@@ -149,7 +151,7 @@ async def create_user(
                 "name": name,
                 "steam_id": str(steam),
                 "discord_id": str(discord) if discord is not None else None,
-                "rank": rank,
+                "rank": code,
                 "enlisted": bool(enlisted),
             }
 
@@ -173,12 +175,14 @@ async def get_user_info(identifier: str) -> Optional[Dict[str, Any]]:
 async def modify_user(
     identifier: str,
     name: Optional[str] = None,
-    rank: Optional[int] = None,
+    rank: Optional[str] = None,
     notes: Optional[str] = None,
     enlisted: Optional[bool] = None,
     reason: Optional[str] = None
 ) -> bool:
     """Modify user information."""
+    if rank is not None and not is_valid_rank(rank):
+        return False
     try:
         db = await get_shared_db_manager()
         async with db.get_session() as session:
@@ -192,7 +196,7 @@ async def modify_user(
                     {"name": name, "id": row.id},
                 )
             if rank is not None:
-                code = level_to_code(rank)
+                code = rank
                 await session.execute(
                     text("UPDATE military.service_records SET current_rank = :code, updated_at = now() WHERE id = :sr"),
                     {"code": code, "sr": row.sr_id},
@@ -221,7 +225,7 @@ async def modify_user(
                 await session.execute(
                     text("""INSERT INTO military.service_events (service_record_id, event_type, rank, occured_at)
                             VALUES (:sr, :etype, :code, now())"""),
-                    {"sr": row.sr_id, "etype": etype, "code": row.current_rank if rank is None else level_to_code(rank)},
+                    {"sr": row.sr_id, "etype": etype, "code": row.current_rank if rank is None else rank},
                 )
             await session.commit()
             return True
@@ -290,12 +294,14 @@ async def ensure_player_identity(name: str, steam_id: Optional[str], discord_id:
         return False
 
 
-async def create_service_record(discord_id: str, rank: int) -> str:
+async def create_service_record(discord_id: str, rank: str) -> str:
     """Create only the service record (no events) for an existing identity:
     'created', 'already_exists', 'no_identity' or 'error'."""
     try:
         discord = int(discord_id)
-        code = level_to_code(rank)
+        if not is_valid_rank(rank):
+            return "error"
+        code = rank
         db = await get_shared_db_manager()
         async with db.get_session() as session:
             pid = (await session.execute(
@@ -353,11 +359,13 @@ async def set_steam_id(discord_id: str, steam_id: str) -> str:
         return "error"
 
 
-async def enlist_member(discord_id: str, rank: int = 0) -> str:
+async def enlist_member(discord_id: str, rank: str = "EN0") -> str:
     """Enlist an existing identity: 'enlisted', 'already_enlisted', 'no_identity' or 'error'."""
     try:
         discord = int(discord_id)
-        code = level_to_code(rank)
+        if not is_valid_rank(rank):
+            return "error"
+        code = rank
         db = await get_shared_db_manager()
         async with db.get_session() as session:
             pid = (await session.execute(

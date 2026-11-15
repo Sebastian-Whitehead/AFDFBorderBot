@@ -22,15 +22,24 @@ async def test_u8_adopt_existing_game_player(shared_db):
 async def test_u9_modify_rank_event(shared_db):
     s, d = ids(21)
     assert await create_user("zz_test_a", s, d)
-    assert await modify_user(d, rank=9, reason="r") is True
-    assert (await get_user_info(d))["rank"] == 9
+    assert await modify_user(d, rank="OF1", reason="r") is True
+    assert (await get_user_info(d))["rank"] == "OF1"
     db = await get_shared_db_manager()
     rows = await db.execute_raw_query(
         "SELECT r.current_rank, e.notes FROM military.service_records r "
         "JOIN public.identities_player p ON p.id = r.player_identity_id "
         "JOIN military.service_events e ON e.service_record_id = r.id AND e.event_type = 'rank_changed' "
         "WHERE p.steam_id = :s", {"s": int(s)})
-    assert len(rows) == 1 and rows[0]["current_rank"] == "UO" and rows[0]["notes"] == "r"
+    assert len(rows) == 1 and rows[0]["current_rank"] == "OF1" and rows[0]["notes"] == "r"
+
+
+async def test_invalid_rank_codes(shared_db):
+    s, d = ids(22)
+    assert await create_user("zz_test_a", s, d, rank="UO") is None
+    assert await create_user("zz_test_a", s, d)
+    for bad in ("UO", "XX"):
+        assert await modify_user(d, rank=bad) is False
+    assert (await get_user_info(d))["rank"] == "EN0"
 
 
 async def test_u11_invalid_steam_id(shared_db):
