@@ -35,3 +35,7 @@ logs/
 *.sqlite3
 graphify-out/
 schema/
+
+.env.test
+migration/shadow/
+migration/backup/
