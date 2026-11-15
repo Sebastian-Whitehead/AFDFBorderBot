@@ -10,26 +10,6 @@ from datetime import datetime
 Base = declarative_base()
 
 
-class User(Base):
-    """User model."""
-    __tablename__ = 'users'
-    
-    id = Column(Integer, primary_key=True)
-    name = Column(Text, nullable=False)
-    steam_id = Column(Text, nullable=False)
-    discord_id = Column(Text)
-    joined_at = Column(DateTime, default=datetime.utcnow)
-    enlisted_at = Column(DateTime)
-    money = Column(DECIMAL(15, 2), default=0)
-    rank = Column(Integer, default=0)
-    notes = Column(Text)
-    achievements = Column(ARRAY(Text))
-    last_death = Column(Date)
-    deaths = Column(Integer, default=0)
-    reprimands = Column(JSONB)
-    extra_data = Column(JSONB)
-
-
 class BotSetting(Base):
     """Bot settings model."""
     __tablename__ = 'bot_settings'

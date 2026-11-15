@@ -1,18 +1,76 @@
 """
 Core User Database Functions for AFDFBorderBot
 
-Simple functions for creating, modifying, and retrieving user data using SQLAlchemy.
+Bot users live in the shared Supabase DB: a public.identities_player row with a
+military.service_records row in the AFDF-Para Raiders org.
 """
 
-from typing import Optional, Dict, Any, Union, List
-from datetime import datetime
-from decimal import Decimal
+from datetime import date
+from typing import Optional, Dict, Any, List
 
-from sqlalchemy.future import select
-from sqlalchemy import or_, func
+from sqlalchemy import text
 
-from .db_manager import get_db_manager
-from .models import User
+from .db_manager import get_shared_db_manager
+from .rank_codes import level_to_code, code_to_level
+
+ORG = "AFDF-Para Raiders"
+
+# One row per bot user; ev = newest enlisted/reenlisted/discharged event (decision D3).
+_BOT_USER = """
+SELECT p.id, p.alias, p.steam_id, p.discord_id, p.created_at, p.details,
+       sr.id AS sr_id, sr.current_rank, ev.event_type, ev.occured_at
+FROM public.identities_player p
+JOIN military.service_records sr ON sr.player_identity_id = p.id
+JOIN public.identities_organizations o ON o.id = sr.organization_id AND o.name = :org
+LEFT JOIN LATERAL (
+    SELECT e.event_type, e.occured_at FROM military.service_events e
+    WHERE e.service_record_id = sr.id
+      AND e.event_type IN ('enlisted', 'reenlisted', 'discharged')
+    ORDER BY e.occured_at DESC, e.id DESC LIMIT 1
+) ev ON true
+"""
+
+
+def _is_enlisted(row) -> bool:
+    return row.event_type in ("enlisted", "reenlisted")
+
+
+def _brief(row) -> Dict[str, Any]:
+    return {
+        "id": row.id,
+        "name": row.alias,
+        "steam_id": str(row.steam_id) if row.steam_id is not None else None,
+        "discord_id": str(row.discord_id) if row.discord_id is not None else None,
+        "rank": code_to_level(row.current_rank),
+        "enlisted": _is_enlisted(row),
+    }
+
+
+def _full(row) -> Dict[str, Any]:
+    d = row.details or {}
+    last_death = d.get("last_death")
+    if isinstance(last_death, str):
+        last_death = date.fromisoformat(last_death)
+    out = _brief(row)
+    out.update({
+        "joined_at": row.created_at,
+        "enlisted_at": row.occured_at if _is_enlisted(row) else None,
+        "notes": d.get("notes"),
+        "achievements": d.get("achievements"),
+        "last_death": last_death,
+        "deaths": d.get("deaths", 0),
+        "reprimands": d.get("reprimands"),
+        "extra_data": d.get("extra_data"),
+    })
+    return out
+
+
+async def _find(session, identifier: str):
+    n = int(identifier)
+    res = await session.execute(
+        text(_BOT_USER + " WHERE p.discord_id = :n OR p.steam_id = :n"), {"org": ORG, "n": n}
+    )
+    return res.first()
 
 
 async def create_user(
@@ -20,47 +78,79 @@ async def create_user(
     steam_id: str,
     discord_id: Optional[str] = None,
     rank: int = 0,
-    money: Union[float, Decimal] = 0,
     notes: Optional[str] = None,
     enlisted: bool = False
 ) -> Optional[Dict[str, Any]]:
     """Create a new user in the database."""
     try:
-        db = await get_db_manager()
-        
-        if isinstance(money, float):
-            money = Decimal(str(money))
-        
+        steam = int(steam_id)
+        discord = int(discord_id) if discord_id else None
+        code = level_to_code(rank)
+    except (ValueError, TypeError, KeyError):
+        return None
+
+    try:
+        db = await get_shared_db_manager()
+
         async with db.get_session() as session:
-            # Check if user exists
-            result = await session.execute(
-                select(User).where(or_(User.steam_id == steam_id, User.discord_id == discord_id))
-            )
-            if result.scalar_one_or_none():
+            if (await session.execute(
+                text(_BOT_USER + " WHERE p.steam_id = :n"), {"org": ORG, "n": steam}
+            )).first():
                 return None
-            
-            user = User(
-                name=name,
-                steam_id=steam_id,
-                discord_id=discord_id,
-                rank=rank,
-                money=money,
-                notes=notes,
-                enlisted_at=datetime.utcnow() if enlisted else None
+            if discord is not None and (await session.execute(
+                text("SELECT 1 FROM public.identities_player WHERE discord_id = :d AND steam_id IS DISTINCT FROM :s"),
+                {"d": discord, "s": steam},
+            )).first():
+                return None
+
+            await session.execute(
+                text("SELECT public.fab_ensure_player_account(:name, :steam, :discord)"),
+                {"name": name, "steam": steam, "discord": discord},
             )
-            session.add(user)
+            ident = (await session.execute(
+                text("SELECT id, discord_id FROM public.identities_player WHERE steam_id = :s"), {"s": steam}
+            )).one()
+            if discord is not None:
+                if ident.discord_id is None:
+                    await session.execute(
+                        text("UPDATE public.identities_player SET discord_id = :d WHERE id = :id"),
+                        {"d": discord, "id": ident.id},
+                    )
+                elif ident.discord_id != discord:
+                    return None  # rolled back on session close
+
+            sr_id = (await session.execute(
+                text("""INSERT INTO military.service_records
+                        (player_identity_id, organization_id, current_rank, service_status)
+                        SELECT :pid, o.id, :code, 'active'
+                        FROM public.identities_organizations o WHERE o.name = :org
+                        RETURNING id"""),
+                {"pid": ident.id, "code": code, "org": ORG},
+            )).scalar_one()
+            if enlisted:
+                await session.execute(
+                    text("""INSERT INTO military.service_events (service_record_id, event_type, rank, occured_at)
+                            VALUES (:sr, 'enlisted', :code, now())"""),
+                    {"sr": sr_id, "code": code},
+                )
+            if notes:
+                await session.execute(
+                    text("""UPDATE public.identities_player
+                            SET details = coalesce(details, '{}'::jsonb) || jsonb_build_object('notes', CAST(:notes AS text))
+                            WHERE id = :id"""),
+                    {"notes": notes, "id": ident.id},
+                )
             await session.commit()
-            
+
             return {
-                "id": user.id,
-                "name": user.name,
-                "steam_id": user.steam_id,
-                "discord_id": user.discord_id,
-                "rank": user.rank,
-                "money": user.money,
-                "enlisted": user.enlisted_at is not None
+                "id": ident.id,
+                "name": name,
+                "steam_id": str(steam),
+                "discord_id": str(discord) if discord is not None else None,
+                "rank": rank,
+                "enlisted": bool(enlisted),
             }
-            
+
     except Exception as e:
         print(f"Error creating user: {e}")
         return None
@@ -69,35 +159,10 @@ async def create_user(
 async def get_user_info(identifier: str) -> Optional[Dict[str, Any]]:
     """Get user information by Discord ID or Steam ID."""
     try:
-        db = await get_db_manager()
-        
+        db = await get_shared_db_manager()
         async with db.get_session() as session:
-            result = await session.execute(
-                select(User).where(or_(User.discord_id == identifier, User.steam_id == identifier))
-            )
-            user = result.scalar_one_or_none()
-            
-            if not user:
-                return None
-                
-            return {
-                "id": user.id,
-                "name": user.name,
-                "steam_id": user.steam_id,
-                "discord_id": user.discord_id,
-                "joined_at": user.joined_at,
-                "enlisted_at": user.enlisted_at,
-                "money": user.money,
-                "rank": user.rank,
-                "notes": user.notes,
-                "achievements": user.achievements,
-                "last_death": user.last_death,
-                "deaths": user.deaths,
-                "reprimands": user.reprimands,
-                "extra_data": user.extra_data,
-                "enlisted": user.enlisted_at is not None
-            }
-            
+            row = await _find(session, identifier)
+            return _full(row) if row else None
     except Exception as e:
         print(f"Error getting user info: {e}")
         return None
@@ -107,37 +172,58 @@ async def modify_user(
     identifier: str,
     name: Optional[str] = None,
     rank: Optional[int] = None,
-    money: Optional[Union[float, Decimal]] = None,
     notes: Optional[str] = None,
-    enlisted: Optional[bool] = None
+    enlisted: Optional[bool] = None,
+    reason: Optional[str] = None
 ) -> bool:
     """Modify user information."""
     try:
-        db = await get_db_manager()
-        
+        db = await get_shared_db_manager()
         async with db.get_session() as session:
-            result = await session.execute(
-                select(User).where(or_(User.discord_id == identifier, User.steam_id == identifier))
-            )
-            user = result.scalar_one_or_none()
-            
-            if not user:
+            row = await _find(session, identifier)
+            if not row:
                 return False
-            
+
             if name is not None:
-                user.name = name
+                await session.execute(
+                    text("UPDATE public.identities_player SET alias = :name WHERE id = :id"),
+                    {"name": name, "id": row.id},
+                )
             if rank is not None:
-                user.rank = rank
-            if money is not None:
-                user.money = Decimal(str(money)) if isinstance(money, float) else money
+                code = level_to_code(rank)
+                await session.execute(
+                    text("UPDATE military.service_records SET current_rank = :code, updated_at = now() WHERE id = :sr"),
+                    {"code": code, "sr": row.sr_id},
+                )
+                await session.execute(
+                    text("""INSERT INTO military.service_events (service_record_id, event_type, rank, notes, occured_at)
+                            VALUES (:sr, 'rank_changed', :code, :reason, now())"""),
+                    {"sr": row.sr_id, "code": code, "reason": reason},
+                )
             if notes is not None:
-                user.notes = notes
+                await session.execute(
+                    text("""UPDATE public.identities_player
+                            SET details = coalesce(details, '{}'::jsonb) || jsonb_build_object('notes', CAST(:notes AS text))
+                            WHERE id = :id"""),
+                    {"notes": notes, "id": row.id},
+                )
             if enlisted is not None:
-                user.enlisted_at = datetime.utcnow() if enlisted else None
-                
+                if enlisted:
+                    had_discharge = (await session.execute(
+                        text("SELECT 1 FROM military.service_events WHERE service_record_id = :sr AND event_type = 'discharged' LIMIT 1"),
+                        {"sr": row.sr_id},
+                    )).first() is not None
+                    etype = "reenlisted" if had_discharge else "enlisted"
+                else:
+                    etype = "discharged"
+                await session.execute(
+                    text("""INSERT INTO military.service_events (service_record_id, event_type, rank, occured_at)
+                            VALUES (:sr, :etype, :code, now())"""),
+                    {"sr": row.sr_id, "etype": etype, "code": row.current_rank if rank is None else level_to_code(rank)},
+                )
             await session.commit()
             return True
-            
+
     except Exception as e:
         print(f"Error modifying user: {e}")
         return False
@@ -146,27 +232,12 @@ async def modify_user(
 async def search_users(query: str) -> List[Dict[str, Any]]:
     """Search users by name."""
     try:
-        db = await get_db_manager()
-        
+        db = await get_shared_db_manager()
         async with db.get_session() as session:
-            result = await session.execute(
-                select(User).where(User.name.ilike(f'%{query}%')).limit(20)
+            res = await session.execute(
+                text(_BOT_USER + " WHERE p.alias ILIKE '%' || :q || '%' LIMIT 20"), {"org": ORG, "q": query}
             )
-            users = result.scalars().all()
-            
-            return [
-                {
-                    "id": user.id,
-                    "name": user.name,
-                    "steam_id": user.steam_id,
-                    "discord_id": user.discord_id,
-                    "rank": user.rank,
-                    "money": user.money,
-                    "enlisted": user.enlisted_at is not None
-                }
-                for user in users
-            ]
-            
+            return [_brief(r) for r in res]
     except Exception as e:
         print(f"Error searching users: {e}")
         return []
@@ -175,19 +246,32 @@ async def search_users(query: str) -> List[Dict[str, Any]]:
 async def get_user_stats() -> Dict[str, Any]:
     """Get user statistics."""
     try:
-        db = await get_db_manager()
-        
+        db = await get_shared_db_manager()
         async with db.get_session() as session:
-            total_users = await session.execute(select(func.count(User.id)))
-            enlisted_users = await session.execute(
-                select(func.count(User.id)).where(User.enlisted_at.is_not(None))
-            )
-            
+            rows = (await session.execute(text(_BOT_USER), {"org": ORG})).all()
             return {
-                "total_users": total_users.scalar(),
-                "enlisted_users": enlisted_users.scalar()
+                "total_users": len(rows),
+                "enlisted_users": sum(_is_enlisted(r) for r in rows),
             }
-            
     except Exception as e:
         print(f"Error getting user stats: {e}")
         return {"total_users": 0, "enlisted_users": 0}
+
+
+async def get_user_count_by_rank() -> Dict[int, int]:
+    """Map rank level to the number of bot users holding it."""
+    try:
+        db = await get_shared_db_manager()
+        async with db.get_session() as session:
+            res = await session.execute(
+                text("""SELECT sr.current_rank, count(*) AS n
+                        FROM military.service_records sr
+                        JOIN public.identities_organizations o ON o.id = sr.organization_id AND o.name = :org
+                        WHERE sr.player_identity_id IS NOT NULL
+                        GROUP BY sr.current_rank"""),
+                {"org": ORG},
+            )
+            return {code_to_level(r.current_rank): r.n for r in res if r.current_rank}
+    except Exception as e:
+        print(f"Error getting rank counts: {e}")
+        return {}

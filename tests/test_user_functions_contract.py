@@ -17,7 +17,7 @@ DISCORD_BASE = 900000000000000000
 pytestmark = pytest.mark.asyncio
 
 
-async def test_u1_create_user(local_db):
+async def test_u1_create_user(shared_db):
     s, d = ids(1)
     u = await create_user(name="zz_test_a", steam_id=s, discord_id=d)
     assert {"id", "name", "steam_id", "discord_id", "rank", "enlisted"} <= set(u)
@@ -28,7 +28,7 @@ async def test_u1_create_user(local_db):
     assert u["enlisted"] is False
 
 
-async def test_u2_create_enlisted(local_db):
+async def test_u2_create_enlisted(shared_db):
     s, d = ids(2)
     assert await create_user(name="zz_test_a", steam_id=s, discord_id=d, rank=3, enlisted=True)
     info = await get_user_info(d)
@@ -37,7 +37,7 @@ async def test_u2_create_enlisted(local_db):
     assert info["enlisted_at"] is not None
 
 
-async def test_u3_duplicates(local_db):
+async def test_u3_duplicates(shared_db):
     s, d = ids(3)
     s2, _ = ids(4)
     assert await create_user(name="zz_test_a", steam_id=s, discord_id=d)
@@ -45,7 +45,7 @@ async def test_u3_duplicates(local_db):
     assert await create_user(name="zz_test_a", steam_id=s2, discord_id=d) is None
 
 
-async def test_u4_get_user_info(local_db):
+async def test_u4_get_user_info(shared_db):
     s, d = ids(6)
     assert await create_user(name="zz_test_a", steam_id=s, discord_id=d)
     by_d = await get_user_info(d)
@@ -57,7 +57,7 @@ async def test_u4_get_user_info(local_db):
     assert await get_user_info(str(DISCORD_BASE + 999)) is None
 
 
-async def test_u5_modify_user(local_db):
+async def test_u5_modify_user(shared_db):
     s, d = ids(7)
     assert await create_user(name="zz_test_a", steam_id=s, discord_id=d)
 
@@ -77,7 +77,7 @@ async def test_u5_modify_user(local_db):
     assert await modify_user(str(DISCORD_BASE + 999), name="x") is False
 
 
-async def test_u6_search_users(local_db):
+async def test_u6_search_users(shared_db):
     s, d = ids(8)
     assert await create_user(name="zz_test_alpha", steam_id=s, discord_id=d)
     res = await search_users("ZZ_TEST_AL")
@@ -87,7 +87,7 @@ async def test_u6_search_users(local_db):
         assert {"id", "name", "steam_id", "discord_id", "rank", "enlisted"} <= set(r)
 
 
-async def test_u7_user_stats(local_db):
+async def test_u7_user_stats(shared_db):
     before = await get_user_stats()
     assert {"total_users", "enlisted_users"} <= set(before)
     s1, d1 = ids(9)

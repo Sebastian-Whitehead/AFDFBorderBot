@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 load_dotenv(ROOT / ".env.test")
 
-from tests.helpers import STEAM_BASE, DISCORD_BASE, NAME_PREFIX, cleanup  # noqa: E402,F401
+from tests.helpers import STEAM_BASE, DISCORD_BASE, NAME_PREFIX, cleanup, cleanup_shared  # noqa: E402,F401
 from tests.helpers import ids as _ids  # noqa: E402
 
 
@@ -32,7 +32,9 @@ async def shared_db(monkeypatch):
     monkeypatch.setenv("SUPABASE_DATABASE_URL", url)
     from database.db_manager import close_database
     await close_database()  # never reuse a manager built for another URL
+    await cleanup_shared()
     yield
+    await cleanup_shared()
 
 
 @pytest_asyncio.fixture
