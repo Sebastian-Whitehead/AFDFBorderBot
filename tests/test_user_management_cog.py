@@ -178,3 +178,15 @@ async def test_add_member_accepts_steam_url(env, monkeypatch):
     monkeypatch.setattr(um, "create_user", create)
     await _add(um, cog, i, user, steam=f"https://steamcommunity.com/profiles/{STEAM}")
     assert create.await_args.kwargs["steam_id"] == STEAM
+
+
+async def test_create_service_record_command(env, monkeypatch):
+    um, i, user, cog = env
+    create = AsyncMock(return_value="created")
+    monkeypatch.setattr(um, "create_service_record", create)
+    await um.UserManagement.create_service_record_cmd.callback(cog, i, user, 3)
+    create.assert_awaited_once_with(DISCORD, 3)
+    assert "created" in _sent(i).args[0]
+    create.return_value = "no_identity"
+    await um.UserManagement.create_service_record_cmd.callback(cog, i, user, 3)
+    assert _sent(i).kwargs["ephemeral"] is True

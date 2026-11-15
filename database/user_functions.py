@@ -338,6 +338,39 @@ async def ensure_player_identity(name: str, steam_id: Optional[str], discord_id:
         return False
 
 
+async def create_service_record(discord_id: str, rank: int) -> str:
+    """Create only the service record (no events) for an existing identity:
+    'created', 'already_exists', 'no_identity' or 'error'."""
+    try:
+        discord = int(discord_id)
+        code = level_to_code(rank)
+        db = await get_shared_db_manager()
+        async with db.get_session() as session:
+            pid = (await session.execute(
+                text("SELECT id FROM public.identities_player WHERE discord_id = :d"), {"d": discord}
+            )).scalar_one_or_none()
+            if pid is None:
+                return "no_identity"
+            org = (await session.execute(
+                text("SELECT id FROM public.identities_organizations WHERE name = :org"), {"org": ORG}
+            )).scalar_one()
+            if (await session.execute(
+                text("SELECT 1 FROM military.service_records WHERE player_identity_id = :p AND organization_id = :o"),
+                {"p": pid, "o": org},
+            )).first():
+                return "already_exists"
+            await session.execute(
+                text("""INSERT INTO military.service_records (player_identity_id, organization_id, current_rank, service_status)
+                        VALUES (:p, :o, :r, 'active')"""),
+                {"p": pid, "o": org, "r": code},
+            )
+            await session.commit()
+            return "created"
+    except Exception as e:
+        print(f"Error creating service record: {e}")
+        return "error"
+
+
 async def set_steam_id(discord_id: str, steam_id: str) -> str:
     """Attach a Steam ID to an existing identity: 'updated', 'already_set', 'no_identity',
     'different_steam' (identity already has another), 'steam_in_use' (another identity has it) or 'error'."""

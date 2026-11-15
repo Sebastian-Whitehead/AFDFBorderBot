@@ -116,3 +116,16 @@ async def test_set_steam_id_outcomes(shared_db):
     assert await ensure_player_identity("zz_test_ss2", None, d3)
     assert await set_steam_id(d3, s) == "steam_in_use"
     assert await set_steam_id("abc", s) == "error"
+
+
+async def test_create_service_record_only(shared_db):
+    from database import create_service_record
+    s, d = ids(75)
+    assert await create_service_record(d, 2) == "no_identity"
+    assert await ensure_player_identity("zz_test_sr", s, d)
+    assert await create_service_record(d, 2) == "created"
+    assert await _records(s) == 1 and await _events(s) == 0  # record only, no enlisted event
+    assert await create_service_record(d, 2) == "already_exists"
+    assert await create_service_record("abc", 2) == "error"
+    assert await enlist_member(d) == "enlisted"  # enlisting an existing record just adds the event
+    assert await _records(s) == 1 and await _events(s) == 1

@@ -11,7 +11,7 @@ from nextcord import SlashOption
 from typing import Optional
 import logging
 
-from database import create_user, get_user_info, modify_user, get_user_count_by_rank, set_steam_id
+from database import create_user, get_user_info, modify_user, get_user_count_by_rank, set_steam_id, create_service_record
 from ..utils import RankManager
 from ..utils.steam import parse_steam_id
 from ..config import TESTING_GUILD_ID as GUILD_ID
@@ -107,6 +107,31 @@ class UserManagement(commands.Cog):
                 f"❌ Failed to add member: {str(e)}", 
                 ephemeral=True
             )
+
+    @nextcord.slash_command(
+        name="create_service_record",
+        description="Create a service record for an existing player",
+        guild_ids=[GUILD_ID] if GUILD_ID else None
+    )
+    async def create_service_record_cmd(
+        self,
+        interaction: nextcord.Interaction,
+        user: nextcord.User = SlashOption(description="Player to create the record for"),
+        rank: int = SlashOption(description="Starting rank (0-10)", min_value=0, max_value=10)
+    ):
+        """Create just the service record (no enlistment event, no Discord role changes)."""
+        if self.rank_manager.get_rank_by_level(rank) is None:
+            await interaction.response.send_message(f"❌ Invalid rank level: {rank}.", ephemeral=True)
+            return
+        result = await create_service_record(str(user.id), rank)
+        info = self.rank_manager.get_rank_by_level(rank)
+        messages = {
+            "created": f"✅ Service record created for {user.mention} at {info['name']} ({info['code']}).",
+            "already_exists": f"❌ {user.mention} already has a service record.",
+            "no_identity": f"❌ {user.mention} has no player record yet. Approve them (or /add_member) first.",
+            "error": "❌ Database error, nothing changed.",
+        }
+        await interaction.response.send_message(messages[result], ephemeral=result != "created")
 
     @nextcord.slash_command(
         name="add_steam",
