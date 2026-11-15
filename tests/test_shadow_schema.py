@@ -17,6 +17,8 @@ async def conn():
     url = os.getenv("TEST_SHARED_DATABASE_URL")
     if not url:
         pytest.skip("TEST_SHARED_DATABASE_URL not set")
+    from tests.conftest import require_reachable
+    require_reachable(url)
     engine = create_async_engine(url)
     try:
         async with engine.connect() as c:

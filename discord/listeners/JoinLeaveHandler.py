@@ -1,9 +1,14 @@
+import logging
+
 import nextcord
 from nextcord.ext import commands
 from nextcord import Member, Interaction, SlashOption
 
 from ..config import JOIN_ROLE_ID, WELCOME_CHANNEL_ID, get_setting, update_setting, LEADERSHIP_ROLE_ID, TESTING_GUILD_ID
 from ..utils import send_processed_embed
+
+logger = logging.getLogger(__name__)
+
 
 class JoinLeaveHandler(commands.Cog):
     def __init__(self, bot):
@@ -19,7 +24,10 @@ class JoinLeaveHandler(commands.Cog):
         if JOIN_ROLE_ID:
             role_to_add = member.guild.get_role(JOIN_ROLE_ID)
             if role_to_add:
-                await member.add_roles(role_to_add)
+                try:
+                    await member.add_roles(role_to_add)
+                except nextcord.HTTPException as e:  # e.g. Forbidden: bot role below the join role
+                    logger.error(f"Could not give join role to {member.id}: {e}")
         
         # Send welcome embed
         if WELCOME_CHANNEL_ID:
