@@ -18,8 +18,13 @@ class LOA(commands.Cog):
     async def loa_command(
         self,
         interaction: Interaction,
+        start_date: str = SlashOption(
+            description="First day of your LOA, or the only day if no end date is given (YYYY-MM-DD or MM/DD/YYYY)"
+        ),
         end_date: str = SlashOption(
-            description="End date of your LOA (format: YYYY-MM-DD or MM/DD/YYYY)"
+            description="Last day of your LOA (optional; leave empty for a single-day LOA)",
+            required=False,
+            default=None
         ),
         reason: str = SlashOption(
             description="Reason for your Leave of Absence (optional)",
@@ -38,16 +43,26 @@ class LOA(commands.Cog):
             return
         
         try:
+            # One date means a single-day LOA
+            end_date = end_date or start_date
             # Validate that the end date is not in the past
             try:
+                parsed_start_date = await LOAManager.parse_end_date(start_date)
                 parsed_end_date = await LOAManager.parse_end_date(end_date)
-                if parsed_end_date is None:
+                if parsed_start_date is None or parsed_end_date is None:
                     await interaction.response.send_message(
                         "❌ Invalid date format. Please use YYYY-MM-DD or MM/DD/YYYY format.", 
                         ephemeral=True
                     )
                     return
                 
+                if parsed_end_date < parsed_start_date:
+                    await interaction.response.send_message(
+                        "❌ End date cannot be before the start date.",
+                        ephemeral=True
+                    )
+                    return
+
                 today = datetime.now().date()
                 if parsed_end_date < today:
                     await interaction.response.send_message(
@@ -69,7 +84,7 @@ class LOA(commands.Cog):
             username = interaction.user.display_name
             
             is_update, action_text = await LOAManager.create_or_update_loa(
-                discord_id, username, end_date, reason
+                discord_id, username, end_date, reason, start_date=start_date
             )
             
             # If updating and no reason provided, get the current reason for the embed
@@ -86,7 +101,9 @@ class LOA(commands.Cog):
                 '{Username}': interaction.user.display_name,
                 '{userid}': str(interaction.user.id),
                 '{usertag}': str(interaction.user),
-                '{end_date}': end_date,
+                '{end_date}': str(parsed_end_date),
+                '{period}': (f"on {parsed_start_date}" if parsed_start_date == parsed_end_date
+                             else f"from {parsed_start_date} until {parsed_end_date}"),
                 '{reason}': display_reason if display_reason else "No reason provided",
                 '{submitted_date}': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             }

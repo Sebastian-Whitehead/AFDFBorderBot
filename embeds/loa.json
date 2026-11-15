@@ -5,7 +5,7 @@
     {
       "id": 652627557,
       "title": "LEAVE OF ABSENCE NOTIFICATION FROM {username}",
-      "description": "*Submitted LOA lasts until: {end_date}.*\n",
+      "description": "*Submitted LOA lasts {period}.*\n",
       "color": 10289176,
       "footer": {
         "text": "-- Logothete of the Military --"

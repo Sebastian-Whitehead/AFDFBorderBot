@@ -51,11 +51,15 @@ class LOAManager:
     """LOA database operations manager."""
 
     @staticmethod
-    async def create_or_update_loa(discord_id: str, username: str, end_date: str, reason: Optional[str] = None) -> tuple[bool, str]:
-        """Create a new LOA or update an existing active one."""
+    async def create_or_update_loa(discord_id: str, username: str, end_date: str, reason: Optional[str] = None,
+                                   start_date: Optional[str] = None) -> tuple[bool, str]:
+        """Create a new LOA or update an existing active one. start_date defaults to today (or the end date if that is earlier)."""
         try:
             parsed = await LOAManager.parse_end_date(end_date)
             if parsed is None:
+                return False, "failed"
+            start = await LOAManager.parse_end_date(start_date) if start_date else None
+            if start_date and (start is None or start > parsed):
                 return False, "failed"
             db = await get_shared_db_manager()
 
@@ -69,18 +73,18 @@ class LOAManager:
 
                 res = await session.execute(text("""
                     UPDATE military.leave_requests
-                       SET end_date = :e, reason = COALESCE(:r, reason),
-                           submitted_by = :u, updated_at = now()
+                       SET end_date = :e, start_date = COALESCE(:s, LEAST(start_date, :e)),
+                           reason = COALESCE(:r, reason), submitted_by = :u, updated_at = now()
                      WHERE service_record_id = :sr AND status = 'active'
-                """), {"e": parsed, "r": reason, "u": username, "sr": sr_id})
+                """), {"e": parsed, "s": start, "r": reason, "u": username, "sr": sr_id})
                 if res.rowcount:
                     await session.commit()
                     return True, "updated"
 
                 await session.execute(text("""
                     INSERT INTO military.leave_requests (service_record_id, start_date, end_date, reason, submitted_by)
-                    VALUES (:sr, LEAST(current_date, CAST(:e AS date)), :e, :r, :u)
-                """), {"sr": sr_id, "e": parsed, "r": reason, "u": username})
+                    VALUES (:sr, COALESCE(:s, LEAST(current_date, CAST(:e AS date))), :e, :r, :u)
+                """), {"sr": sr_id, "s": start, "e": parsed, "r": reason, "u": username})
                 await session.commit()
                 return False, "submitted"
 
