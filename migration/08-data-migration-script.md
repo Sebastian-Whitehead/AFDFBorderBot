@@ -23,7 +23,7 @@ python migration/migrate_to_supabase.py --source-url <local asyncpg url> --targe
    - Adopted with a **different** non-null discord_id: keep Supabase's, and record a warning `discord conflict`.
    - Another identity already holds the local discord_id: **skip**, reason `discord_id used by identity <id>`.
 4. `created_at = LEAST(created_at, :joined_at)`.
-5. If there is no AFDF - Para Raiders `service_records` row, insert one with `current_rank = level_to_code(rank)` and `service_status 'active'`. If one exists, leave it alone and count `record already existed`.
+5. If there is no AFDF-Para Raiders `service_records` row, insert one with `current_rank = level_to_code(rank)` and `service_status 'active'`. If one exists, leave it alone and count `record already existed`.
 6. If `enlisted_at` is set and no enlisted or reenlisted event exists for the record, insert an `enlisted` event with `occured_at = enlisted_at` and `rank = code`.
 7. Merge the non-null local `notes`, `achievements` (as a JSON array), `deaths`, `last_death` (ISO string), `reprimands` and `extra_data` into `details`, following D2. Existing keys in `details` win; never overwrite Supabase data.
 8. Local `money` is **not migrated**. The bot does not touch money, and the script never touches `economy.*`.

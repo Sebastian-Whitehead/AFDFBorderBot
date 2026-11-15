@@ -14,7 +14,7 @@ If the user picks a non-default answer, update the affected steps before moving 
 |---|---|---|---|
 | D1 | Ranks `UO` (level 9) and `PRES` (level 10) are not allowed by Supabase's rank CHECK constraints. Add them to the constraints, or map them to existing codes (for example `OF1` / `OF11`)? | Add `UO` and `PRES` to both constraints | 02, 04 |
 | D2 | Where do `notes`, `achievements`, `deaths`, `last_death` and `reprimands` go? | `identities_player.details` JSONB under top-level keys with those names. All 3 current players have `details = NULL`, so nothing collides. | 04, 08 |
-| D3 | Meaning of "enlisted": every bot-created user gets a `military.service_records` row in org `AFDF - Para Raiders` with `service_status='active'`. `enlisted` is True when the newest event of type enlisted, reenlisted or discharged is enlisted or reenlisted. `enlisted_at` is that event's `occured_at`. OK? | Yes | 04, 08 |
+| D3 | Meaning of "enlisted": every bot-created user gets a `military.service_records` row in org `AFDF-Para Raiders` with `service_status='active'`. `enlisted` is True when the newest event of type enlisted, reenlisted or discharged is enlisted or reenlisted. `enlisted_at` is that event's `occured_at`. OK? | Yes | 04, 08 |
 | D4 | Test target for Supabase-shaped tests: a local "shadow" Postgres 17 built from a schema-only dump of production (free and isolated), or a paid Supabase branch? | Shadow DB | 02+ |
 
 ## Answers
@@ -25,7 +25,7 @@ All defaults accepted (no other steps changed).
 |---|---|
 | D1 | Add `UO` and `PRES` to both rank CHECK constraints |
 | D2 | `identities_player.details` JSONB, top-level keys `notes`, `achievements`, `deaths`, `last_death`, `reprimands` |
-| D3 | Yes: `AFDF - Para Raiders` service record, `enlisted` from newest enlisted/reenlisted/discharged event |
+| D3 | Yes: `AFDF-Para Raiders` service record, `enlisted` from newest enlisted/reenlisted/discharged event |
 | D4 | Local shadow Postgres 17 from a schema-only dump |
 
 ## Tests

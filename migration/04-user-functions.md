@@ -10,7 +10,7 @@
 
 ## Data model (decisions D2–D3)
 
-A **bot user** is a `public.identities_player` row that has a `military.service_records` row in organization `AFDF - Para Raiders`.
+A **bot user** is a `public.identities_player` row that has a `military.service_records` row in organization `AFDF-Para Raiders`.
 
 | Old `users` field | New source |
 |---|---|
@@ -23,7 +23,7 @@ A **bot user** is a `public.identities_player` row that has a `military.service_
 | `notes`, `achievements`, `deaths`, `last_death`, `reprimands`, `extra_data` | keys of `identities_player.details` (D2). `deaths` defaults to `0` and the others to `None` when missing. `last_death` is stored as an ISO date string and returned as `datetime.date`. |
 | `money` | **dropped** |
 
-Look up the AFDF - Para Raiders org id once per call: `SELECT id FROM public.identities_organizations WHERE name = 'AFDF - Para Raiders'`.
+Look up the AFDF-Para Raiders org id once per call: `SELECT id FROM public.identities_organizations WHERE name = 'AFDF-Para Raiders'`.
 
 ## New file: `database/rank_codes.py`
 
@@ -55,11 +55,11 @@ def code_to_level(code: str) -> int:
 
 **`create_user(name, steam_id, discord_id=None, rank=0, notes=None, enlisted=False)`**
 1. Validate that `steam_id` (and `discord_id` if given) are numeric and that `rank` is a known level. Otherwise return `None`.
-2. If an identity with this steam_id **already has an AFDF - Para Raiders service record**, return `None`. If another identity holds this discord_id, return `None`.
+2. If an identity with this steam_id **already has an AFDF-Para Raiders service record**, return `None`. If another identity holds this discord_id, return `None`.
 3. `SELECT public.fab_ensure_player_account(:name, :steam, :discord)`. It creates the identity or returns the existing one; ignore its JSON result.
    - If the identity existed without a discord_id and one was given, set it.
    - If it existed with a different, non-null discord_id, return `None` and roll back.
-4. Insert into `military.service_records` (`player_identity_id`, `organization_id=AFDF - Para Raiders`, `current_rank=level_to_code(rank)`, `service_status='active'`). If `enlisted`, add a `service_events` row (`event_type='enlisted'`, `rank=code`, `occured_at=now()`).
+4. Insert into `military.service_records` (`player_identity_id`, `organization_id=AFDF-Para Raiders`, `current_rank=level_to_code(rank)`, `service_status='active'`). If `enlisted`, add a `service_events` row (`event_type='enlisted'`, `rank=code`, `occured_at=now()`).
 5. If `notes`, merge `{"notes": notes}` into `details` (`coalesce(details,'{}'::jsonb) || jsonb_build_object(...)`).
 6. Return the same dict shape as today, without `money`.
 
@@ -74,7 +74,7 @@ def code_to_level(code: str) -> int:
 
 **`search_users(query)`**: `alias ILIKE '%' || :q || '%'` among bot users, `LIMIT 20`, with the same keys as today minus `money`.
 
-**`get_user_stats()`**: `total_users` = number of AFDF - Para Raiders service records. `enlisted_users` = how many of those are enlisted per D3.
+**`get_user_stats()`**: `total_users` = number of AFDF-Para Raiders service records. `enlisted_users` = how many of those are enlisted per D3.
 
 ### New function (needed by step 06; export it from `database/__init__.py`)
 - `get_user_count_by_rank() -> dict[int, int]` maps rank level to the count of bot users.

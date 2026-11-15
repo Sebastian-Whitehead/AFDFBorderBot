@@ -25,7 +25,7 @@ Show the user `migration/sql/001_bot_tables.sql`. After approval, apply it with 
 
 Then run read-only checks:
 - `to_regclass('military.leave_requests')` is not null.
-- There is exactly one `AFDF - Para Raiders` org.
+- There is exactly one `AFDF-Para Raiders` org.
 - `get_advisors` (security) shows no new errors for `leave_requests`.
 
 ## 3. Stop the bot
