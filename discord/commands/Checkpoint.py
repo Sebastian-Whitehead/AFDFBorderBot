@@ -7,6 +7,7 @@ from nextcord.ext import commands
 from nextcord import Interaction, Member, NotFound, SlashOption, slash_command
 
 from database import ensure_player_identity
+from ..utils.steam import parse_steam_id
 from ..config import TESTING_GUILD_ID, JOIN_ROLE_ID, BORDER_OFFICER_ROLE_ID, CITIZEN_ROLE_IDS, MAIN_CHANNEL_ID
 
 
@@ -17,7 +18,7 @@ class Checkpoint(commands.Cog):
     @slash_command(description="Let them through the border", guild_ids=[TESTING_GUILD_ID] if TESTING_GUILD_ID else None)
     @commands.has_role(BORDER_OFFICER_ROLE_ID)
     async def approve(self, ctx: Interaction, user: Member,
-                      steam_id: Optional[str] = SlashOption(description="Player's Steam ID (SteamID64), optional", required=False, default=None)):
+                      steam_id: Optional[str] = SlashOption(description="SteamID64 or steamcommunity.com/profiles/<id> URL (optional)", required=False, default=None)):
         # Check if required roles/channels are configured
         if not JOIN_ROLE_ID or not CITIZEN_ROLE_IDS or not MAIN_CHANNEL_ID:
             await ctx.response.send_message("❌ Bot configuration error - missing required roles or channels!", ephemeral=True)
@@ -27,9 +28,11 @@ class Checkpoint(commands.Cog):
             await ctx.response.send_message("❌ Bot configuration error - not enough citizen roles configured!", ephemeral=True)
             return
 
-        if steam_id and not steam_id.isdigit():
-            await ctx.response.send_message("❌ Steam ID must be numeric (SteamID64).", ephemeral=True)
-            return
+        if steam_id:
+            steam_id = parse_steam_id(steam_id)
+            if steam_id is None:
+                await ctx.response.send_message("❌ Steam ID must be numeric (SteamID64) or a steamcommunity.com/profiles/<id> link.", ephemeral=True)
+                return
 
         if not await ensure_player_identity(name=user.global_name or user.name, steam_id=steam_id, discord_id=str(user.id)):
             await ctx.response.send_message("❌ Could not save the player in the database (Steam or Discord ID already linked to someone else).", ephemeral=True)

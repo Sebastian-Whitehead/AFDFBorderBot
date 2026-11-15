@@ -148,13 +148,14 @@ async def test_g11_flow_shared_db(shared_db, env):
 
 
 def test_add_steam_parse():
-    from discord.commands.UserManagement import parse_steam_id
+    from discord.utils.steam import parse_steam_id
     s = "76561198150696236"
     assert parse_steam_id(s) == s
     assert parse_steam_id(f"https://steamcommunity.com/profiles/{s}/") == s
     assert parse_steam_id(f"steamcommunity.com/profiles/{s}") == s
     assert parse_steam_id("https://steamcommunity.com/id/someone") is None
     assert parse_steam_id("abc") is None
+    assert parse_steam_id("12345") == "12345"  # bare numeric passes through as before
 
 
 async def test_add_steam_command(env, monkeypatch):
@@ -168,3 +169,12 @@ async def test_add_steam_command(env, monkeypatch):
     await um.UserManagement.add_steam.callback(cog, i, user, "https://steamcommunity.com/id/vanity")
     called.assert_not_awaited()
     assert _sent(i).kwargs["ephemeral"] is True
+
+
+async def test_add_member_accepts_steam_url(env, monkeypatch):
+    um, i, user, cog = env
+    create = AsyncMock(return_value={"name": "zz_test_bob", "steam_id": STEAM, "discord_id": DISCORD, "rank": 0})
+    monkeypatch.setattr(um, "get_user_info", AsyncMock(return_value=None))
+    monkeypatch.setattr(um, "create_user", create)
+    await _add(um, cog, i, user, steam=f"https://steamcommunity.com/profiles/{STEAM}")
+    assert create.await_args.kwargs["steam_id"] == STEAM

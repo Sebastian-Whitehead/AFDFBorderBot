@@ -103,3 +103,12 @@ async def test_e2_enlist_failure_aborts(enlistment, monkeypatch, result):
     await m.Enlistment.enlist.callback(cog, i, user)
     user.add_roles.assert_not_awaited()
     assert _ephemeral_sent(i)
+
+
+async def test_c_approve_url_converted_before_db(checkpoint, monkeypatch):
+    m, cog = checkpoint
+    i, user, _ = _setup(monkeypatch, m)
+    ensure = AsyncMock(return_value=True)
+    monkeypatch.setattr(m, "ensure_player_identity", ensure)
+    await _approve(m, cog, i, user, f"https://steamcommunity.com/profiles/{STEAM}")
+    assert ensure.await_args.kwargs["steam_id"] == STEAM

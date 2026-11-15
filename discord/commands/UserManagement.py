@@ -10,20 +10,13 @@ from nextcord.ext import commands
 from nextcord import SlashOption
 from typing import Optional
 import logging
-import re
 
 from database import create_user, get_user_info, modify_user, get_user_count_by_rank, set_steam_id
 from ..utils import RankManager
+from ..utils.steam import parse_steam_id
 from ..config import TESTING_GUILD_ID as GUILD_ID
 
 logger = logging.getLogger(__name__)
-
-
-def parse_steam_id(text: str) -> Optional[str]:
-    """SteamID64 from a steamcommunity.com/profiles/<id> URL or a bare 17-digit ID.
-    shortcut: /id/<vanity> URLs need the Steam Web API to resolve, so they return None."""
-    m = re.fullmatch(r"(?:https?://)?(?:www\.)?steamcommunity\.com/profiles/(\d{17})/?(?:\?.*)?|(\d{17})", text.strip())
-    return (m.group(1) or m.group(2)) if m else None
 
 
 class UserManagement(commands.Cog):
@@ -42,7 +35,7 @@ class UserManagement(commands.Cog):
         self,
         interaction: nextcord.Interaction,
         name: str = SlashOption(description="Member's name"),
-        steam_id: str = SlashOption(description="Member's Steam ID"),
+        steam_id: str = SlashOption(description="Member's SteamID64 or steamcommunity.com/profiles/<id> URL"),
         discord_user: Optional[nextcord.User] = SlashOption(description="Discord user (optional)", required=False),
         rank: int = SlashOption(description="Starting rank (0-10)", default=0, min_value=0, max_value=10),
         notes: Optional[str] = SlashOption(description="Additional notes", required=False)
@@ -57,9 +50,10 @@ class UserManagement(commands.Cog):
                 )
                 return
 
-            if not steam_id.isdigit():
+            steam_id = parse_steam_id(steam_id)
+            if steam_id is None:
                 await interaction.response.send_message(
-                    "❌ Steam ID must be numeric (SteamID64).",
+                    "❌ Steam ID must be numeric (SteamID64) or a steamcommunity.com/profiles/<id> link.",
                     ephemeral=True
                 )
                 return
