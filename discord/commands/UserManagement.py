@@ -11,7 +11,7 @@ from nextcord import SlashOption
 from typing import Optional
 import logging
 
-from database import create_user, get_user_info, modify_user, get_user_count_by_rank, set_steam_id, create_service_record
+from database import create_user, get_user_info, modify_user, set_steam_id, create_service_record
 from ..utils import RankManager
 from ..utils.steam import parse_steam_id
 from ..config import TESTING_GUILD_ID as GUILD_ID
@@ -393,47 +393,6 @@ class UserManagement(commands.Cog):
             logger.error(f"Error viewing profile: {e}")
             await interaction.response.send_message(
                 f"❌ Failed to load profile: {str(e)}", 
-                ephemeral=True
-            )
-
-    @nextcord.slash_command(
-        name="leaderboard",
-        description="Show member rank distribution",
-        guild_ids=[GUILD_ID] if GUILD_ID else None
-    )
-    async def leaderboard(
-        self,
-        interaction: nextcord.Interaction,
-        category: str = SlashOption(
-            description="Leaderboard category",
-            choices=["rank"],
-            default="rank"
-        ),
-        limit: int = SlashOption(description="Number of members to show", default=10, min_value=1, max_value=25)
-    ):
-        """Show leaderboard of top members."""
-        try:
-            if category == "rank":
-                rank_counts = await get_user_count_by_rank()
-                embed = nextcord.Embed(
-                    title="🎖️ Rank Distribution",
-                    color=0x4169e1
-                )
-                
-                rank_text = ""
-                for rank in sorted(rank_counts.keys(), reverse=True):
-                    rank_info = self.rank_manager.get_rank_by_level(rank)
-                    count = rank_counts[rank]
-                    rank_text += f"**{rank_info['name']}** ({rank_info['code']}) - {count} member{'s' if count != 1 else ''}\n"
-                
-                embed.description = rank_text or "No ranks found."
-            
-            await interaction.response.send_message(embed=embed)
-            
-        except Exception as e:
-            logger.error(f"Error showing leaderboard: {e}")
-            await interaction.response.send_message(
-                f"❌ Failed to load leaderboard: {str(e)}", 
                 ephemeral=True
             )
 

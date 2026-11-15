@@ -123,15 +123,6 @@ async def test_g9_profile(env, monkeypatch):
     assert "Money" not in [f.name for f in embed.fields]
 
 
-async def test_g10_leaderboard_rank(env, monkeypatch):
-    um, i, user, cog = env
-    monkeypatch.setattr(um, "get_user_count_by_rank", AsyncMock(return_value={0: 1, 3: 2}))
-    await um.UserManagement.leaderboard.callback(cog, i, "rank", 10)
-    ranks = json.loads((Path(um.__file__).parents[2] / "ids.json").read_text())["roles"]["ranks"]
-    desc = _sent(i).kwargs["embed"].description
-    assert ranks["0"]["name"] in desc and ranks["3"]["name"] in desc
-
-
 async def test_g11_flow_shared_db(shared_db, env):
     from database.user_functions import get_user_info
     from tests.helpers import ids
