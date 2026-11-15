@@ -19,16 +19,16 @@ if "%1"=="l" goto logs
 :help
 echo AFDF Border Bot Quick Control
 echo.
-echo Usage: ./app [command] [profile]
+echo Usage: app [command] [profile]
 echo.
 echo Commands:
-echo   start [profile]   - Start services (database/bot/all)
+echo   start [profile]   - Start services (database/bot/all; default all)
 echo   stop [service]    - Stop services (all/bot/database)
 echo   restart [profile] - Restart services  
 echo   rebuild [service] - Rebuild and restart services (all/bot)
 echo   logs [service]    - View logs (all/bot/postgres/pgadmin)
 echo   status           - Show running containers
-echo   clean            - Stop everything and remove volumes (WARNING: deletes data!)
+echo   clean            - Stop everything and remove this project's volumes (WARNING: deletes data!)
 echo   help             - Show this help
 echo.
 echo Short aliases:
@@ -38,36 +38,32 @@ echo   ps               - Same as status
 echo   l [service]      - Same as logs
 echo.
 echo Examples:
-echo   ./app start database    - Start database services
-echo   ./app start bot         - Start bot services  
-echo   ./app start all         - Start all services
-echo   ./app stop              - Stop everything (keeps data)
-echo   ./app stop bot          - Stop only bot
-echo   ./app rebuild bot       - Rebuild and restart bot with latest code
-echo   ./app rebuild all       - Rebuild all services
-echo   ./app clean             - Stop and remove ALL data (WARNING!)
+echo   app start database    - Start database services
+echo   app start bot         - Start bot services  
+echo   app start all         - Start all services
+echo   app stop              - Stop everything (keeps data)
+echo   app stop bot          - Stop only bot
+echo   app rebuild bot       - Rebuild and restart bot with latest code
+echo   app rebuild all       - Rebuild all services
+echo   app clean             - Stop and remove ALL data (WARNING!)
 echo.
 echo Short examples:
-echo   ./app up all            - Start all services
-echo   ./app down              - Stop everything  
-echo   ./app ps                - Show status
-echo   ./app l bot             - View bot logs
+echo   app up all            - Start all services
+echo   app down              - Stop everything  
+echo   app ps                - Show status
+echo   app l bot             - View bot logs
 goto end
 
 :start
-echo Ensuring clean state before start...
-docker-compose down --remove-orphans 2>nul
-timeout /t 2 /nobreak >nul
-
 if "%2"=="" (
     echo Starting all services...
-    docker-compose --profile full up -d
+    docker-compose --profile full up -d --remove-orphans
 ) else if "%2"=="all" (
     echo Starting all services...
-    docker-compose --profile full up -d
+    docker-compose --profile full up -d --remove-orphans
 ) else (
     echo Starting %2 profile...
-    docker-compose --profile %2 up -d
+    docker-compose --profile %2 up -d --remove-orphans
 )
 goto end
 
@@ -79,18 +75,8 @@ if "%2"=="database" goto stop_database
 goto stop_all
 
 :stop_all
-echo Stopping all services (keeping volumes for data persistence)...
-echo Trying docker-compose down...
-docker-compose down --remove-orphans --volumes=false
-echo Waiting for containers to fully stop...
-timeout /t 3 /nobreak >nul
-echo Checking for any remaining containers...
-for /f "tokens=1" %%i in ('docker ps -q --filter "name=afdfborderbot" 2^>nul') do (
-    echo Found remaining container %%i, stopping...
-    docker stop %%i
-)
-echo Cleaning up any stopped containers...
-docker container prune -f 2>nul
+echo Stopping all services (volumes are kept)...
+docker-compose --profile full down --remove-orphans
 echo All services stopped (volumes preserved).
 goto end
 
@@ -123,11 +109,11 @@ goto rebuild_all
 :rebuild_all
 echo Rebuilding all services with latest code...
 echo Step 1: Stopping services...
-docker-compose down --remove-orphans
+docker-compose --profile full down --remove-orphans
 echo Step 2: Rebuilding images with no cache...
 docker-compose build --no-cache
 echo Step 3: Starting all services...
-docker-compose --profile full up -d
+docker-compose --profile full up -d --remove-orphans
 echo All services rebuilt and started!
 goto end
 
@@ -165,10 +151,7 @@ echo WARNING: This will delete all data including database!
 set /p confirm="Are you sure? Type 'yes' to continue: "
 if /i "%confirm%"=="yes" (
     echo Stopping all services and removing volumes...
-    docker-compose down --remove-orphans --volumes
-    echo Cleaning up containers and volumes...
-    docker container prune -f 2>nul
-    docker volume prune -f 2>nul
+    docker-compose --profile full down --remove-orphans --volumes
     echo Everything cleaned and data deleted.
 ) else (
     echo Cancelled. No data was deleted.
