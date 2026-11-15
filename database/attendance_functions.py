@@ -12,41 +12,6 @@ logger = logging.getLogger(__name__)
 ORG = "AFDF-Para Raiders"
 
 
-async def get_open_session() -> Optional[Dict[str, Any]]:
-    """Open session (end_at is null) with the latest start_at, or None (also on error)."""
-    try:
-        db = await get_shared_db_manager()
-        async with db.get_session() as session:
-            row = (await session.execute(text(
-                "SELECT id, session_name FROM military.sessions WHERE end_at IS NULL ORDER BY start_at DESC LIMIT 1"
-            ))).mappings().first()
-            return dict(row) if row else None
-    except Exception as e:
-        logger.error(f"Error getting open session: {e}")
-        return None
-
-
-PAGE_SIZE = 10
-
-
-async def list_sessions(timeline: str, page: int) -> Optional[tuple]:
-    """One page of sessions for a timeline (case-insensitive), newest start first.
-    Returns (rows, total_count), or None on error."""
-    try:
-        db = await get_shared_db_manager()
-        async with db.get_session() as session:
-            total = (await session.execute(text(
-                "SELECT count(*) FROM military.sessions WHERE lower(timeline) = lower(:t)"), {"t": timeline})).scalar_one()
-            rows = (await session.execute(text("""
-                SELECT id, timeline, session_name, operation, start_at, end_at FROM military.sessions
-                WHERE lower(timeline) = lower(:t) ORDER BY start_at DESC, id DESC LIMIT :n OFFSET :o"""),
-                {"t": timeline, "n": PAGE_SIZE, "o": (page - 1) * PAGE_SIZE})).mappings().all()
-            return [dict(r) for r in rows], total
-    except Exception as e:
-        logger.error(f"Error listing sessions: {e}")
-        return None
-
-
 async def load_session_attendance(session_id: int) -> Optional[tuple]:
     """(session or None, saved attendance rows [{discord_id, status, notes}]) for a session, or None on error.
     Rows for players without a Discord id are left out."""
@@ -67,37 +32,6 @@ async def load_session_attendance(session_id: int) -> Optional[tuple]:
     except Exception as e:
         logger.error(f"Error loading session attendance: {e}")
         return None
-
-
-_EDITABLE = {"session_name", "operation", "description", "timeline", "start_at", "end_at"}
-
-
-async def update_session(session_id: int, **changes) -> tuple:
-    """Change the given columns (None values are ignored) and bump updated_at.
-    Returns (status, row): 'updated', 'no_changes', 'not_found', 'bad_dates' (end before start) or 'error'."""
-    changes = {k: v for k, v in changes.items() if v is not None}
-    assert set(changes) <= _EDITABLE, "unknown session column"  # keys go into the SQL, so only whitelisted names
-    try:
-        db = await get_shared_db_manager()
-        async with db.get_session() as session:
-            cur = (await session.execute(text(
-                "SELECT id, session_name, operation, description, timeline, start_at, end_at "
-                "FROM military.sessions WHERE id = :i FOR UPDATE"), {"i": session_id})).mappings().first()
-            if cur is None:
-                return "not_found", None
-            new = {**cur, **changes}
-            if new["end_at"] is not None and new["end_at"] < new["start_at"]:
-                return "bad_dates", dict(cur)
-            if not changes:
-                return "no_changes", dict(cur)
-            sets = ", ".join(f"{k} = :{k}" for k in changes)
-            await session.execute(text(f"UPDATE military.sessions SET {sets}, updated_at = now() WHERE id = :i"),
-                                  {**changes, "i": session_id})
-            await session.commit()
-            return "updated", new
-    except Exception as e:
-        logger.error(f"Error updating session: {e}")
-        return "error", None
 
 
 async def find_unaccounted(discord_ids: List[str]) -> Optional[List[str]]:

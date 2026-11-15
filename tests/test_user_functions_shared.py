@@ -60,7 +60,7 @@ async def test_u12_no_money_access(shared_db):
 
 
 async def test_create_session_row(shared_db):
-    from database.user_functions import create_session
+    from database.session_functions import create_session
     new_id = await create_session("zz_test_session", description="d", external_event_id="zz-ev-1")
     assert new_id is not None
     db = await get_shared_db_manager()
@@ -68,7 +68,7 @@ async def test_create_session_row(shared_db):
     assert rows[0]["session_name"] == "zz_test_session" and rows[0]["external_event_id"] == "zz-ev-1"
     assert rows[0]["timeline"] == "A"
     assert (await create_session("zz_test_null"))is not None
-    from database.user_functions import end_latest_session
+    from database.session_functions import end_latest_session
     import datetime
     early = datetime.datetime(2000, 1, 1, tzinfo=datetime.timezone.utc)
     await db.execute_raw_query("UPDATE military.sessions SET end_at = now() WHERE end_at IS NULL AND session_name NOT LIKE 'zz_test_%'")
@@ -84,8 +84,9 @@ async def test_create_session_row(shared_db):
 
 
 async def test_attendance_roundtrip(shared_db):
-    from database.attendance_functions import find_unaccounted, submit_attendance, get_open_session
-    from database.user_functions import create_session, create_service_record, ensure_player_identity
+    from database.attendance_functions import find_unaccounted, submit_attendance
+    from database.session_functions import get_open_session
+    from database.session_functions import create_session
     s1, d1 = ids(30)
     s2, d2 = ids(31)
     for s, d in ((s1, d1), (s2, d2)):
@@ -109,8 +110,8 @@ async def test_attendance_roundtrip(shared_db):
 
 async def test_list_sessions_paging(shared_db):
     import datetime
-    from database.attendance_functions import list_sessions
-    from database.user_functions import create_session
+    from database.session_functions import list_sessions
+    from database.session_functions import create_session
     db = await get_shared_db_manager()
     await db.execute_raw_query("DELETE FROM military.sessions WHERE timeline = 'zz_test_tl'")
     for n in range(12):
@@ -126,7 +127,7 @@ async def test_list_sessions_paging(shared_db):
 
 async def test_load_session_attendance(shared_db):
     from database.attendance_functions import load_session_attendance, submit_attendance
-    from database.user_functions import create_session
+    from database.session_functions import create_session
     s, d = ids(32)
     assert await create_user("zz_test_ls", s, d, rank="EN0")
     sid = await create_session("zz_test_ls")
@@ -141,8 +142,8 @@ async def test_load_session_attendance(shared_db):
 
 async def test_update_session(shared_db):
     import datetime
-    from database.attendance_functions import update_session
-    from database.user_functions import create_session
+    from database.session_functions import update_session
+    from database.session_functions import create_session
     db = await get_shared_db_manager()
     t = datetime.datetime(2999, 1, 1, tzinfo=datetime.timezone.utc)
     sid = await create_session("zz_test_upd", start_at=t)

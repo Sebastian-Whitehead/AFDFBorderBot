@@ -7,7 +7,8 @@ import nextcord
 from nextcord import Interaction, SlashOption, slash_command
 from nextcord.ext import commands
 
-from database.attendance_functions import get_open_session, find_unaccounted, submit_attendance, load_session_attendance
+from database.attendance_functions import find_unaccounted, submit_attendance, load_session_attendance
+from database.session_functions import get_open_session
 from database.loa_functions import LOAManager
 from ..utils.confirm import confirm
 from ..config import TESTING_GUILD_ID, CIVIL_SERVANT_ROLE_ID

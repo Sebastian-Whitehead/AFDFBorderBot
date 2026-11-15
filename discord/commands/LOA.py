@@ -123,7 +123,7 @@ class LOA(commands.Cog):
                 ephemeral=True
             )
 
-    @nextcord.slash_command(name="loa-list", description="List all current active LOAs", guild_ids=[TESTING_GUILD_ID] if TESTING_GUILD_ID else None)
+    @nextcord.slash_command(name="loa_list", description="List all current active LOAs", guild_ids=[TESTING_GUILD_ID] if TESTING_GUILD_ID else None)
     async def loa_list_command(self, interaction: Interaction):
         """List all current active Leave of Absence requests."""
         
@@ -221,7 +221,7 @@ class LOA(commands.Cog):
                 ephemeral=True
             )
 
-    @nextcord.slash_command(name="loa-cancel", description="Cancel your active Leave of Absence", guild_ids=[TESTING_GUILD_ID] if TESTING_GUILD_ID else None)
+    @nextcord.slash_command(name="loa_cancel", description="Cancel your active Leave of Absence", guild_ids=[TESTING_GUILD_ID] if TESTING_GUILD_ID else None)
     async def loa_cancel_command(self, interaction: Interaction):
         """Cancel your active Leave of Absence request."""
         

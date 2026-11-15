@@ -336,46 +336,6 @@ async def create_service_record(discord_id: str, rank: str) -> str:
         return "error"
 
 
-async def create_session(name: str, operation: Optional[str] = None, description: Optional[str] = None,
-                         start_at=None, external_event_id: Optional[str] = None, timeline: str = "A") -> Optional[int]:
-    """Insert a military.sessions row (start_at defaults to now). Returns the new id, or None on error."""
-    try:
-        db = await get_shared_db_manager()
-        async with db.get_session() as session:
-            new_id = (await session.execute(
-                text("""INSERT INTO military.sessions (session_name, operation, description, start_at, external_event_id, timeline)
-                        VALUES (:n, :o, :d, COALESCE(:s, now()), :e, :t) RETURNING id"""),
-                {"n": name, "o": operation, "d": description, "s": start_at, "e": external_event_id, "t": timeline},
-            )).scalar_one()
-            await session.commit()
-            return new_id
-    except Exception as e:
-        print(f"Error creating session: {e}")
-        return None
-
-
-async def end_latest_session(end_at=None):
-    """Set end_at (default now) on the open session with the latest start_at.
-    Returns (status, row): 'ended', 'none_open', 'before_start' or 'error'; row has id, session_name, end_at."""
-    try:
-        db = await get_shared_db_manager()
-        async with db.get_session() as session:
-            row = (await session.execute(text(
-                """SELECT id, session_name, start_at, COALESCE(:e, now()) AS end_at FROM military.sessions
-                   WHERE end_at IS NULL ORDER BY start_at DESC LIMIT 1 FOR UPDATE"""), {"e": end_at})).mappings().first()
-            if row is None:
-                return "none_open", None
-            if row["end_at"] < row["start_at"]:
-                return "before_start", dict(row)
-            await session.execute(text("UPDATE military.sessions SET end_at = :e, updated_at = now() WHERE id = :i"),
-                                  {"e": row["end_at"], "i": row["id"]})
-            await session.commit()
-            return "ended", dict(row)
-    except Exception as e:
-        print(f"Error ending session: {e}")
-        return "error", None
-
-
 async def add_reprimand(discord_id: str, reason: str, issued_by: str) -> str:
     """Log a 'reprimand' service event: 'recorded', 'no_record' (no identity or service record) or 'error'."""
     try:

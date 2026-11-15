@@ -39,7 +39,7 @@ async def test_l10_loa_list_compat(shared_db):
         await L.create_or_update_loa(d, "u", "2030-01-31", "r")
     mine = [x for x in await L.get_all_active_loas() if x["discord_id"] in (ids(32)[1], ids(33)[1])]
     assert len(mine) == 2
-    for loa_data in mine:  # same calls as discord/commands/LOA.py /loa-list
+    for loa_data in mine:  # same calls as discord/commands/LOA.py /loa_list
         end_date = await L.parse_end_date(loa_data["end_date"])
         assert isinstance(end_date, date) and end_date >= datetime.now().date()
         str(loa_data["start_date"])
