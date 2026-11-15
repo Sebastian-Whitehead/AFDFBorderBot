@@ -103,6 +103,15 @@ async def test_add_member_attaches_steam_to_null_steam_identity(shared_db):
     assert await _count("SELECT count(*) AS n FROM public.identities_player WHERE discord_id = :d", d=int(d)) == 1
 
 
+async def test_create_user_without_steam(shared_db):
+    from database import create_user
+    _, d = ids(74)
+    assert await create_user("zz_test_nosteam3", None, None) is None  # nothing to identify them by
+    user = await create_user("zz_test_nosteam3", None, d, rank="EN2")
+    assert user["steam_id"] is None and user["rank"] == "EN2"
+    assert (await get_user_info(d))["steam_id"] is None
+
+
 async def test_set_steam_id_outcomes(shared_db):
     from database import set_steam_id
     s, d = ids(72)

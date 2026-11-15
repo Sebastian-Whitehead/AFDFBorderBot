@@ -75,53 +75,60 @@ async def _find(session, identifier: str):
 
 async def create_user(
     name: str,
-    steam_id: str,
+    steam_id: Optional[str],
     discord_id: Optional[str] = None,
     rank: str = "EN0",
     notes: Optional[str] = None,
     enlisted: bool = False
 ) -> Optional[Dict[str, Any]]:
-    """Create a new user in the database."""
+    """Create a new user in the database. steam_id may be None if discord_id is given."""
     try:
-        steam = int(steam_id)
+        steam = int(steam_id) if steam_id else None
         discord = int(discord_id) if discord_id else None
     except (ValueError, TypeError):
         return None
-    if not is_valid_rank(rank):
+    if not is_valid_rank(rank) or (steam is None and discord is None):
         return None
     code = rank
+    if steam is None and not await ensure_player_identity(name, None, discord_id):
+        return None
 
     try:
         db = await get_shared_db_manager()
 
         async with db.get_session() as session:
-            if (await session.execute(
-                text(_BOT_USER + " WHERE p.steam_id = :n"), {"org": ORG, "n": steam}
-            )).first():
-                return None
-            if discord is not None:
-                await _claim_null_steam(session, discord, steam)
-            if discord is not None and (await session.execute(
-                text("SELECT 1 FROM public.identities_player WHERE discord_id = :d AND steam_id IS DISTINCT FROM :s"),
-                {"d": discord, "s": steam},
-            )).first():
-                return None
+            if steam is None:
+                ident = (await session.execute(
+                    text("SELECT id FROM public.identities_player WHERE discord_id = :d"), {"d": discord}
+                )).one()
+            else:
+                if (await session.execute(
+                    text(_BOT_USER + " WHERE p.steam_id = :n"), {"org": ORG, "n": steam}
+                )).first():
+                    return None
+                if discord is not None:
+                    await _claim_null_steam(session, discord, steam)
+                if discord is not None and (await session.execute(
+                    text("SELECT 1 FROM public.identities_player WHERE discord_id = :d AND steam_id IS DISTINCT FROM :s"),
+                    {"d": discord, "s": steam},
+                )).first():
+                    return None
 
-            await session.execute(
-                text("SELECT public.fab_ensure_player_account(:name, :steam, :discord)"),
-                {"name": name, "steam": steam, "discord": discord},
-            )
-            ident = (await session.execute(
-                text("SELECT id, discord_id FROM public.identities_player WHERE steam_id = :s"), {"s": steam}
-            )).one()
-            if discord is not None:
-                if ident.discord_id is None:
-                    await session.execute(
-                        text("UPDATE public.identities_player SET discord_id = :d WHERE id = :id"),
-                        {"d": discord, "id": ident.id},
-                    )
-                elif ident.discord_id != discord:
-                    return None  # rolled back on session close
+                await session.execute(
+                    text("SELECT public.fab_ensure_player_account(:name, :steam, :discord)"),
+                    {"name": name, "steam": steam, "discord": discord},
+                )
+                ident = (await session.execute(
+                    text("SELECT id, discord_id FROM public.identities_player WHERE steam_id = :s"), {"s": steam}
+                )).one()
+                if discord is not None:
+                    if ident.discord_id is None:
+                        await session.execute(
+                            text("UPDATE public.identities_player SET discord_id = :d WHERE id = :id"),
+                            {"d": discord, "id": ident.id},
+                        )
+                    elif ident.discord_id != discord:
+                        return None  # rolled back on session close
 
             sr_id = (await session.execute(
                 text("""INSERT INTO military.service_records
@@ -149,7 +156,7 @@ async def create_user(
             return {
                 "id": ident.id,
                 "name": name,
-                "steam_id": str(steam),
+                "steam_id": str(steam) if steam is not None else None,
                 "discord_id": str(discord) if discord is not None else None,
                 "rank": code,
                 "enlisted": bool(enlisted),

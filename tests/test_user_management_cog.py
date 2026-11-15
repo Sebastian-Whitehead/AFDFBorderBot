@@ -18,7 +18,7 @@ def env():
     interaction = MagicMock()
     interaction.id = 42
     interaction.response.send_message = AsyncMock()
-    user = MagicMock(id=int(DISCORD), mention="<@x>")
+    user = MagicMock(id=int(DISCORD), mention="<@x>", global_name="zz_test_bob")
     return um, interaction, user, um.UserManagement(bot=MagicMock())
 
 
@@ -33,7 +33,7 @@ def _member(rank="EN2", **kw):
 
 
 async def _add(um, cog, interaction, user, rank="EN0", steam=STEAM):
-    await um.UserManagement.add_member.callback(cog, interaction, "zz_test_bob", steam, user, rank, None)
+    await um.UserManagement.add_member.callback(cog, interaction, user, steam, rank, None)
 
 
 async def test_g1_add_member_new(env, monkeypatch):
@@ -223,3 +223,14 @@ async def test_service_record_table(env, monkeypatch):
     monkeypatch.setattr(info, "get_service_events", AsyncMock(return_value=None))
     await info.Info.service_record.callback(info.Info(bot=MagicMock()), i, user, 10)
     assert "no service record" in _sent(i).args[0] and _sent(i).kwargs["ephemeral"]
+
+
+async def test_add_member_without_steam(env, monkeypatch):
+    um, i, user, cog = env
+    create = AsyncMock(return_value={"id": 1})
+    monkeypatch.setattr(um, "get_user_info", AsyncMock(return_value=None))
+    monkeypatch.setattr(um, "create_user", create)
+    await _add(um, cog, i, user, steam=None)
+    assert create.await_args.kwargs["steam_id"] is None and create.await_args.kwargs["discord_id"] == DISCORD
+    assert _sent(i).kwargs["embed"].title == "✅ Member Added Successfully"
+

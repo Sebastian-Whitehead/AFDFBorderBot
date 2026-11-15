@@ -39,27 +39,28 @@ class UserManagement(commands.Cog):
     async def add_member(
         self,
         interaction: nextcord.Interaction,
-        name: str = SlashOption(description="Member's name"),
-        steam_id: str = SlashOption(description="Member's SteamID64 or Steam profile URL"),
-        discord_user: Optional[nextcord.User] = SlashOption(description="Discord user (optional)", required=False),
+        user: nextcord.User = SlashOption(description="Member to add"),
+        steam_id: Optional[str] = SlashOption(description="Member's SteamID64 or Steam profile URL (optional)", required=False),
         rank: str = SlashOption(description="Starting rank", default="EN0", choices=rank_choices()),
         notes: Optional[str] = SlashOption(description="Additional notes", required=False)
     ):
         """Add a new member to the database."""
         try:
-            steam_id = await resolve_steam_id(steam_id)
-            if steam_id is None:
-                await interaction.response.send_message(
-                    "❌ Steam ID must be numeric (SteamID64) or a Steam profile link that can be resolved.",
-                    ephemeral=True
-                )
-                return
+            if steam_id:
+                steam_id = await resolve_steam_id(steam_id)
+                if steam_id is None:
+                    await interaction.response.send_message(
+                        "❌ Steam ID must be numeric (SteamID64) or a Steam profile link that can be resolved.",
+                        ephemeral=True
+                    )
+                    return
 
-            discord_id = str(discord_user.id) if discord_user else None
+            name = user.global_name or user.name
+            discord_id = str(user.id)
 
             # Check if user already exists
-            existing_user = await get_user_info(discord_id) if discord_id else None
-            existing_user = existing_user or await get_user_info(steam_id)
+            existing_user = await get_user_info(discord_id)
+            existing_user = existing_user or (await get_user_info(steam_id) if steam_id else None)
 
             if existing_user:
                 await interaction.response.send_message(
@@ -88,8 +89,8 @@ class UserManagement(commands.Cog):
                 color=0x00ff00,
                 description=f"Added **{name}** to the database"
             )
-            embed.add_field(name="Steam ID", value=steam_id, inline=True)
-            embed.add_field(name="Discord", value=discord_user.mention if discord_user else "Not linked", inline=True)
+            embed.add_field(name="Steam ID", value=steam_id or "Not set", inline=True)
+            embed.add_field(name="Discord", value=user.mention, inline=True)
             embed.add_field(name="Rank", value=self._rank_text(rank), inline=True)
             
             if notes:
