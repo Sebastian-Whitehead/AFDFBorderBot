@@ -21,7 +21,18 @@ async def _close_db():
     # Engines are bound to the test's event loop; drop them so the next test rebuilds.
     from database.db_manager import close_database
     await close_database()
-    # Step 03: also close the shared manager here.
+    # close_database() closes both the local and the shared manager.
+
+
+@pytest_asyncio.fixture
+async def shared_db(monkeypatch):
+    url = os.getenv("TEST_SHARED_DATABASE_URL")
+    if not url:
+        pytest.skip("TEST_SHARED_DATABASE_URL not set")
+    monkeypatch.setenv("SUPABASE_DATABASE_URL", url)
+    from database.db_manager import close_database
+    await close_database()  # never reuse a manager built for another URL
+    yield
 
 
 @pytest_asyncio.fixture

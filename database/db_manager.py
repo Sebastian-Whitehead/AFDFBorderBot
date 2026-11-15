@@ -16,6 +16,14 @@ from sqlalchemy import text
 logger = logging.getLogger(__name__)
 
 
+def _to_asyncpg_url(url: str) -> str:
+    """Rewrite postgres:// and postgresql:// to postgresql+asyncpg://."""
+    for prefix in ("postgres://", "postgresql://"):
+        if url.startswith(prefix):
+            return "postgresql+asyncpg://" + url[len(prefix):]
+    return url
+
+
 class DatabaseManager:
     """Simple database manager for raw SQL operations."""
     
@@ -33,10 +41,7 @@ class DatabaseManager:
         # Check if DATABASE_URL is provided (for Docker)
         database_url = os.getenv("DATABASE_URL")
         if database_url:
-            # Convert postgres:// to postgresql+asyncpg://
-            if database_url.startswith("postgres://"):
-                database_url = database_url.replace("postgres://", "postgresql+asyncpg://", 1)
-            return database_url
+            return _to_asyncpg_url(database_url)
         
         # Fallback to building from individual environment variables
         host = os.getenv("DB_HOST", "localhost")
@@ -147,6 +152,21 @@ async def get_db_manager() -> DatabaseManager:
     return _db_manager
 
 
+_shared_db_manager: Optional[DatabaseManager] = None
+
+
+async def get_shared_db_manager() -> DatabaseManager:
+    """Shared Supabase DB (users, LOA). Settings stay on get_db_manager()."""
+    global _shared_db_manager
+    if _shared_db_manager is None:
+        url = os.getenv("SUPABASE_DATABASE_URL")
+        if not url:
+            raise RuntimeError("SUPABASE_DATABASE_URL is not set")
+        _shared_db_manager = DatabaseManager(_to_asyncpg_url(url))
+        await _shared_db_manager.initialize()
+    return _shared_db_manager
+
+
 async def initialize_database():
     """Initialize the global database manager."""
     await get_db_manager()
@@ -154,7 +174,10 @@ async def initialize_database():
 
 async def close_database():
     """Close the global database manager."""
-    global _db_manager
+    global _db_manager, _shared_db_manager
     if _db_manager:
         await _db_manager.close()
         _db_manager = None
+    if _shared_db_manager:
+        await _shared_db_manager.close()
+        _shared_db_manager = None
