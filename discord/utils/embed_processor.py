@@ -148,6 +148,13 @@ class EmbedProcessor:
             return False
 
 
+def load_embeds(filename: str, replacements: Dict[str, str]) -> list:
+    """Load an embed file, apply placeholders and return nextcord Embeds (for interaction replies)."""
+    data = EmbedProcessor.process_embed_data(EmbedProcessor.load_embed_data(filename), replacements)
+    return [nextcord.Embed.from_dict({k: v for k, v in e.items() if k not in ("id", "type")})
+            for e in (data or {}).get("embeds", [])]
+
+
 # Simple convenience function
 async def send_processed_embed(channel, filename: str, replacements: Dict[str, str]) -> bool:
     """

@@ -5,10 +5,11 @@ Contains utilities for Discord functionality including rank management and embed
 """
 
 from .rank_manager import RankManager
-from .embed_processor import EmbedProcessor, send_processed_embed
+from .embed_processor import EmbedProcessor, send_processed_embed, load_embeds
 
 __all__ = [
     'RankManager',
     'EmbedProcessor',
-    'send_processed_embed'
+    'send_processed_embed',
+    'load_embeds'
 ]

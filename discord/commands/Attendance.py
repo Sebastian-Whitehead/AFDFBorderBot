@@ -1,0 +1,190 @@
+"""Attendance workflow: build a list from the voice channel, edit it, then commit it to the DB."""
+
+import datetime
+import logging
+
+import nextcord
+from nextcord import Interaction, SlashOption, slash_command
+from nextcord.ext import commands
+
+from database.attendance_functions import get_open_session, find_unaccounted, submit_attendance, load_session_attendance
+from database.loa_functions import LOAManager
+from ..utils.confirm import confirm
+from ..config import TESTING_GUILD_ID, CIVIL_SERVANT_ROLE_ID
+
+logger = logging.getLogger(__name__)
+
+STATUSES = ["present", "absent", "on_leave", "excused"]
+GUILDS = [TESTING_GUILD_ID] if TESTING_GUILD_ID else None
+
+
+
+def _loa_text(loa):
+    return f"LOA until {loa['end_date']}" + (f": {loa['reason']}" if loa["reason"] else "")
+
+
+def _render(active):
+    lines = []
+    for uid, e in active["entries"].items():
+        line = f"- <@{uid}> — {e['status']}" + (" (in VC)" if e["in_vc"] else "")
+        if e["loa"]:
+            line += f" · {_loa_text(e['loa'])}"
+        elif e["note"]:
+            line += f" · {e['note']}"
+        lines.append(line)
+    # shortcut: cut at Discord's 2000 char limit, page it if lists ever get that long
+    sess = active["session"]
+    title = f"**Attendance list** for **{sess['session_name']}** (id {sess['id']})" if sess else "**Attendance list**"
+    return (f"{title} ({len(lines)})\n" + ("\n".join(lines) or "_empty_"))[:1900]
+
+
+class Attendance(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+        # In memory only: lost on restart. One list for the whole bot.
+        self.active = None
+
+    def _entry(self, status, in_vc, loa, note=None):
+        return {"status": status, "in_vc": in_vc, "loa": loa, "note": note}
+
+    @slash_command(description="Start an attendance list from your voice channel", guild_ids=GUILDS)
+    @commands.has_role(CIVIL_SERVANT_ROLE_ID)
+    async def start_attendance(self, interaction: Interaction):
+        await interaction.response.defer(ephemeral=True)
+        if self.active:
+            await interaction.followup.send("❌ An attendance list is already active. Use /submit_attendance or /discard_attendance first.")
+            return
+        if not await get_open_session():
+            await interaction.followup.send("❌ No open session (or database unavailable). Use /create_session first.")
+            return
+        voice = getattr(interaction.user, "voice", None)
+        if not voice or not voice.channel:
+            await interaction.followup.send("❌ Join a voice channel first.")
+            return
+
+        today = datetime.date.today()
+        loas = {}
+        for loa in await LOAManager.get_all_active_loas():
+            if loa["start_date"] <= today <= datetime.date.fromisoformat(loa["end_date"]):
+                loas[loa["discord_id"]] = loa
+
+        entries = {str(m.id): self._entry("present", True, loas.get(str(m.id)))
+                   for m in voice.channel.members if not m.bot}
+        # Members on LOA who are not in VC are on leave, not absent.
+        for uid, loa in loas.items():
+            entries.setdefault(uid, self._entry("on_leave", False, loa))
+        self.active = {"entries": entries, "loas": loas, "session": None}
+        await interaction.followup.send(_render(self.active))
+
+    @slash_command(description="Edit the attendance of an existing session", guild_ids=GUILDS)
+    @commands.has_role(CIVIL_SERVANT_ROLE_ID)
+    async def modify_attendance(
+        self,
+        interaction: Interaction,
+        session_id: int = SlashOption(description="Session ID (see /session_list)", min_value=1),
+    ):
+        """Load a session's saved attendance as the active list. Edit it, then /submit_attendance saves it back."""
+        await interaction.response.defer(ephemeral=True)
+        if self.active:
+            await interaction.followup.send("❌ An attendance list is already active. Use /submit_attendance or /discard_attendance first.")
+            return
+        loaded = await load_session_attendance(session_id)
+        if loaded is None:
+            await interaction.followup.send("❌ Database error.")
+            return
+        session, saved = loaded
+        if session is None:
+            await interaction.followup.send(f"❌ No session with id {session_id}.")
+            return
+        entries = {r["discord_id"]: self._entry(r["status"], False, None, r["notes"]) for r in saved}
+        self.active = {"entries": entries, "loas": {}, "session": session}
+        await interaction.followup.send(_render(self.active))
+
+    @slash_command(description="Show the current attendance list", guild_ids=GUILDS)
+    @commands.has_role(CIVIL_SERVANT_ROLE_ID)
+    async def view_attendance(self, interaction: Interaction):
+        await interaction.response.defer(ephemeral=True)
+        await interaction.followup.send(_render(self.active) if self.active else "ℹ️ No active attendance list.")
+
+    @slash_command(description="Add or change a person on the attendance list", guild_ids=GUILDS)
+    @commands.has_role(CIVIL_SERVANT_ROLE_ID)
+    async def add_attendance(
+        self,
+        interaction: Interaction,
+        user: nextcord.User = SlashOption(description="Member to add"),
+        attendance_status: str = SlashOption(description="Status (default present)", choices=STATUSES, default="present"),
+    ):
+        await interaction.response.defer(ephemeral=True)
+        if not self.active:
+            await interaction.followup.send("❌ No active attendance list. Use /start_attendance first.")
+            return
+        uid = str(user.id)
+        old = self.active["entries"].get(uid)
+        self.active["entries"][uid] = self._entry(attendance_status, bool(old and old["in_vc"]), self.active["loas"].get(uid), old and old["note"])
+        await interaction.followup.send(_render(self.active))
+
+    @slash_command(description="Remove a person from the attendance list", guild_ids=GUILDS)
+    @commands.has_role(CIVIL_SERVANT_ROLE_ID)
+    async def remove_attendance(self, interaction: Interaction, user: nextcord.User = SlashOption(description="Member to remove")):
+        await interaction.response.defer(ephemeral=True)
+        if not self.active:
+            await interaction.followup.send("❌ No active attendance list. Use /start_attendance first.")
+            return
+        if self.active["entries"].pop(str(user.id), None) is None:
+            await interaction.followup.send(f"❌ {user.mention} is not on the list.")
+            return
+        await interaction.followup.send(_render(self.active))
+
+    @slash_command(description="Throw away the active attendance list (nothing is saved)", guild_ids=GUILDS)
+    @commands.has_role(CIVIL_SERVANT_ROLE_ID)
+    async def discard_attendance(self, interaction: Interaction):
+        await interaction.response.defer(ephemeral=True)
+        had = self.active is not None
+        self.active = None
+        await interaction.followup.send("🗑️ Attendance list discarded." if had else "ℹ️ There was no active attendance list.")
+
+    @slash_command(description="Save the attendance list to the database", guild_ids=GUILDS)
+    @commands.has_role(CIVIL_SERVANT_ROLE_ID)
+    async def submit_attendance(self, interaction: Interaction):
+        await interaction.response.defer(ephemeral=True)
+        active = self.active
+        if not active:
+            await interaction.followup.send("❌ No active attendance list. Use /start_attendance first.")
+            return
+        session = active["session"] or await get_open_session()
+        if not session:
+            await interaction.followup.send("❌ No open session (or database unavailable). Use /create_session first.")
+            return
+        missing = await find_unaccounted(list(active["entries"]))
+        if missing is None:
+            await interaction.followup.send("❌ Database error, nothing saved.")
+            return
+
+        if missing:
+            if not await confirm(
+                    interaction, "attendance_absent_warning.json",
+                    {"{absent_list}": "\n".join(f"- <@{m}>" for m in missing)[:3500]},
+                    declined="↩️ Not submitted, back to the list.", timed_out="⌛ Timed out, not submitted. The list is kept."):
+                return
+            if self.active is not active:
+                await interaction.edit_original_message(content="❌ The list changed while waiting. Run /submit_attendance again.", embeds=[], view=None)
+                return
+        else:
+            await interaction.followup.send("⏳ Submitting…")
+
+        rows = [{"discord_id": uid, "status": e["status"], "notes": _loa_text(e["loa"]) if e["loa"] else e["note"]}
+                for uid, e in active["entries"].items()]
+        rows += [{"discord_id": m, "status": "absent", "notes": None} for m in missing]
+        result = await submit_attendance(session["id"], rows, str(interaction.user.id))
+        if result is None:
+            await interaction.edit_original_message(content="❌ Database error, nothing saved. The list is kept.", embeds=[], view=None)
+            return
+        self.active = None
+        msg = f"✅ Attendance saved to **{session['session_name']}** (id {session['id']}): {len(result['saved'])} recorded."
+        if result["skipped"]:
+            msg += "\nNo service record, not saved:\n" + "\n".join(f"- <@{m}>" for m in result["skipped"])
+        await interaction.edit_original_message(content=msg, embeds=[], view=None)
+
+
+def setup(bot):
+    bot.add_cog(Attendance(bot))

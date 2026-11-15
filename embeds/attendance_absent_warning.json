@@ -1,0 +1,10 @@
+{
+  "content": "",
+  "embeds": [
+    {
+      "title": "⚠️ Marking as absent",
+      "description": "These persons are currently going to be marked as absent:\n{absent_list}\n\nApprove to submit, or Decline to go back to the list.",
+      "color": 15844367
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "content": "",
+  "embeds": [
+    {
+      "title": "⚠️ End the session?",
+      "description": "Attendance should be taken before the session is ended (`/start_attendance`, then `/submit_attendance`).\n\nAre you sure you want to end the session?",
+      "color": 15844367
+    }
+  ]
+}
