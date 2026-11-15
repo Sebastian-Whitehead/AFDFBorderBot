@@ -61,7 +61,7 @@ def load_extensions(bot):
     bot.load_extension("discord.commands.GuildEvent")
     bot.load_extension("discord.commands.LOA")
     bot.load_extension("discord.commands.SettingsManagement")
-    #bot.load_extension("discord.commands.UserManagement")
+    bot.load_extension("discord.commands.UserManagement")
 
 
 def run_bot():
