@@ -157,6 +157,7 @@ async def test_add_steam_command(env, monkeypatch):
     called.assert_awaited_once_with(DISCORD, "76561198150696236")
     assert "added" in _sent(i).args[0]
     called.reset_mock()
+    monkeypatch.setattr(um, "resolve_steam_id", AsyncMock(return_value=None))
     await um.UserManagement.add_steam.callback(cog, i, user, "https://steamcommunity.com/id/vanity")
     called.assert_not_awaited()
     assert _sent(i).kwargs["ephemeral"] is True

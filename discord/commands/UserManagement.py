@@ -13,7 +13,7 @@ import logging
 
 from database import create_user, get_user_info, modify_user, set_steam_id, create_service_record
 from ..utils import RankManager
-from ..utils.steam import parse_steam_id
+from ..utils.steam import resolve_steam_id
 from ..config import TESTING_GUILD_ID as GUILD_ID
 
 logger = logging.getLogger(__name__)
@@ -35,7 +35,7 @@ class UserManagement(commands.Cog):
         self,
         interaction: nextcord.Interaction,
         name: str = SlashOption(description="Member's name"),
-        steam_id: str = SlashOption(description="Member's SteamID64 or steamcommunity.com/profiles/<id> URL"),
+        steam_id: str = SlashOption(description="Member's SteamID64 or Steam profile URL"),
         discord_user: Optional[nextcord.User] = SlashOption(description="Discord user (optional)", required=False),
         rank: int = SlashOption(description="Starting rank (0-10)", default=0, min_value=0, max_value=10),
         notes: Optional[str] = SlashOption(description="Additional notes", required=False)
@@ -50,10 +50,10 @@ class UserManagement(commands.Cog):
                 )
                 return
 
-            steam_id = parse_steam_id(steam_id)
+            steam_id = await resolve_steam_id(steam_id)
             if steam_id is None:
                 await interaction.response.send_message(
-                    "❌ Steam ID must be numeric (SteamID64) or a steamcommunity.com/profiles/<id> link.",
+                    "❌ Steam ID must be numeric (SteamID64) or a Steam profile link that can be resolved.",
                     ephemeral=True
                 )
                 return
@@ -142,14 +142,14 @@ class UserManagement(commands.Cog):
         self,
         interaction: nextcord.Interaction,
         user: nextcord.User = SlashOption(description="Member to update"),
-        steam_url: str = SlashOption(description="steamcommunity.com/profiles/<id> URL or SteamID64")
+        steam_url: str = SlashOption(description="Steam profile URL (/profiles/ or /id/) or SteamID64")
     ):
         """Attach a Steam ID to an existing player identity."""
-        steam_id = parse_steam_id(steam_url)
+        steam_id = await resolve_steam_id(steam_url)
         if steam_id is None:
             await interaction.response.send_message(
-                "❌ Use a steamcommunity.com/profiles/<17-digit id> link or the SteamID64. "
-                "Custom /id/ links can't be resolved.",
+                "❌ Couldn't get a Steam ID from that. Use a steamcommunity.com profile link "
+                "(public profile) or the SteamID64.",
                 ephemeral=True
             )
             return

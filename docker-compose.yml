@@ -46,6 +46,7 @@ services:
       DISCORD_TOKEN: ${DISCORD_TOKEN}
       DATABASE_URL: postgres://postgres:admin@postgres:5432/AFdb
       SUPABASE_DATABASE_URL: ${SUPABASE_DATABASE_URL}
+      STEAM_API_KEY: ${STEAM_API_KEY:-}
     depends_on:
       postgres:
         condition: service_healthy
