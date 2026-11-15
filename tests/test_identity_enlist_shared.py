@@ -80,3 +80,24 @@ async def test_i7_adopt_game_identity(shared_db):
     assert await ensure_player_identity("zz_test_game", s, d) is True
     assert await _identities(s) == 1
     assert await enlist_member(d) == "enlisted"
+
+
+async def test_identity_without_steam_then_steam_attached(shared_db):
+    s, d = ids(70)
+    assert await ensure_player_identity("zz_test_nosteam", None, d)
+    assert await ensure_player_identity("zz_test_nosteam", None, d)  # idempotent
+    assert await _count("SELECT count(*) AS n FROM public.identities_player WHERE discord_id = :d", d=int(d)) == 1
+    assert await _count("SELECT count(*) AS n FROM public.identities_player WHERE discord_id = :d AND steam_id IS NULL", d=int(d)) == 1
+    assert await enlist_member(d) == "enlisted"  # enlist works without a Steam ID
+    assert await ensure_player_identity("zz_test_nosteam", s, d)  # later /approve with a Steam ID attaches it
+    assert await _identities(s) == 1
+    assert await _count("SELECT count(*) AS n FROM public.identities_player WHERE discord_id = :d", d=int(d)) == 1
+
+
+async def test_add_member_attaches_steam_to_null_steam_identity(shared_db):
+    from database import create_user
+    s, d = ids(71)
+    assert await ensure_player_identity("zz_test_nosteam2", None, d)
+    assert await create_user("zz_test_nosteam2", s, d)
+    assert await _identities(s) == 1
+    assert await _count("SELECT count(*) AS n FROM public.identities_player WHERE discord_id = :d", d=int(d)) == 1

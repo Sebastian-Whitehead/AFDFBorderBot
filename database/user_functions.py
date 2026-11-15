@@ -97,6 +97,8 @@ async def create_user(
                 text(_BOT_USER + " WHERE p.steam_id = :n"), {"org": ORG, "n": steam}
             )).first():
                 return None
+            if discord is not None:
+                await _claim_null_steam(session, discord, steam)
             if discord is not None and (await session.execute(
                 text("SELECT 1 FROM public.identities_player WHERE discord_id = :d AND steam_id IS DISTINCT FROM :s"),
                 {"d": discord, "s": steam},
@@ -277,16 +279,39 @@ async def get_user_count_by_rank() -> Dict[int, int]:
         return {}
 
 
-async def ensure_player_identity(name: str, steam_id: str, discord_id: str) -> bool:
-    """Create or adopt the identity for steam_id and link discord_id. No service record."""
+async def _claim_null_steam(session, discord: int, steam: int) -> None:
+    """An identity made without a Steam ID (from /approve) gets it attached when one is later given."""
+    await session.execute(
+        text("""UPDATE public.identities_player SET steam_id = :s
+                WHERE discord_id = :d AND steam_id IS NULL
+                  AND NOT EXISTS (SELECT 1 FROM public.identities_player WHERE steam_id = :s)"""),
+        {"s": steam, "d": discord},
+    )
+
+
+async def ensure_player_identity(name: str, steam_id: Optional[str], discord_id: str) -> bool:
+    """Create or adopt the identity for steam_id (may be None) and link discord_id. No service record."""
     try:
-        steam, discord = int(steam_id), int(discord_id)
+        steam = int(steam_id) if steam_id else None
+        discord = int(discord_id)
     except (ValueError, TypeError):
         return False
 
     try:
         db = await get_shared_db_manager()
         async with db.get_session() as session:
+            if steam is None:
+                # fab_ensure_player_account rejects a NULL steam_id, so insert the identity directly
+                if not (await session.execute(
+                    text("SELECT 1 FROM public.identities_player WHERE discord_id = :d"), {"d": discord}
+                )).first():
+                    await session.execute(
+                        text("INSERT INTO public.identities_player (alias, discord_id) VALUES (nullif(:n, ''), :d)"),
+                        {"n": name, "d": discord},
+                    )
+                await session.commit()
+                return True
+            await _claim_null_steam(session, discord, steam)
             if (await session.execute(
                 text("SELECT 1 FROM public.identities_player WHERE discord_id = :d AND steam_id IS DISTINCT FROM :s"),
                 {"d": discord, "s": steam},
