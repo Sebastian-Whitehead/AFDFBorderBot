@@ -10,27 +10,28 @@ class GuildEvent(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @slash_command(description="Create the standard set of three weekend events", guild_ids=[TESTING_GUILD_ID] if TESTING_GUILD_ID else None)
-    @commands.has_role(LEADERSHIP_ROLE_ID)
-    async def create_weekend_events(self, interaction: Interaction, friday_hour: int, saturday_hour: int, sunday_hour: int):
-        # Check if required configuration is available
-        if not EVENTS_CHANNEL_ID:
-            await interaction.response.send_message("❌ Bot configuration error - events channel not configured!", ephemeral=True)
-            return
+    # Disabled for now: /create_weekend_events is wrong right now.
+    # @slash_command(description="Create the standard set of three weekend events", guild_ids=[TESTING_GUILD_ID] if TESTING_GUILD_ID else None)
+    # @commands.has_role(LEADERSHIP_ROLE_ID)
+    # async def create_weekend_events(self, interaction: Interaction, friday_hour: int, saturday_hour: int, sunday_hour: int):
+    #     # Check if required configuration is available
+    #     if not EVENTS_CHANNEL_ID:
+    #         await interaction.response.send_message("❌ Bot configuration error - events channel not configured!", ephemeral=True)
+    #         return
             
-        guild = interaction.guild
-        next_friday, next_saturday, next_sunday = self.get_next_weekend(friday_hour, saturday_hour, sunday_hour)
+    #     guild = interaction.guild
+    #     next_friday, next_saturday, next_sunday = self.get_next_weekend(friday_hour, saturday_hour, sunday_hour)
         
-        event_channel = guild.get_channel(EVENTS_CHANNEL_ID)
-        if not event_channel:
-            await interaction.response.send_message("❌ Could not find events channel in this server!", ephemeral=True)
-            return
+    #     event_channel = guild.get_channel(EVENTS_CHANNEL_ID)
+    #     if not event_channel:
+    #         await interaction.response.send_message("❌ Could not find events channel in this server!", ephemeral=True)
+    #         return
         
-        await guild.create_scheduled_event(name="Friday", start_time=next_friday, description="Optional Event 1.", channel=event_channel, entity_type=nextcord.ScheduledEventEntityType.voice)
-        await guild.create_scheduled_event(name="Saturday", start_time=next_saturday, description="Optional Event 2.", channel=event_channel, entity_type=nextcord.ScheduledEventEntityType.voice)
-        await guild.create_scheduled_event(name="Sunday", start_time=next_sunday, description="Optional Event 3.", channel=event_channel, entity_type=nextcord.ScheduledEventEntityType.voice)
+    #     await guild.create_scheduled_event(name="Friday", start_time=next_friday, description="Optional Event 1.", channel=event_channel, entity_type=nextcord.ScheduledEventEntityType.voice)
+    #     await guild.create_scheduled_event(name="Saturday", start_time=next_saturday, description="Optional Event 2.", channel=event_channel, entity_type=nextcord.ScheduledEventEntityType.voice)
+    #     await guild.create_scheduled_event(name="Sunday", start_time=next_sunday, description="Optional Event 3.", channel=event_channel, entity_type=nextcord.ScheduledEventEntityType.voice)
         
-        await interaction.response.send_message("✅ Event series created successfully!", ephemeral=True)
+    #     await interaction.response.send_message("✅ Event series created successfully!", ephemeral=True)
         
     def get_next_weekend(self, fri: int, sat: int, sun: int):
         today = datetime.datetime.now()
