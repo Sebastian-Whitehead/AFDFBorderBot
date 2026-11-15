@@ -76,7 +76,7 @@ ALTER TABLE military.service_events ADD CONSTRAINT service_events_rank_check CHE
 
 -- The bot's organization (service_records.organization_id is required)
 INSERT INTO public.identities_organizations (name, organization_type)
-VALUES ('AFDF-FAS', 'military') ON CONFLICT (name) DO NOTHING;  -- already exists in production, so a no-op there
+VALUES ('AFDF - Para Raiders', 'military') ON CONFLICT (name) DO NOTHING;  -- already exists in production, so a no-op there
 
 -- One identity per Discord / Steam account (the bot looks players up by these)
 CREATE UNIQUE INDEX IF NOT EXISTS identities_player_discord_id_uniq
@@ -125,10 +125,10 @@ Use a plain SQLAlchemy async engine on `TEST_SHARED_DATABASE_URL`. Run each test
 | ID | Test |
 |---|---|
 | SH1 | `SELECT public.fab_ensure_player_account('zz_test_p', 76561190000000001, 900000000000000001)` creates exactly one `identities_player` row. Calling it again creates no second row. |
-| SH2 | A `service_records` row for that player in org `AFDF-FAS` with `current_rank='PRES'` inserts OK. `current_rank='XX'` fails with a check violation. |
+| SH2 | A `service_records` row for that player in org `AFDF - Para Raiders` with `current_rank='PRES'` inserts OK. `current_rank='XX'` fails with a check violation. |
 | SH3 | `military.leave_requests`: a second `active` row for the same `discord_id` fails with a unique violation. A second row with `status='cancelled'` is OK. |
 | SH4 | Inserting a second `identities_player` with an existing `discord_id` fails with a unique violation. |
-| SH5 | Exactly one `identities_organizations` row is named `AFDF-FAS`. |
+| SH5 | Exactly one `identities_organizations` row is named `AFDF - Para Raiders`. |
 
 ## Done when
 

@@ -13,7 +13,7 @@
   SELECT sr.id FROM military.service_records sr
   JOIN public.identities_player p ON p.id = sr.player_identity_id
   JOIN public.identities_organizations o ON o.id = sr.organization_id
-  WHERE p.discord_id = :d AND o.name = 'AFDF-FAS'
+  WHERE p.discord_id = :d AND o.name = 'AFDF - Para Raiders'
   ```
   Store the Discord username in `submitted_by`.
 - `create_or_update_loa(discord_id: str, username, end_date: str, reason=None)`:

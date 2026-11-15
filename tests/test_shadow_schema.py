@@ -50,7 +50,7 @@ async def _insert_record(c, rank):
         text(
             "INSERT INTO military.service_records (player_identity_id, organization_id, current_rank, service_status) "
             "SELECT p.id, o.id, :r, 'active' FROM public.identities_player p, public.identities_organizations o "
-            "WHERE p.discord_id = :d AND o.name = 'AFDF-FAS'"
+            "WHERE p.discord_id = :d AND o.name = 'AFDF - Para Raiders'"
         ),
         {"r": rank, "d": DISCORD},
     )
@@ -95,6 +95,6 @@ async def test_sh4_discord_id_unique(conn):
             )
 
 
-async def test_sh5_single_afdf_fas_org(conn):
-    r = await conn.execute(text("SELECT count(*) FROM public.identities_organizations WHERE name = 'AFDF-FAS'"))
+async def test_sh5_single_para_raiders_org(conn):
+    r = await conn.execute(text("SELECT count(*) FROM public.identities_organizations WHERE name = 'AFDF - Para Raiders'"))
     assert r.scalar_one() == 1

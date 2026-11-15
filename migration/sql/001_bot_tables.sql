@@ -10,7 +10,7 @@ ALTER TABLE military.service_events ADD CONSTRAINT service_events_rank_check CHE
 
 -- The bot's organization (service_records.organization_id is required)
 INSERT INTO public.identities_organizations (name, organization_type)
-VALUES ('AFDF-FAS', 'military') ON CONFLICT (name) DO NOTHING;  -- already exists in production, so a no-op there
+VALUES ('AFDF - Para Raiders', 'military') ON CONFLICT (name) DO NOTHING;  -- exists in production (id 6), so a no-op there
 
 -- One identity per Discord / Steam account (the bot looks players up by these)
 CREATE UNIQUE INDEX IF NOT EXISTS identities_player_discord_id_uniq
