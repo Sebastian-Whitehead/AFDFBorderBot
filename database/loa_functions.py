@@ -1,59 +1,89 @@
 """
 LOA (Leave of Absence) database functions for AFDFBorderBot.
+Backed by military.leave_requests, keyed by service record.
 """
 
 import logging
 from typing import Optional, List, Dict, Any
 from datetime import datetime, date
 
-from sqlalchemy.future import select
-from sqlalchemy import and_, text, update
+from sqlalchemy import text
 
-from .db_manager import get_db_manager
-from .models import LOARequest
+from .db_manager import get_shared_db_manager
 
 logger = logging.getLogger(__name__)
+
+ORG_NAME = 'AFDF-Para Raiders'
+
+_SR_ID = """
+    SELECT sr.id FROM military.service_records sr
+    JOIN public.identities_player p ON p.id = sr.player_identity_id
+    JOIN public.identities_organizations o ON o.id = sr.organization_id
+    WHERE p.discord_id = :d AND o.name = :org
+"""
+
+_SELECT = """
+    SELECT l.id, p.discord_id, l.submitted_by, l.start_date, l.end_date, l.reason,
+           l.status, l.created_at, l.updated_at
+    FROM military.leave_requests l
+    JOIN military.service_records sr ON sr.id = l.service_record_id
+    JOIN public.identities_player p ON p.id = sr.player_identity_id
+    JOIN public.identities_organizations o ON o.id = sr.organization_id
+    WHERE l.status = 'active' AND o.name = :org
+"""
+
+
+def _row(r) -> Dict[str, Any]:
+    return {
+        "id": r.id,
+        "discord_id": str(r.discord_id),
+        "username": r.submitted_by,
+        "start_date": r.start_date,
+        "end_date": r.end_date.isoformat(),
+        "reason": r.reason,
+        "status": r.status,
+        "submitted_at": r.created_at,
+        "last_modified": r.updated_at,
+    }
 
 
 class LOAManager:
     """LOA database operations manager."""
-    
+
     @staticmethod
     async def create_or_update_loa(discord_id: str, username: str, end_date: str, reason: Optional[str] = None) -> tuple[bool, str]:
         """Create a new LOA or update an existing active one."""
         try:
-            db = await get_db_manager()
-            
+            parsed = await LOAManager.parse_end_date(end_date)
+            if parsed is None:
+                return False, "failed"
+            db = await get_shared_db_manager()
+
             async with db.get_session() as session:
-                # Check if user has an active LOA
-                result = await session.execute(
-                    select(LOARequest).where(
-                        and_(LOARequest.discord_id == discord_id, LOARequest.status == 'active')
-                    )
-                )
-                existing_loa = result.scalar_one_or_none()
-                
-                if existing_loa:
-                    # Update existing LOA
-                    existing_loa.end_date = end_date
-                    if reason is not None:
-                        existing_loa.reason = reason
-                    existing_loa.last_modified = datetime.utcnow()
+                sr_id = (await session.execute(
+                    text(_SR_ID), {"d": int(discord_id), "org": ORG_NAME}
+                )).scalar_one_or_none()
+                if sr_id is None:
+                    logger.warning(f"LOA failed: {discord_id} has no service record (not enlisted)")
+                    return False, "failed"
+
+                res = await session.execute(text("""
+                    UPDATE military.leave_requests
+                       SET end_date = :e, reason = COALESCE(:r, reason),
+                           submitted_by = :u, updated_at = now()
+                     WHERE service_record_id = :sr AND status = 'active'
+                """), {"e": parsed, "r": reason, "u": username, "sr": sr_id})
+                if res.rowcount:
                     await session.commit()
                     return True, "updated"
-                else:
-                    # Create new LOA
-                    loa = LOARequest(
-                        discord_id=discord_id,
-                        username=username,
-                        start_date=datetime.utcnow().date(),
-                        end_date=end_date,
-                        reason=reason
-                    )
-                    session.add(loa)
-                    await session.commit()
-                    return False, "submitted"
-                    
+
+                await session.execute(text("""
+                    INSERT INTO military.leave_requests (service_record_id, start_date, end_date, reason, submitted_by)
+                    VALUES (:sr, LEAST(current_date, CAST(:e AS date)), :e, :r, :u)
+                """), {"sr": sr_id, "e": parsed, "r": reason, "u": username})
+                await session.commit()
+                return False, "submitted"
+
         except Exception as e:
             logger.error(f"Error creating/updating LOA: {e}")
             return False, "failed"
@@ -62,31 +92,15 @@ class LOAManager:
     async def get_active_loa_by_discord_id(discord_id: str) -> Optional[Dict[str, Any]]:
         """Get active LOA by Discord ID."""
         try:
-            db = await get_db_manager()
-            
+            db = await get_shared_db_manager()
+
             async with db.get_session() as session:
-                result = await session.execute(
-                    select(LOARequest).where(
-                        and_(LOARequest.discord_id == discord_id, LOARequest.status == 'active')
-                    )
-                )
-                loa = result.scalar_one_or_none()
-                
-                if not loa:
-                    return None
-                    
-                return {
-                    "id": loa.id,
-                    "discord_id": loa.discord_id,
-                    "username": loa.username,
-                    "start_date": loa.start_date,
-                    "end_date": loa.end_date,
-                    "reason": loa.reason,
-                    "status": loa.status,
-                    "submitted_at": loa.submitted_at,
-                    "last_modified": loa.last_modified
-                }
-                
+                r = (await session.execute(
+                    text(_SELECT + " AND p.discord_id = :d"),
+                    {"d": int(discord_id), "org": ORG_NAME},
+                )).first()
+                return _row(r) if r else None
+
         except Exception as e:
             logger.error(f"Error getting active LOA: {e}")
             return None
@@ -95,29 +109,15 @@ class LOAManager:
     async def get_all_active_loas() -> List[Dict[str, Any]]:
         """Get all active LOAs."""
         try:
-            db = await get_db_manager()
-            
+            db = await get_shared_db_manager()
+
             async with db.get_session() as session:
                 result = await session.execute(
-                    select(LOARequest).where(LOARequest.status == 'active').order_by(LOARequest.submitted_at.desc())
+                    text(_SELECT + " ORDER BY l.created_at DESC"),
+                    {"org": ORG_NAME},
                 )
-                loas = result.scalars().all()
-                
-                return [
-                    {
-                        "id": loa.id,
-                        "discord_id": loa.discord_id,
-                        "username": loa.username,
-                        "start_date": loa.start_date,
-                        "end_date": loa.end_date,
-                        "reason": loa.reason,
-                        "status": loa.status,
-                        "submitted_at": loa.submitted_at,
-                        "last_modified": loa.last_modified
-                    }
-                    for loa in loas
-                ]
-                
+                return [_row(r) for r in result]
+
         except Exception as e:
             logger.error(f"Error getting all active LOAs: {e}")
             return []
@@ -126,23 +126,17 @@ class LOAManager:
     async def cancel_loa(discord_id: str) -> bool:
         """Cancel active LOA for a user."""
         try:
-            db = await get_db_manager()
-            
+            db = await get_shared_db_manager()
+
             async with db.get_session() as session:
-                result = await session.execute(
-                    select(LOARequest).where(
-                        and_(LOARequest.discord_id == discord_id, LOARequest.status == 'active')
-                    )
-                )
-                loa = result.scalar_one_or_none()
-                
-                if loa:
-                    loa.status = 'cancelled'
-                    loa.last_modified = datetime.utcnow()
-                    await session.commit()
-                    return True
-                return False
-                
+                res = await session.execute(text("""
+                    UPDATE military.leave_requests
+                       SET status = 'cancelled', updated_at = now()
+                     WHERE status = 'active' AND service_record_id IN (""" + _SR_ID + ")"),
+                    {"d": int(discord_id), "org": ORG_NAME})
+                await session.commit()
+                return res.rowcount > 0
+
         except Exception as e:
             logger.error(f"Error canceling LOA: {e}")
             return False
@@ -171,47 +165,19 @@ class LOAManager:
 
     @staticmethod
     async def cleanup_expired_loas():
-        """Mark expired LOAs as expired using pure SQLAlchemy ORM approach."""
+        """Mark expired LOAs as expired."""
         try:
-            db = await get_db_manager()
-            
+            db = await get_shared_db_manager()
+
             async with db.get_session() as session:
-                # Get all active LOAs
-                result = await session.execute(
-                    select(LOARequest).where(LOARequest.status == 'active')
-                )
-                active_loas = result.scalars().all()
-                
-                current_date = date.today()
-                expired_count = 0
-                
-                # Process each LOA using our existing date parsing logic
-                for loa in active_loas:
-                    end_date = await LOAManager.parse_end_date(loa.end_date)
-                    if end_date and end_date < current_date:
-                        loa.status = 'expired'
-                        loa.last_modified = datetime.utcnow()
-                        expired_count += 1
-                
-                if expired_count > 0:
-                    await session.commit()
-                    logger.info(f"Marked {expired_count} LOAs as expired")
-                
-                # Alternative: Raw SQL for bulk operations (more efficient for large datasets)
-                # This is the original approach - commented out but kept for reference
-                # await session.execute(
-                #     text("""
-                #         UPDATE loa_requests 
-                #         SET status = 'expired', last_modified = CURRENT_TIMESTAMP
-                #         WHERE status = 'active' 
-                #         AND (
-                #             (end_date ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' AND end_date::date < CURRENT_DATE)
-                #             OR
-                #             (end_date ~ '^[0-9]{1,2}/[0-9]{1,2}/[0-9]{4}$' AND 
-                #              TO_DATE(end_date, 'MM/DD/YYYY') < CURRENT_DATE)
-                #         )
-                #     """)
-                # )
-                
+                res = await session.execute(text("""
+                    UPDATE military.leave_requests
+                       SET status = 'expired', updated_at = now()
+                     WHERE status = 'active' AND end_date < current_date
+                """))
+                await session.commit()
+                if res.rowcount:
+                    logger.info(f"Marked {res.rowcount} LOAs as expired")
+
         except Exception as e:
             logger.error(f"Error cleaning up expired LOAs: {e}")
