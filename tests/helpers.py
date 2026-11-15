@@ -13,10 +13,11 @@ async def cleanup():
     from database.db_manager import get_db_manager
     db = await get_db_manager()
     await db.execute_dml_query(
-        "DELETE FROM users WHERE name LIKE 'zz_test_%' OR steam_id LIKE '765611900000%'"
+        "DELETE FROM users WHERE name LIKE 'zz_test_%' OR steam_id LIKE '765611900000%' "
+        "OR discord_id LIKE '9000000000000%'"
     )
     await db.execute_dml_query(
-        "DELETE FROM loa_requests WHERE discord_id LIKE '9000000000000%'"
+        "DELETE FROM loa_requests WHERE discord_id LIKE '9000000000000%' OR username LIKE 'zz_test_%'"
     )
 
 
