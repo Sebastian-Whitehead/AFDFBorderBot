@@ -27,11 +27,11 @@
         "EN6": { "abbr": "SSGT", "name": "Staff Sergeant", "role_id": "1206248421825183794" },
         "EN7": { "abbr": "WO2", "name": "Warrant Officer Class Two", "role_id": "1206248420424024186" },
         "EN8": { "abbr": "WO1", "name": "Warrant Officer Class One", "role_id": "1206248419727773736" },
-        "OF0": { "abbr": "OCDT", "name": "Cadet", "role_id": null },
-        "OF1": { "abbr": "2LT", "name": "Second Lieutenant", "role_id": null },
-        "OF2": { "abbr": "LT", "name": "Lieutenant", "role_id": null },
-        "OF3": { "abbr": "CPT", "name": "Captain", "role_id": null },
-        "OF4": { "abbr": "MAJ", "name": "Major", "role_id": null },
+        "OF0": { "abbr": "OCDT", "name": "Cadet", "role_id": "1435277990660669531" },
+        "OF1": { "abbr": "2LT", "name": "Second Lieutenant", "role_id": "1432651947059449858" },
+        "OF2": { "abbr": "LT", "name": "Lieutenant", "role_id": "1433112450521239695" },
+        "OF3": { "abbr": "CPT", "name": "Captain", "role_id": "1433112454862471250" },
+        "OF4": { "abbr": "MAJ", "name": "Major", "role_id": "1433112458360524800" },
         "OF5": { "abbr": "LT COL", "name": "Lieutenant Colonel", "role_id": null },
         "OF6": { "abbr": "COL", "name": "Colonel", "role_id": null },
         "OF7": { "abbr": "BRIG", "name": "Brigadier", "role_id": null },
@@ -40,6 +40,7 @@
         "OF10": { "abbr": "GEN", "name": "General", "role_id": null },
         "OF11": { "abbr": "FM", "name": "Field Marshal", "role_id": null },
         "PRES": { "abbr": "PRES", "name": "President", "role_id": "1206351206293835837" }
+        
       }
     }
 }
