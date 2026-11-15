@@ -2,18 +2,14 @@
 Discord bot initialization and configuration.
 """
 
-import datetime
-import json
 import os
 import random
-import sys
-from pathlib import Path
 
 from dotenv import load_dotenv
 
 import nextcord
 from nextcord.ext import commands
-from nextcord import Member, NotFound, Interaction
+from nextcord import Interaction
 
 from .config import TESTING_GUILD_ID, load_settings
 

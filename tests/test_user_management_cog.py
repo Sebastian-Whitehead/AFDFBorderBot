@@ -1,8 +1,8 @@
 def test_g0_cog_imports():
-    import discord.commands.UserManagement  # noqa: F401
+    import discord.commands.UserManagement as um
+    assert um
 
 
-import json
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 

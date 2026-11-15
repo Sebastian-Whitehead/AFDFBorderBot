@@ -41,7 +41,7 @@ class Enlistment(commands.Cog):
             await ctx.response.send_message(f"✅ {user.mention} has been enlisted in the army!")
 
         except NotFound:
-            await ctx.response.send_message(f"❌ User not found", ephemeral=True)
+            await ctx.response.send_message("❌ User not found", ephemeral=True)
         except Exception as e:
             await ctx.response.send_message(f"❌ An error occurred: {str(e)}", ephemeral=True)
     

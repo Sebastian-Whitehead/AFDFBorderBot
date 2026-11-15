@@ -1,7 +1,7 @@
 import pytest
 
 from database.user_functions import (
-    create_user, get_user_info, modify_user, search_users, get_user_stats,
+    create_user, get_user_info, modify_user,
 )
 
 try:
@@ -75,25 +75,3 @@ async def test_u5_modify_user(shared_db):
     assert (await get_user_info(d))["enlisted"] is True
 
     assert await modify_user(str(DISCORD_BASE + 999), name="x") is False
-
-
-async def test_u6_search_users(shared_db):
-    s, d = ids(8)
-    assert await create_user(name="zz_test_alpha", steam_id=s, discord_id=d)
-    res = await search_users("ZZ_TEST_AL")
-    assert any(r["steam_id"] == s for r in res)
-    assert len(res) <= 20
-    for r in res:
-        assert {"id", "name", "steam_id", "discord_id", "rank", "enlisted"} <= set(r)
-
-
-async def test_u7_user_stats(shared_db):
-    before = await get_user_stats()
-    assert {"total_users", "enlisted_users"} <= set(before)
-    s1, d1 = ids(9)
-    s2, d2 = ids(10)
-    assert await create_user(name="zz_test_a", steam_id=s1, discord_id=d1, enlisted=True)
-    assert await create_user(name="zz_test_b", steam_id=s2, discord_id=d2)
-    after = await get_user_stats()
-    assert after["total_users"] - before["total_users"] == 2
-    assert after["enlisted_users"] - before["enlisted_users"] == 1

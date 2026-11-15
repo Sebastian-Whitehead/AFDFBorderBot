@@ -1,12 +1,11 @@
 import json
 import logging
-import asyncio
 import sys
 import os
 
 # Add the parent directory to the path so we can import from database
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from database.settings_manager import get_setting as get_db_setting, update_setting as update_db_setting, get_settings_manager
+from database.settings_manager import update_setting as update_db_setting, get_settings_manager
 
 # Set up logging for config issues
 logger = logging.getLogger(__name__)

@@ -4,7 +4,6 @@ import pytest
 
 from database.db_manager import get_shared_db_manager
 from database.user_functions import create_user, get_user_info, modify_user
-from database import get_user_count_by_rank
 from tests.helpers import ids
 
 pytestmark = pytest.mark.asyncio
@@ -32,15 +31,6 @@ async def test_u9_modify_rank_event(shared_db):
         "JOIN military.service_events e ON e.service_record_id = r.id AND e.event_type = 'rank_changed' "
         "WHERE p.steam_id = :s", {"s": int(s)})
     assert len(rows) == 1 and rows[0]["current_rank"] == "UO" and rows[0]["notes"] == "r"
-
-
-async def test_u10_count_by_rank(shared_db):
-    before = await get_user_count_by_rank()
-    assert await create_user("zz_test_a", *ids(22), rank=2)
-    assert await create_user("zz_test_b", *ids(23), rank=5)
-    after = await get_user_count_by_rank()
-    assert after.get(2, 0) - before.get(2, 0) == 1
-    assert after.get(5, 0) - before.get(5, 0) == 1
 
 
 async def test_u11_invalid_steam_id(shared_db):

@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 load_dotenv(ROOT / ".env.test")
 
-from tests.helpers import STEAM_BASE, DISCORD_BASE, NAME_PREFIX, cleanup, cleanup_shared  # noqa: E402,F401
+from tests.helpers import cleanup, cleanup_shared  # noqa: E402
 from tests.helpers import ids as _ids  # noqa: E402
 
 

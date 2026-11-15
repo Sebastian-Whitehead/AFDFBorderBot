@@ -6,7 +6,7 @@ military.service_records row in the AFDF-Para Raiders org.
 """
 
 from datetime import date
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any
 
 from sqlalchemy import text
 
@@ -229,54 +229,6 @@ async def modify_user(
     except Exception as e:
         print(f"Error modifying user: {e}")
         return False
-
-
-async def search_users(query: str) -> List[Dict[str, Any]]:
-    """Search users by name."""
-    try:
-        db = await get_shared_db_manager()
-        async with db.get_session() as session:
-            res = await session.execute(
-                text(_BOT_USER + " WHERE p.alias ILIKE '%' || :q || '%' LIMIT 20"), {"org": ORG, "q": query}
-            )
-            return [_brief(r) for r in res]
-    except Exception as e:
-        print(f"Error searching users: {e}")
-        return []
-
-
-async def get_user_stats() -> Dict[str, Any]:
-    """Get user statistics."""
-    try:
-        db = await get_shared_db_manager()
-        async with db.get_session() as session:
-            rows = (await session.execute(text(_BOT_USER), {"org": ORG})).all()
-            return {
-                "total_users": len(rows),
-                "enlisted_users": sum(_is_enlisted(r) for r in rows),
-            }
-    except Exception as e:
-        print(f"Error getting user stats: {e}")
-        return {"total_users": 0, "enlisted_users": 0}
-
-
-async def get_user_count_by_rank() -> Dict[int, int]:
-    """Map rank level to the number of bot users holding it."""
-    try:
-        db = await get_shared_db_manager()
-        async with db.get_session() as session:
-            res = await session.execute(
-                text("""SELECT sr.current_rank, count(*) AS n
-                        FROM military.service_records sr
-                        JOIN public.identities_organizations o ON o.id = sr.organization_id AND o.name = :org
-                        WHERE sr.player_identity_id IS NOT NULL
-                        GROUP BY sr.current_rank"""),
-                {"org": ORG},
-            )
-            return {code_to_level(r.current_rank): r.n for r in res if r.current_rank}
-    except Exception as e:
-        print(f"Error getting rank counts: {e}")
-        return {}
 
 
 async def _claim_null_steam(session, discord: int, steam: int) -> None:

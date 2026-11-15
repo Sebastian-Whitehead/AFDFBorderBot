@@ -1,243 +1,78 @@
 # AFDF Border Bot
 
-A Discord bot designed for the Aegean Federation Defense Forces (AFDF) server to manage border control, member enlistment, event scheduling, and automated monitoring of border officers.
+Discord bot (nextcord) for the AFDF server: border approval, enlistment, service records, LOA, events and border-officer monitoring.
 
-## 🎯 Features
+## Setup
 
-### Border Control Management
+Requirements: Python 3.10+, Docker (for the local settings DB), a Discord bot token, a Supabase connection string.
 
-- **Member Approval**: Border officers can approve new members entering the server
-- **Automatic Role Assignment**: Assigns appropriate roles to approved members
-- **Welcome System**: Sends customized welcome messages with embeds when new citizens are approved
-
-### Military Enlistment
-
-- **Army Enrollment**: Leadership can enlist members into military roles
-- **Role Management**: Automatically assigns military department and enlisted roles
-
-### Event Management
-
-- **Weekend Events**: Create standard weekend event series (Friday, Saturday, Sunday)
-- **Attendance Tracking**: Log attendance for events in voice channels
-- **Event Notifications**: Automatically notify subscribed members when events start
-
-### Border Officer Monitoring
-
-- **24/7 Monitoring**: Continuously monitors if border officers are online
-- **Automatic Notifications**: Posts closure messages when no border officers are available
-- **Status Updates**: Updates channel messages based on officer availability
-
-### Additional Features
-
-- **Ping Command**: Interactive ping command with random easter egg
-- **Error Handling**: Comprehensive error handling for role/permission issues
-- **Configuration-Based**: All settings managed through `config.json`
-
-
-
-## 🚀 Installation
-
-### Quick Start with Docker (Recommended)
-
-The easiest way to run the bot is using Docker. See **[DOCKER.md](DOCKER.md)** for detailed Docker setup and usage instructions.
-
-### Manual Installation
-
-### Prerequisites
-
-- Python 3.10 or higher
-- Discord Bot Token
-- PostgreSQL database (optional, for advanced features)
-
-### Setup
-
-1. **Clone the repository**
-
-   ```bash
-   git clone <repository-url>
-   cd AFDFBorderBot
-   ```
-
-2. **Install dependencies**
-
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. **Environment Configuration**
-
-   Create a `.env` file in the root directory:
-
-   ```env
-   DISCORD_TOKEN=your_discord_bot_token_here
-   ```
-
-4. **Configure the bot**
-
-   Edit `config.json` with your server-specific IDs:
-
-   ```json
-   {
-     "testing_guild": YOUR_GUILD_ID,
-     "channels": {
-       "log_txt": YOUR_LOG_CHANNEL_ID,
-       "main_txt": YOUR_MAIN_CHANNEL_ID,
-       "checkpoint_txt": YOUR_CHECKPOINT_CHANNEL_ID,
-       "events_vc": YOUR_EVENTS_VOICE_CHANNEL_ID,
-       "welcome_txt": YOUR_WELCOME_CHANNEL_ID
-     },
-     "roles": {
-       "leadership": YOUR_LEADERSHIP_ROLE_ID,
-       "border_officer": YOUR_BORDER_OFFICER_ROLE_ID,
-       "civil_servant": YOUR_CIVIL_SERVANT_ROLE_ID
-     }
-   }
-   ```
-
-5. **Run the bot**
-
-   ```bash
-   python main.py
-   ```
-
-## 📁 Project Structure
-
-```text
-AFDFBorderBot/
-├── main.py                    # Main bot file and entry point
-├── config.json               # Configuration file with IDs (legacy)
-├── requirements.txt          # Python dependencies
-├── .env                      # Environment variables (create this)
-├── .env.example              # Environment template
-├── docker-compose.yml        # Docker services configuration
-├── Dockerfile               # Bot container definition
-├── app.bat                  # Control script for Docker services
-├── src/
-│   ├── config.py            # Centralized configuration management
-│   ├── commands/           # Bot commands (cogs)
-│   │   ├── Checkpoint.py   # Border control commands
-│   │   ├── Enlistment.py   # Military enlistment system
-│   │   └── GuildEvent.py   # Event management commands
-│   └── listeners/          # Event listeners (cogs)
-│       ├── BorderOfficerMonitor.py   # Background monitoring
-│       └── JoinLeaveHandler.py       # Join/leave events
-├── embeds/
-│   ├── newcitizen-main.json     # Welcome message embed
-│   ├── member_join-welcome.json  # Join message template
-│   └── member_leave-welcome.json # Leave message template
-├── pgadmin-data/           # pgAdmin data volume
-└── __pycache__/            # Python cache files
+```bash
+cp .env.example .env            # then fill it in
+pip install -r requirements.txt # UTF-16 encoded file
+docker-compose --profile database up -d   # local Postgres (+ pgAdmin on :5050)
+python main.py
 ```
 
-## 🤖 Commands
+Docker profiles: `database` (Postgres + pgAdmin), `bot` (bot + DB), `full` (everything). Production: `docker-compose --profile full up -d`; rebuild after code changes with `docker-compose build bot`. The local DB is `AFdb` on `localhost:5432` (user `postgres`, password `admin`), schema loaded from `init.sql`.
 
-### Border Control
+The bot role must sit above every role it manages. Needed permissions: Manage Roles, Manage Events, Manage Messages, Send Messages, View Channels, Connect, Embed Links, Use Slash Commands.
 
-- `/approve <user>` - Approve a member's border crossing request
-  - **Required Role**: Border Officer
-  - **Description**: Removes joining role, adds citizen roles, sends welcome message
+## Environment variables
 
-### Military Operations
+| Var | Purpose |
+|---|---|
+| `DISCORD_TOKEN` | Bot token (required) |
+| `DATABASE_URL` | Local Postgres, holds `bot_settings` only |
+| `SUPABASE_DATABASE_URL` | Shared Supabase DB, session pooler (port 5432), add `?ssl=require` |
+| `STEAM_API_KEY` | Optional. Resolves custom `steamcommunity.com/id/<name>` links; without it the bot uses the keyless profile XML (stricter rate limits) |
 
-- `/enlist <user>` - Enlist a member in the military
-  - **Required Role**: Leadership
-  - **Description**: Assigns enlisted and military department roles
+Tests read `.env.test`: `TEST_LOCAL_DATABASE_URL`, `TEST_SHARED_DATABASE_URL`, `SUPABASE_DUMP_URL` (used only to dump the production schema).
 
-### Event Commands
+## Architecture
 
-- `/create_weekend_events <friday_hour> <saturday_hour> <sunday_hour>` - Create weekend event series
-  - **Required Role**: Leadership
-  - **Description**: Creates scheduled events for the next weekend
+- `discord/` is a local package (not pip `discord`): `bot.py`, `config.py` (settings cache), `commands/` (Checkpoint, Enlistment, GuildEvent, LOA, SettingsManagement, UserManagement), `listeners/` (BorderOfficerMonitor, GuildEventListener, JoinLeaveHandler), `utils/` (EmbedProcessor, RankManager, steam).
+- `database/`: `db_manager.py` (local + shared engines), `user_functions.py`, `loa_functions.py`, `settings_manager.py`, `rank_codes.py`, `models.py`.
+- `embeds/`, `Settings.json`, `ids.json`: static config and data.
 
-- `/attendance` - Take attendance for current voice channel
-  - **Required Role**: Civil Servant
-  - **Description**: Logs who is present in the events voice channel
+Data split:
 
-### General
+- **Supabase (shared with the game)**: `public.identities_player`, `military.service_records`, `military.service_events`, `military.leave_requests`, organization `AFDF-Para Raiders`. The bot never reads or writes `economy.*` and never handles money.
+- **Local Postgres**: `bot_settings` only.
+- Ranks: `ids.json` levels 0-8 = `EN0-EN8`, 9 = `UO`, 10 = `PRES`; mapping in `database/rank_codes.py`.
 
-- `/ping` - Test bot responsiveness
-  - **Available to**: Everyone
-  - **Description**: Responds with "Pong!" (with rare easter egg)
+Design decisions:
 
-## ⚙️ Configuration
+1. `UO` and `PRES` were added to the rank CHECK constraints in Supabase.
+2. Extra identity data (notes, achievements, deaths, last_death, reprimands) lives in `identities_player.details` JSON.
+3. `enlisted` is derived from the newest enlisted/reenlisted/discharged service event.
+4. Tests use a local "shadow" Postgres 17 built from a schema-only dump of production.
 
-### Required Discord Permissions
+## Commands
 
-- Manage Roles
-- Send Messages
-- Manage Messages
-- View Channels
-- Connect to Voice Channels
-- Manage Events
-- Embed Links
-- Use Slash Commands
+| Command | Who | What |
+|---|---|---|
+| `/approve user [steam_id]` | Border Officers | Steam ID as SteamID64 or profile URL (custom `/id/` links work). Creates the player identity in Supabase before changing roles; no service record |
+| `/enlist user` | Leadership | Creates service record (rank 0) + `enlisted` event before adding roles; needs an identity |
+| `/add_member name steam_id [discord_user] [rank 0-10] [notes]` | | Identity + service record, no roles |
+| `/add_steam user steam_url` | | Attach a Steam ID to an existing identity; never overwrites a different one |
+| `/create_service_record user rank` | | Record only, no event, no roles |
+| `/promote user new_rank [reason]`, `/demote user new_rank reason` | | Update record rank + `rank_changed` event; no Discord role swap |
+| `/profile user` | | Read only |
+| `/loa start_date [end_date] [reason]`, `/loa-list`, `/loa-cancel` | LOA channel only | Writes `military.leave_requests`; needs a service record |
+| `/settings list\|set\|set-interval` | | Local DB settings |
+| `/attendance` | Civil servants | Voice-channel attendance; no DB |
 
-### Role Hierarchy
+`/create_weekend_events` is commented out (disabled). `/leaderboard` was removed.
 
-Ensure the bot's role is positioned above all roles it needs to manage in your Discord server's role hierarchy.
+## Testing
 
-## 🔧 Customization
+```bash
+venv/Scripts/python.exe -m pytest
+```
 
-### Embed Messages
+- `db_local` tests need `TEST_LOCAL_DATABASE_URL`: a local `AFdb_test` database loaded from `init.sql`.
+- `db_shared` tests need `TEST_SHARED_DATABASE_URL`: the shadow DB. Build it with `bash migration/build_shadow.sh`, which dumps the production schema via `SUPABASE_DUMP_URL`, starts container `afdf-shadow` on port 54329, loads `migration/shadow_stubs.sql`, the dump, then `migration/sql/*.sql`. Use `TEST_SHARED_DATABASE_URL=postgresql+asyncpg://postgres:shadow@localhost:54329/postgres`.
 
-Customize welcome and notification messages by editing JSON files in the `embeds/` directory.
+## History
 
-### Monitoring Intervals
-
-Adjust the border officer monitoring frequency by modifying `CHECK_INTERVAL` in `BorderOfficerMonitor.py`.
-
-### Role IDs
-
-Update role and channel IDs in `config.json` to match your server setup.
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-1. **Bot not responding to commands**
-   - Check if the bot has proper permissions
-   - Verify the guild ID in config.json matches your server
-
-2. **Role assignment errors**
-   - Ensure bot role is higher than roles it's trying to assign
-   - Check if role IDs in config.json are correct
-
-3. **Missing dependencies**
-   - Run `pip install -r requirements.txt` to install all required packages
-
-4. **Environment variables not loading**
-   - Ensure `.env` file is in the root directory
-   - Check that `DISCORD_TOKEN` is properly set
-
-## 📝 Dependencies
-
-- **nextcord**: Modern Discord API wrapper
-- **python-dotenv**: Environment variable management
-- **Pillow**: Image processing capabilities
-- **psycopg**: PostgreSQL database adapter
-- **SQLAlchemy**: Database ORM
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 🆘 Support
-
-For support with this bot:
-
-1. Check the troubleshooting section above
-2. Review Discord bot permissions
-3. Verify configuration settings
-4. Open an issue on the repository
-
----
-
-**Note**: This bot is specifically designed for the Aegean Federation Defense Forces Discord server. You may need to modify role IDs, channel IDs, and embed content to fit your specific server needs.
+The old local `users` / `loa_requests` tables were migrated to Supabase. The one-off migration script and the step-by-step plan docs were removed in the cleanup commit; see git history.

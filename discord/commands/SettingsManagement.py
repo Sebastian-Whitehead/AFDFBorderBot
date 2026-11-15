@@ -191,7 +191,7 @@ class SettingsManagement(commands.Cog):
                         footer_text = "Setting saved to database and applied immediately."
                     else:
                         footer_text = "Setting saved to database. The change will take effect on the next check cycle."
-                except Exception as e:
+                except Exception:
                     footer_text = "Setting saved to database. The change will take effect on the next check cycle."
                 
                 embed = nextcord.Embed(

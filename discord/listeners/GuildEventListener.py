@@ -1,6 +1,5 @@
 import nextcord
 from nextcord.ext import commands
-from nextcord import Interaction, Member, NotFound, slash_command
 
 from ..config import MAIN_CHANNEL_ID, get_setting
 

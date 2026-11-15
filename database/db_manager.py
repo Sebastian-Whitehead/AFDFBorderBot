@@ -7,7 +7,6 @@ Provides basic database connection and raw query execution.
 import os
 import logging
 from typing import Optional, List, Dict, Any
-import asyncio
 
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy import text

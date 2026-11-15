@@ -1,10 +1,9 @@
 # GuildEvent.py
 import datetime
-import nextcord
 from nextcord.ext import commands
 from nextcord import Interaction, slash_command
 
-from ..config import TESTING_GUILD_ID, LEADERSHIP_ROLE_ID, EVENTS_CHANNEL_ID, CIVIL_SERVANT_ROLE_ID, LOG_CHANNEL_ID
+from ..config import TESTING_GUILD_ID, EVENTS_CHANNEL_ID, CIVIL_SERVANT_ROLE_ID, LOG_CHANNEL_ID
 
 class GuildEvent(commands.Cog):
     def __init__(self, bot):

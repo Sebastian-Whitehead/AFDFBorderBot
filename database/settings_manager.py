@@ -3,7 +3,6 @@ Simple database-backed settings manager using SQLAlchemy.
 """
 
 import logging
-import asyncio
 from typing import Any, Dict
 from datetime import datetime
 
