@@ -13,5 +13,6 @@ CREATE INDEX idx_bot_settings_key ON bot_settings(setting_key);
 INSERT INTO bot_settings (setting_key, setting_value) 
 VALUES 
     ('listen-for-join-leave', 'true'),
+    ('new-citizen-welcome', 'true'),
     ('listen-for-border-officer', 'true'),
     ('listen-for-event-start', 'false');

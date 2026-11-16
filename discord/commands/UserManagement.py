@@ -17,7 +17,7 @@ from database import create_user, get_user_info, modify_user, set_steam_id, crea
 from database.rank_codes import rank_choices, rank_index
 from ..utils import RankManager
 from ..utils.steam import resolve_steam_id
-from ..config import TESTING_GUILD_ID as GUILD_ID
+from ..config import TESTING_GUILD_ID as GUILD_ID, LEADERSHIP_ROLE_ID
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +40,7 @@ class UserManagement(commands.Cog):
         description="Add a new member to the database",
         guild_ids=[GUILD_ID] if GUILD_ID else None
     )
+    @commands.has_role(LEADERSHIP_ROLE_ID)
     async def add_member(
         self,
         interaction: nextcord.Interaction,
@@ -50,7 +51,7 @@ class UserManagement(commands.Cog):
         notes: Optional[str] = SlashOption(description="Additional notes", required=False)
     ):
         """Add a player identity; a military service record only if service_record is true."""
-        await interaction.response.defer()
+        await interaction.response.defer(ephemeral=True)
         if rank and not service_record:
             await interaction.followup.send("❌ Rank only applies with `service_record: True`.", ephemeral=True)
             return
@@ -122,6 +123,7 @@ class UserManagement(commands.Cog):
         description="Create a service record for an existing player",
         guild_ids=[GUILD_ID] if GUILD_ID else None
     )
+    @commands.has_role(LEADERSHIP_ROLE_ID)
     async def create_service_record_cmd(
         self,
         interaction: nextcord.Interaction,
@@ -129,7 +131,7 @@ class UserManagement(commands.Cog):
         rank: str = SlashOption(description="Starting rank", choices=rank_choices())
     ):
         """Create just the service record (no enlistment event, no Discord role changes)."""
-        await interaction.response.defer()
+        await interaction.response.defer(ephemeral=True)
         result = await create_service_record(str(user.id), rank)
         messages = {
             "created": f"✅ Service record created for {user.mention} at {self._rank_text(rank)}.",
@@ -144,6 +146,7 @@ class UserManagement(commands.Cog):
         description="Add a Steam ID to an existing member",
         guild_ids=[GUILD_ID] if GUILD_ID else None
     )
+    @commands.has_role(LEADERSHIP_ROLE_ID)
     async def add_steam(
         self,
         interaction: nextcord.Interaction,
@@ -151,7 +154,7 @@ class UserManagement(commands.Cog):
         steam_url: str = SlashOption(description="Steam profile URL (/profiles/ or /id/) or SteamID64")
     ):
         """Attach a Steam ID to an existing player identity."""
-        await interaction.response.defer()
+        await interaction.response.defer(ephemeral=True)
         steam_id = await resolve_steam_id(steam_url)
         if steam_id is None:
             await interaction.followup.send(
@@ -176,6 +179,7 @@ class UserManagement(commands.Cog):
         description="Promote a member to a higher rank",
         guild_ids=[GUILD_ID] if GUILD_ID else None
     )
+    @commands.has_role(LEADERSHIP_ROLE_ID)
     async def promote_member(
         self,
         interaction: nextcord.Interaction,
@@ -184,7 +188,7 @@ class UserManagement(commands.Cog):
         reason: Optional[str] = SlashOption(description="Reason for promotion", required=False)
     ):
         """Promote a member to a higher rank."""
-        await interaction.response.defer()
+        await interaction.response.defer(ephemeral=True)
         try:
             member = await get_user_info(str(user.id))
 
@@ -253,6 +257,7 @@ class UserManagement(commands.Cog):
         description="Demote a member to a lower rank",
         guild_ids=[GUILD_ID] if GUILD_ID else None
     )
+    @commands.has_role(LEADERSHIP_ROLE_ID)
     async def demote_member(
         self,
         interaction: nextcord.Interaction,
@@ -261,7 +266,7 @@ class UserManagement(commands.Cog):
         reason: str = SlashOption(description="Reason for demotion")
     ):
         """Demote a member to a lower rank."""
-        await interaction.response.defer()
+        await interaction.response.defer(ephemeral=True)
         try:
             member = await get_user_info(str(user.id))
 
@@ -322,6 +327,7 @@ class UserManagement(commands.Cog):
         description="Log a reprimand on a member's service record",
         guild_ids=[GUILD_ID] if GUILD_ID else None
     )
+    @commands.has_role(LEADERSHIP_ROLE_ID)
     async def reprimand(
         self,
         interaction: nextcord.Interaction,
@@ -329,7 +335,7 @@ class UserManagement(commands.Cog):
         reason: str = SlashOption(description="Reason for the reprimand")
     ):
         """Add a reprimand event to the member's service record."""
-        await interaction.response.defer()
+        await interaction.response.defer(ephemeral=True)
         result = await add_reprimand(str(user.id), reason, str(interaction.user.id))
         messages = {
             "recorded": f"⚠️ Reprimand logged for {user.mention}: {reason}",
@@ -343,6 +349,7 @@ class UserManagement(commands.Cog):
         description="Add an event to a member's service record",
         guild_ids=[GUILD_ID] if GUILD_ID else None
     )
+    @commands.has_role(LEADERSHIP_ROLE_ID)
     async def create_service_event(
         self,
         interaction: nextcord.Interaction,

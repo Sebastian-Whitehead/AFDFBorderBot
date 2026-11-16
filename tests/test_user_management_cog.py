@@ -253,3 +253,10 @@ async def test_add_member_rank_without_service_record_rejected(env, monkeypatch)
     await _add(um, cog, i, user, rank="EN3")
     create.assert_not_awaited()
     assert _sent(i).kwargs["ephemeral"] is True
+
+
+def test_member_and_service_record_commands_need_leadership(env):
+    um, *_ = env
+    for name in ("add_member", "add_steam", "create_service_record_cmd", "create_service_event",
+                 "promote_member", "demote_member", "reprimand"):
+        assert getattr(um.UserManagement, name).callback.__commands_checks__, f"{name} has no role check"

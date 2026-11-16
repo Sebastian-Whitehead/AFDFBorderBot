@@ -150,3 +150,25 @@ async def test_e6_discharge_failure_changes_no_roles(enlistment, monkeypatch, re
     monkeypatch.setattr(m, "discharge_member", AsyncMock(return_value=result))
     await m.Enlistment.discharge.callback(cog, i, user, None)
     user.remove_roles.assert_not_awaited()
+
+
+async def test_c_welcome_setting_off_skips_main_post(checkpoint, monkeypatch):
+    m, cog = checkpoint
+    i, user, _ = _setup(monkeypatch, m)
+    monkeypatch.setattr(m, "ensure_player_identity", AsyncMock(return_value=True))
+    monkeypatch.setattr(m, "get_setting", lambda key, default=None: False if key == "new-citizen-welcome" else default)
+    await _approve(m, cog, i, user, STEAM)
+    i.guild.get_channel.assert_not_called()
+    assert "Accepted" in i.followup.send.await_args.args[0]  # approval itself still confirmed
+
+
+async def test_c_welcome_setting_on_posts_to_main(checkpoint, monkeypatch):
+    m, cog = checkpoint
+    i, user, _ = _setup(monkeypatch, m)
+    monkeypatch.setattr(m, "ensure_player_identity", AsyncMock(return_value=True))
+    monkeypatch.setattr(m, "get_setting", lambda key, default=None: default)  # unset -> default True
+    user.display_name = "Bob"
+    await _approve(m, cog, i, user, STEAM)
+    send = i.guild.get_channel.return_value.send
+    send.assert_awaited_once()
+    assert send.await_args.kwargs["content"] == user.mention  # new citizen still pinged

@@ -1,14 +1,13 @@
 # Checkpoint.py
-import json
 from typing import Optional
 
-import nextcord
 from nextcord.ext import commands
 from nextcord import Interaction, Member, NotFound, SlashOption, slash_command
 
 from database import ensure_player_identity
+from ..utils import send_processed_embed
 from ..utils.steam import resolve_steam_id
-from ..config import TESTING_GUILD_ID, JOIN_ROLE_ID, BORDER_OFFICER_ROLE_ID, CITIZEN_ROLE_IDS, MAIN_CHANNEL_ID
+from ..config import get_setting, TESTING_GUILD_ID, JOIN_ROLE_ID, BORDER_OFFICER_ROLE_ID, CITIZEN_ROLE_IDS, MAIN_CHANNEL_ID
 
 
 class Checkpoint(commands.Cog):
@@ -28,7 +27,7 @@ class Checkpoint(commands.Cog):
             await ctx.response.send_message("❌ Bot configuration error - not enough citizen roles configured!", ephemeral=True)
             return
 
-        await ctx.response.defer()
+        await ctx.response.defer(ephemeral=True)
 
         if steam_id:
             steam_id = await resolve_steam_id(steam_id)
@@ -53,29 +52,23 @@ class Checkpoint(commands.Cog):
             await user.add_roles(role_to_add, role_to_add1)
             await user.remove_roles(role_to_remove)
             guild = ctx.guild
-            main_channel = guild.get_channel(MAIN_CHANNEL_ID)
-            
-            if not main_channel:
+            welcome = get_setting('new-citizen-welcome', True)
+            main_channel = guild.get_channel(MAIN_CHANNEL_ID) if welcome else None
+
+            if welcome and not main_channel:
                 await ctx.followup.send("❌ Could not find main channel!", ephemeral=True)
                 return
 
             await ctx.followup.send(
                 f"✅ {user.mention}'s request to enter the border has been Accepted! Welcome to the Federation")
 
-            with open('embeds/newcitizen-main.json') as embed_file:
-                embed_dict = json.load(embed_file)
-                
-                embed_dict['title'] = embed_dict['title'].format(username=user.global_name)
+            if not welcome:
+                return
 
-                # Catch none value for global_name
-                if user.global_name is None:
-                    embed_dict['title'] = "A NEW CITIZEN HAS ARRIVED!"
-                
-                embed_dict['description'] = embed_dict['description'].format(username=user.mention)
-                embed_dict['thumbnail']['url'] = embed_dict['thumbnail']['url'].format(profile_picture=user.avatar.url)
-            citizen_embed = nextcord.Embed.from_dict(embed_dict)
-
-            await main_channel.send(content=user.mention, embed=citizen_embed)
+            await send_processed_embed(main_channel, 'newcitizen-main.json', {
+                '{user}': user.mention,
+                '{username}': user.display_name,
+            })
 
         except NotFound:
             await ctx.followup.send("Member not found.", ephemeral=True)

@@ -22,7 +22,7 @@ class Enlistment(commands.Cog):
     @slash_command(description="Enlist in the army", guild_ids=[TESTING_GUILD_ID] if TESTING_GUILD_ID else None)
     @commands.has_role(LEADERSHIP_ROLE_ID)
     async def enlist(self, ctx: Interaction, user: Member):
-        await ctx.response.defer()
+        await ctx.response.defer(ephemeral=True)
         # Check if required roles are configured
         if not ENLISTED_ROLE_IDS or not LEADERSHIP_ROLE_ID:
             await ctx.followup.send("❌ Bot configuration error - missing required roles!", ephemeral=True)
@@ -68,7 +68,7 @@ class Enlistment(commands.Cog):
     @commands.has_role(LEADERSHIP_ROLE_ID)
     async def discharge(self, ctx: Interaction, user: Member,
                         reason: Optional[str] = SlashOption(description="Reason (optional)", required=False)):
-        await ctx.response.defer()
+        await ctx.response.defer(ephemeral=True)
         result = await discharge_member(str(user.id), reason)
         if result != "discharged":
             msg = {"no_record": f"❌ {user.mention} has no service record.",

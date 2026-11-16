@@ -44,7 +44,8 @@ class Info(commands.Cog):
         """List all ranks, highest first."""
         lines = [f"`{c}` **{r['abbr']}** – {r['name']}" for c, r in reversed(RANKS.items())]
         await interaction.response.send_message(
-            embed=nextcord.Embed(title="Rank Hierarchy", description="\n".join(lines), color=0x0099ff)
+            embed=nextcord.Embed(title="Rank Hierarchy", description="\n".join(lines), color=0x0099ff),
+            ephemeral=True
         )
 
     @nextcord.slash_command(
@@ -58,7 +59,7 @@ class Info(commands.Cog):
         user: nextcord.User = SlashOption(description="User to view profile for")
     ):
         """View a member's profile and statistics."""
-        await interaction.response.defer()
+        await interaction.response.defer(ephemeral=True)
         try:
             member = await get_user_info(str(user.id))
 
@@ -140,7 +141,7 @@ class Info(commands.Cog):
         user: nextcord.User = SlashOption(description="Member to look up"),
         rows: int = SlashOption(description="How many events to show (default 10)", default=10, min_value=1, max_value=20)
     ):
-        await interaction.response.defer()
+        await interaction.response.defer(ephemeral=True)
         events = await get_service_events(str(user.id), rows)
         if events is None:
             await interaction.followup.send(

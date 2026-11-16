@@ -81,7 +81,7 @@ class Session(commands.Cog):
         timeline: str = SlashOption(description="Timeline (default A)", default="A"),
         page: int = SlashOption(description="Page number (default 1)", default=1, min_value=1),
     ):
-        await interaction.response.defer()
+        await interaction.response.defer(ephemeral=True)
         result = await list_sessions(timeline.strip(), page)
         if result is None:
             await interaction.followup.send("❌ Database error.")

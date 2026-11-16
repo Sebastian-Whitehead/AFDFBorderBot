@@ -46,6 +46,7 @@ class SettingsManagement(commands.Cog):
         try:
             settings_to_check = [
                 ('listen-for-join-leave', 'Join/Leave Messages'),
+                ('new-citizen-welcome', 'New Citizen Welcome (on /approve)'),
                 ('listen-for-border-officer', 'Border Officer Monitor'),
                 ('listen-for-event-start', 'Event Start Listener'),
                 ('border-officer-check-interval', 'Border Officer Check Interval (seconds)')
@@ -98,6 +99,7 @@ class SettingsManagement(commands.Cog):
             description="Setting to modify",
             choices=[
                 "listen-for-join-leave",
+                "new-citizen-welcome",
                 "listen-for-border-officer", 
                 "listen-for-event-start"
             ]
