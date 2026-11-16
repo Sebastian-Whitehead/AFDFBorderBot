@@ -52,6 +52,35 @@ async def find_unaccounted(discord_ids: List[str]) -> Optional[List[str]]:
         return None
 
 
+async def get_attendance_history(discord_id: str, limit: int) -> Optional[Dict[str, Any]]:
+    """{'has_record': bool, 'counts': {status: n} over all sessions, 'recent': newest `limit` rows
+    [{session_name, start_at, status, notes}]}, or None on error."""
+    try:
+        db = await get_shared_db_manager()
+        async with db.get_session() as session:
+            p = {"d": int(discord_id), "org": ORG}
+            who = """FROM military.service_records sr
+                JOIN public.identities_player p ON p.id = sr.player_identity_id
+                JOIN public.identities_organizations o ON o.id = sr.organization_id"""
+            scope = f"""FROM military.attendance a
+                JOIN military.sessions s ON s.id = a.session_id
+                JOIN military.service_records sr ON sr.id = a.service_record_id
+                JOIN public.identities_player p ON p.id = sr.player_identity_id
+                JOIN public.identities_organizations o ON o.id = sr.organization_id
+                WHERE p.discord_id = :d AND o.name = :org"""
+            has = (await session.execute(text(f"SELECT 1 {who} WHERE p.discord_id = :d AND o.name = :org"), p)).first()
+            counts = (await session.execute(text(
+                f"SELECT a.attendance_status::text AS status, count(*) AS n {scope} GROUP BY 1"), p)).all()
+            recent = (await session.execute(text(
+                f"SELECT s.session_name, s.start_at, a.attendance_status::text AS status, a.notes {scope} "
+                "ORDER BY s.start_at DESC, a.id DESC LIMIT :n"), {**p, "n": limit})).mappings().all()
+            return {"has_record": has is not None, "counts": {r.status: r.n for r in counts},
+                    "recent": [dict(r) for r in recent]}
+    except Exception as e:
+        logger.error(f"Error loading attendance history: {e}")
+        return None
+
+
 async def submit_attendance(session_id: int, rows: List[Dict[str, Any]], recorded_by: str) -> Optional[Dict[str, List[str]]]:
     """Upsert one military.attendance row per {discord_id, status, notes}, in one transaction.
     Returns {'saved': [...], 'skipped': [...]} (skipped = no service record), or None on error."""

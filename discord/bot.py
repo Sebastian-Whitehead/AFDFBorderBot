@@ -59,6 +59,7 @@ def load_extensions(bot):
     bot.load_extension("discord.commands.UserManagement")
     bot.load_extension("discord.commands.Info")
     bot.load_extension("discord.commands.Attendance")
+    bot.load_extension("discord.commands.RecordAdmin")
 
 
 def run_bot():

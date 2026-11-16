@@ -4,6 +4,7 @@ import logging
 from typing import Any, Dict, Optional
 
 from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
 
 from .db_manager import get_shared_db_manager
 
@@ -114,3 +115,34 @@ async def update_session(session_id: int, **changes) -> tuple:
     except Exception as e:
         logger.error(f"Error updating session: {e}")
         return "error", None
+
+
+async def get_session_for_delete(session_id: int) -> tuple:
+    """Returns (status, row): 'found' (row has id, session_name, start_at, attendance_count), 'not_found' or 'error'."""
+    try:
+        db = await get_shared_db_manager()
+        async with db.get_session() as session:
+            row = (await session.execute(text(
+                "SELECT s.id, s.session_name, s.start_at, "
+                "(SELECT count(*) FROM military.attendance a WHERE a.session_id = s.id) AS attendance_count "
+                "FROM military.sessions s WHERE s.id = :i"), {"i": session_id})).mappings().first()
+            return ("found", dict(row)) if row else ("not_found", None)
+    except Exception as e:
+        logger.error(f"Error reading session for delete: {e}")
+        return "error", None
+
+
+async def delete_session(session_id: int) -> str:
+    """Delete a session row. Returns 'deleted', 'not_found', 'blocked' (attendance rows reference it:
+    the FK is ON DELETE RESTRICT, so they are never removed here) or 'error'."""
+    try:
+        db = await get_shared_db_manager()
+        async with db.get_session() as session:
+            res = await session.execute(text("DELETE FROM military.sessions WHERE id = :i"), {"i": session_id})
+            await session.commit()
+            return "deleted" if res.rowcount else "not_found"
+    except IntegrityError:
+        return "blocked"
+    except Exception as e:
+        logger.error(f"Error deleting session: {e}")
+        return "error"

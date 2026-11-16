@@ -80,10 +80,59 @@ async def test_g5_promote(env, monkeypatch):
     modify = AsyncMock(return_value=True)
     monkeypatch.setattr(um, "get_user_info", AsyncMock(return_value=_member("EN2")))
     monkeypatch.setattr(um, "modify_user", modify)
+    monkeypatch.setattr(um, "sync_rank_roles", AsyncMock())
     await um.UserManagement.promote_member.callback(cog, i, user, "EN3", None)
     assert modify.await_args.kwargs["rank"] == "EN3"
     assert "Promoted" in modify.await_args.kwargs["reason"]
     assert _sent(i).kwargs["embed"].title == "🎉 Promotion Successful"
+
+
+async def test_promote_swaps_roles(env, monkeypatch):
+    um, i, user, cog = env
+    sync = AsyncMock()
+    monkeypatch.setattr(um, "get_user_info", AsyncMock(return_value=_member("EN2")))
+    monkeypatch.setattr(um, "modify_user", AsyncMock(return_value=True))
+    monkeypatch.setattr(um, "sync_rank_roles", sync)
+    await um.UserManagement.promote_member.callback(cog, i, user, "EN3", None)
+    sync.assert_awaited_once_with(user.guild, user, "EN2", "EN3")
+    assert _sent(i).kwargs["embed"].title == "🎉 Promotion Successful"
+
+
+async def test_promote_db_failure_no_role_calls(env, monkeypatch):
+    um, i, user, cog = env
+    sync = AsyncMock()
+    monkeypatch.setattr(um, "get_user_info", AsyncMock(return_value=_member("EN2")))
+    monkeypatch.setattr(um, "modify_user", AsyncMock(return_value=False))
+    monkeypatch.setattr(um, "sync_rank_roles", sync)
+    await um.UserManagement.promote_member.callback(cog, i, user, "EN3", None)
+    sync.assert_not_awaited()
+    assert "Failed to update rank" in _sent(i).args[0]
+
+
+async def test_promote_role_failure_still_succeeds_with_warning(env, monkeypatch):
+    um, i, user, cog = env
+    monkeypatch.setattr(um, "get_user_info", AsyncMock(return_value=_member("EN2")))
+    monkeypatch.setattr(um, "modify_user", AsyncMock(return_value=True))
+    monkeypatch.setattr(um, "sync_rank_roles", AsyncMock(side_effect=RuntimeError("Missing Permissions")))
+    await um.UserManagement.promote_member.callback(cog, i, user, "EN3", None)
+    embed = _sent(i).kwargs["embed"]
+    assert embed.title == "🎉 Promotion Successful"
+    warn = {f.name: f.value for f in embed.fields}["⚠️ Roles not updated"]
+    assert "Missing Permissions" in warn
+
+
+async def test_demote_swaps_roles_and_warns_on_failure(env, monkeypatch):
+    um, i, user, cog = env
+    sync = AsyncMock()
+    monkeypatch.setattr(um, "get_user_info", AsyncMock(return_value=_member("EN3")))
+    monkeypatch.setattr(um, "modify_user", AsyncMock(return_value=True))
+    monkeypatch.setattr(um, "sync_rank_roles", sync)
+    await um.UserManagement.demote_member.callback(cog, i, user, "EN2", "because")
+    sync.assert_awaited_once_with(user.guild, user, "EN3", "EN2")
+    sync.side_effect = RuntimeError("boom")
+    await um.UserManagement.demote_member.callback(cog, i, user, "EN2", "because")
+    embed = _sent(i).kwargs["embed"]
+    assert embed.title == "⬇️ Demotion Applied" and "boom" in {f.name: f.value for f in embed.fields}["⚠️ Roles not updated"]
 
 
 async def test_g6_promote_too_far(env, monkeypatch):
@@ -101,6 +150,7 @@ async def test_g7_demote(env, monkeypatch):
     modify = AsyncMock(return_value=True)
     monkeypatch.setattr(um, "get_user_info", AsyncMock(return_value=_member("EN3")))
     monkeypatch.setattr(um, "modify_user", modify)
+    monkeypatch.setattr(um, "sync_rank_roles", AsyncMock())
     await um.UserManagement.demote_member.callback(cog, i, user, "EN3", "because")
     modify.assert_not_awaited()
     assert _sent(i).kwargs["ephemeral"] is True
@@ -125,12 +175,13 @@ async def test_g9_profile(env, monkeypatch):
     assert "Money" not in [f.name for f in embed.fields]
 
 
-async def test_g11_flow_shared_db(shared_db, env):
+async def test_g11_flow_shared_db(shared_db, env, monkeypatch):
     from database.user_functions import get_user_info
     from tests.helpers import ids
     um, i, user, cog = env
     steam, discord_id = ids(1)
     user.id = int(discord_id)
+    monkeypatch.setattr(um, "sync_rank_roles", AsyncMock())
     await _add(um, cog, i, user, rank="EN2", steam=steam, service_record=True)
     assert _sent(i).kwargs["embed"].title == "✅ Member Added Successfully"
     await um.UserManagement.promote_member.callback(cog, i, user, "EN3", None)
@@ -212,14 +263,14 @@ async def test_service_record_table(env, monkeypatch):
     import datetime
     import discord.commands.Info as info
     _, i, user, _ = env
-    ev = [{"occured_at": datetime.datetime(2026, 1, 2), "event_type": "reprimand", "rank": "EN2", "notes": "late\nagain"},
-          {"occured_at": datetime.datetime(2026, 1, 1), "event_type": "enlisted", "rank": None, "notes": None}]
+    ev = [{"id": 5, "occured_at": datetime.datetime(2026, 1, 2), "event_type": "reprimand", "rank": "EN2", "notes": "late\nagain"},
+          {"id": 4, "occured_at": datetime.datetime(2026, 1, 1), "event_type": "enlisted", "rank": None, "notes": None}]
     get = AsyncMock(return_value=ev)
     monkeypatch.setattr(info, "get_service_events", get)
     await info.Info.service_record.callback(info.Info(bot=MagicMock()), i, user, 10)
     get.assert_awaited_once_with(DISCORD, 10)
     out = _sent(i).args[0]
-    assert "| 2026-01-02 | reprimand | EN2  | late again |" in out and out.count("```") == 2 and len(out) < 2000
+    assert "| 5  | 2026-01-02 | reprimand | EN2  | late again |" in out and out.count("```") == 2 and len(out) < 2000
     monkeypatch.setattr(info, "get_service_events", AsyncMock(return_value=None))
     await info.Info.service_record.callback(info.Info(bot=MagicMock()), i, user, 10)
     assert "no service record" in _sent(i).args[0] and _sent(i).kwargs["ephemeral"]

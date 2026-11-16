@@ -6,7 +6,7 @@ from typing import Optional
 from nextcord import Interaction, slash_command, SlashOption
 from nextcord.ext import commands
 
-from database.session_functions import create_session as create_session_row, end_latest_session, list_sessions, update_session, PAGE_SIZE
+from database.session_functions import create_session as create_session_row, end_latest_session, get_session_for_delete, delete_session as delete_session_row, list_sessions, update_session, PAGE_SIZE
 from ..utils import load_embeds
 from ..utils.confirm import confirm
 from ..config import TESTING_GUILD_ID, CIVIL_SERVANT_ROLE_ID
@@ -139,6 +139,39 @@ class Session(commands.Cog):
             "error": lambda: "❌ Database error, nothing changed.",
         }
         await interaction.followup.send(messages[status]())
+
+    @slash_command(description="Permanently delete a session that has no attendance", guild_ids=[TESTING_GUILD_ID] if TESTING_GUILD_ID else None)
+    @commands.has_role(CIVIL_SERVANT_ROLE_ID)
+    async def delete_session(
+        self,
+        interaction: Interaction,
+        session_id: int = SlashOption(description="Session ID (see /session_list)", min_value=1),
+    ):
+        await interaction.response.defer(ephemeral=True)
+        status, row = await get_session_for_delete(session_id)
+        if status == "not_found":
+            await interaction.followup.send(f"❌ No session with id {session_id}.")
+            return
+        if status == "error":
+            await interaction.followup.send("❌ Database error, nothing changed.")
+            return
+        if row["attendance_count"]:
+            await interaction.followup.send(
+                f"❌ Session **{row['session_name']}** (id {session_id}) has {row['attendance_count']} attendance row(s) "
+                "and can't be deleted. Nothing changed.")
+            return
+        if not await confirm(interaction, "delete_session_warning.json",
+                             {"{session_name}": row["session_name"], "{session_id}": str(session_id),
+                              "{attendance_count}": str(row["attendance_count"])},
+                             declined="↩️ Session not deleted.", timed_out="⌛ Timed out, session not deleted."):
+            return
+        messages = {
+            "deleted": f"✅ Session **{row['session_name']}** (id {session_id}) deleted.",
+            "not_found": f"❌ No session with id {session_id}.",
+            "blocked": "❌ Attendance was recorded for this session meanwhile, so it can't be deleted. Nothing changed.",
+            "error": "❌ Database error, nothing changed.",
+        }
+        await interaction.edit_original_message(content=messages[await delete_session_row(session_id)], embeds=[], view=None)
 
 
 def setup(bot):

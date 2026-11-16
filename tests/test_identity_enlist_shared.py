@@ -169,3 +169,20 @@ async def test_create_user_identity_only(shared_db):
     assert await _records(s) == 0 and await _identities(s) == 1
     assert await enlist_member(d) == "enlisted"  # military side can be added later
     assert await _records(s) == 1
+
+
+async def test_retire_marks_record_and_event(shared_db):
+    from database import create_service_record, discharge_member
+    s, d = ids(82)
+    assert await ensure_player_identity("zz_test_ret", s, d)
+    assert await create_service_record(d, "EN5") == "created"
+    assert await enlist_member(d) == "enlisted"
+    assert await discharge_member(d, "served", kind="retired") == "retired"
+    assert await discharge_member(d, kind="retired") == "not_enlisted"
+    info = await get_user_info(d)
+    assert info["enlisted"] is False and info["rank"] == "EN5"
+    assert await _count(
+        "SELECT count(*) AS n FROM military.service_events e JOIN military.service_records r ON r.id = e.service_record_id "
+        "JOIN public.identities_player p ON p.id = r.player_identity_id WHERE p.steam_id = :s AND e.event_type = 'retired' "
+        "AND r.service_status = 'retired'", s=int(s)) == 1
+    assert await discharge_member(d, kind="bogus") == "error"

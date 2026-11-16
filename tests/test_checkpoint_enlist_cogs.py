@@ -172,3 +172,28 @@ async def test_c_welcome_setting_on_posts_to_main(checkpoint, monkeypatch):
     send = i.guild.get_channel.return_value.send
     send.assert_awaited_once()
     assert send.await_args.kwargs["content"] == user.mention  # new citizen still pinged
+
+
+async def test_e7_retire_swaps_roles(enlistment, monkeypatch):
+    m, cog = enlistment
+    i, user, _ = _setup(monkeypatch, m)
+    monkeypatch.setattr(m, "DISTINGUISHED_CITIZEN_ROLE_ID", 8)
+    monkeypatch.setattr(m, "MILITARY_PERSONNEL_ROLE_ID", 9)
+    discharge = AsyncMock(return_value="retired")
+    monkeypatch.setattr(m, "discharge_member", discharge)
+    monkeypatch.setattr(m, "get_user_info", AsyncMock(return_value={"rank": "EN4"}))
+    await m.Enlistment.retire.callback(cog, i, user, "served well")
+    assert discharge.await_args.kwargs["kind"] == "retired"
+    assert len(user.remove_roles.await_args.args) == 2  # EN4 rank role + military personnel
+    user.add_roles.assert_awaited_once()
+
+
+@pytest.mark.parametrize("result", ["no_record", "not_enlisted", "error"])
+async def test_e8_retire_failure_changes_no_roles(enlistment, monkeypatch, result):
+    m, cog = enlistment
+    i, user, _ = _setup(monkeypatch, m)
+    monkeypatch.setattr(m, "DISTINGUISHED_CITIZEN_ROLE_ID", 8)
+    monkeypatch.setattr(m, "discharge_member", AsyncMock(return_value=result))
+    await m.Enlistment.retire.callback(cog, i, user, None)
+    user.add_roles.assert_not_awaited()
+    user.remove_roles.assert_not_awaited()

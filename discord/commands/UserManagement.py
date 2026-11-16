@@ -17,6 +17,7 @@ from database import create_user, get_user_info, modify_user, set_steam_id, crea
 from database.rank_codes import rank_choices, rank_index
 from ..utils import RankManager
 from ..utils.steam import resolve_steam_id
+from ..utils.rank_roles import sync_rank_roles
 from ..config import TESTING_GUILD_ID as GUILD_ID, LEADERSHIP_ROLE_ID
 
 logger = logging.getLogger(__name__)
@@ -174,6 +175,16 @@ class UserManagement(commands.Cog):
         }
         await interaction.followup.send(messages[result], ephemeral=result not in ("updated", "already_set"))
 
+    @staticmethod
+    async def _sync_roles(embed, user, old_rank, new_rank):
+        """Swap Discord rank roles after the DB change; on failure keep the DB change and warn."""
+        try:
+            await sync_rank_roles(user.guild, user, old_rank, new_rank)
+        except Exception as e:
+            logger.warning(f"Rank role sync failed for {user.id}: {e}")
+            embed.add_field(name="⚠️ Roles not updated",
+                            value=f"Database rank changed, but Discord roles could not be updated: {e}", inline=False)
+
     @nextcord.slash_command(
         name="promote",
         description="Promote a member to a higher rank",
@@ -183,7 +194,7 @@ class UserManagement(commands.Cog):
     async def promote_member(
         self,
         interaction: nextcord.Interaction,
-        user: nextcord.User = SlashOption(description="User to promote"),
+        user: nextcord.Member = SlashOption(description="User to promote"),
         new_rank: str = SlashOption(description="New rank", choices=rank_choices()),
         reason: Optional[str] = SlashOption(description="Reason for promotion", required=False)
     ):
@@ -234,6 +245,7 @@ class UserManagement(commands.Cog):
                     inline=True
                 )
                 embed.add_field(name="Member", value=user.mention, inline=True)
+                await self._sync_roles(embed, user, member["rank"], new_rank)
                 
                 if reason:
                     embed.add_field(name="Reason", value=reason, inline=False)
@@ -261,7 +273,7 @@ class UserManagement(commands.Cog):
     async def demote_member(
         self,
         interaction: nextcord.Interaction,
-        user: nextcord.User = SlashOption(description="User to demote"),
+        user: nextcord.Member = SlashOption(description="User to demote"),
         new_rank: str = SlashOption(description="New rank", choices=rank_choices()),
         reason: str = SlashOption(description="Reason for demotion")
     ):
@@ -306,6 +318,7 @@ class UserManagement(commands.Cog):
                     inline=True
                 )
                 embed.add_field(name="Member", value=user.mention, inline=True)
+                await self._sync_roles(embed, user, member["rank"], new_rank)
                 embed.add_field(name="Reason", value=reason, inline=False)
                 
                 await interaction.followup.send(embed=embed)

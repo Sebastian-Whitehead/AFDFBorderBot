@@ -1,0 +1,10 @@
+{
+  "content": "",
+  "embeds": [
+    {
+      "title": "⚠️ Delete this service event?",
+      "description": "Event **{event_id}**: `{event_type}` on {date}.\n\nThis permanently removes it from the member's service record.",
+      "color": 15844367
+    }
+  ]
+}

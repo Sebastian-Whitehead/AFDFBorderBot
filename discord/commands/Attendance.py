@@ -7,7 +7,7 @@ import nextcord
 from nextcord import Interaction, SlashOption, slash_command
 from nextcord.ext import commands
 
-from database.attendance_functions import find_unaccounted, submit_attendance, load_session_attendance
+from database.attendance_functions import find_unaccounted, get_attendance_history, submit_attendance, load_session_attendance
 from database.session_functions import get_open_session
 from database.loa_functions import LOAManager
 from ..utils.confirm import confirm
@@ -185,6 +185,35 @@ class Attendance(commands.Cog):
         if result["skipped"]:
             msg += "\nNo service record, not saved:\n" + "\n".join(f"- <@{m}>" for m in result["skipped"])
         await interaction.edit_original_message(content=msg, embeds=[], view=None)
+
+    @slash_command(description="Show a member's attendance history", guild_ids=GUILDS)
+    @commands.has_role(CIVIL_SERVANT_ROLE_ID)
+    async def attendance_history(
+        self,
+        interaction: Interaction,
+        user: nextcord.User = SlashOption(description="Member"),
+        rows: int = SlashOption(description="Recent sessions to list (default 10)", default=10, min_value=1, max_value=25),
+    ):
+        await interaction.response.defer(ephemeral=True)
+        hist = await get_attendance_history(str(user.id), rows)
+        if hist is None:
+            await interaction.followup.send("❌ Database error.")
+            return
+        if not hist["has_record"]:
+            await interaction.followup.send(f"❌ {user.mention} has no service record.")
+            return
+        counts = hist["counts"]
+        total = sum(counts.values())
+        if not total:
+            await interaction.followup.send(f"ℹ️ No attendance recorded for {user.mention}.")
+            return
+        summary = " · ".join(f"{s} {counts[s]}" for s in STATUSES if s in counts)
+        lines = [f"**{r['session_name'][:60]}** · {r['start_at'].astimezone(datetime.timezone.utc):%Y-%m-%d} · {r['status']}"
+                 + (f" · {r['notes'][:50]}" if r["notes"] else "") for r in hist["recent"]]
+        embed = nextcord.Embed(
+            title=f"Attendance: {user.display_name}",
+            description=f"{summary}\nAttendance rate: {counts.get('present', 0) / total:.0%} ({total} sessions)\n\n" + "\n".join(lines))
+        await interaction.followup.send(embed=embed)
 
 
 def setup(bot):

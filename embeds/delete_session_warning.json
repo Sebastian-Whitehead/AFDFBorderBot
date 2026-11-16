@@ -1,0 +1,10 @@
+{
+  "content": "",
+  "embeds": [
+    {
+      "title": "⚠️ Delete the session?",
+      "description": "Session **{session_name}** (id {session_id}) will be permanently deleted.\n\nAttendance rows removed with it: **{attendance_count}** (sessions with attendance cannot be deleted).\n\nThis cannot be undone. Are you sure?",
+      "color": 15844367
+    }
+  ]
+}

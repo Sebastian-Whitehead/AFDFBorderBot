@@ -151,10 +151,10 @@ class Info(commands.Cog):
             await interaction.followup.send(f"{user.mention} has no events on their service record.")
             return
         # Discord doesn't render markdown tables, so pad the columns inside a code block.
-        table = [("Date", "Event", "Rank", "Notes")] + [
-            (e["occured_at"].strftime("%Y-%m-%d"), e["event_type"], e["rank"] or "-",
+        table = [("ID", "Date", "Event", "Rank", "Notes")] + [
+            (str(e["id"]), e["occured_at"].strftime("%Y-%m-%d"), e["event_type"], e["rank"] or "-",
              " ".join((e["notes"] or "-").split())[:30]) for e in events]
-        w = [max(len(r[i]) for r in table) for i in range(4)]
+        w = [max(len(r[i]) for r in table) for i in range(5)]
         lines = ["| " + " | ".join(c.ljust(w[i]) for i, c in enumerate(r)) + " |" for r in table]
         lines.insert(1, "|" + "|".join("-" * (n + 2) for n in w) + "|")
         await interaction.followup.send(

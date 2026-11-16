@@ -15,8 +15,10 @@
       "border_officer": 1205844937233666049,
       "civil_servant": 1205875873992024146,
       "join_role" : 1206607575899181168,
+      "military_personnel": 1205876199746969650,
+      "distinguished_citizen": 1227366845380821112,
       "citizen": [1140584332247957615, 1140616787050889286], 
-      "enlisted": [1206596239379005490, 1205882493987979346],
+      "enlisted": [1206596239379005490, 1205876199746969650],
       "ranks": {
         "EN0": { "abbr": "VC", "name": "Voluntary Conscript", "role_id": "1206596239379005490" },
         "EN1": { "abbr": "2PTE", "name": "Second Private", "role_id": "1206248630982279208" },

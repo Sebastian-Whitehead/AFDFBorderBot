@@ -14,6 +14,7 @@ All commands are slash commands. `?` marks an optional option. Commands that tou
 | `/approve user steam_id?` | Border Officer | Lets someone through the border. Creates their player identity (with an optional SteamID64 or Steam profile URL), gives the citizen roles, removes the join role, and posts the new-citizen welcome in the main channel. The welcome can be turned off with the `new-citizen-welcome` setting. Does not create a service record. |
 | `/enlist user` | Leadership | Enlists a member. No service record: creates one at EN0, logs `enlisted`, gives the enlisted roles. Already active and enlisted: does nothing. Inactive record: sets it active again at their previous rank, logs `reenlisted`, gives the roles for that rank. The member must already have a player identity. |
 | `/discharge user reason?` | Leadership | Marks the member's service record `discharged`, logs a `discharged` event (with the reason as notes), and removes the enlisted and rank roles. Their rank is kept so `/enlist` can reinstate them. |
+| `/retire user reason?` | Leadership | Retires a member: marks the service record `retired`, logs a `retired` event (reason as notes), removes their rank role and the military personnel role, and gives the Distinguished Citizen role. Their rank is kept. `/enlist` can reinstate them later. |
 
 ## Members and service records
 
@@ -23,16 +24,20 @@ All commands are slash commands. `?` marks an optional option. Commands that tou
 | `/add_steam user steam_url` | Leadership | Attaches a Steam ID (SteamID64 or profile URL) to an existing identity. |
 | `/create_service_record user rank` | Leadership | Creates only the service record (no events, no role changes) for an existing identity. |
 | `/create_service_event user type date rank? status? notes? details?` | Leadership | Adds an event to a member's service record. `type` is one of `enlisted`, `rank_changed`, `discharged`, `reenlisted`, `retired`, `reprimand`. `date` is UTC, `YYYY-MM-DD` or `YYYY-MM-DD HH:MM`. `details` is a JSON object. Only inserts the event; it does not change the record's rank or status. |
-| `/promote user new_rank reason?` | Leadership | Promotes a member by one or two ranks and logs it on their service record. |
-| `/demote user new_rank reason` | Leadership | Demotes a member to a lower rank and logs it on their service record. |
+| `/promote user new_rank reason?` | Leadership | Promotes a member by one or two ranks, logs it on their service record, and swaps their Discord rank role. If the role swap fails, the rank change is kept and the reply says so. |
+| `/demote user new_rank reason` | Leadership | Demotes a member to a lower rank, logs it on their service record, and swaps their Discord rank role (same failure handling as `/promote`). |
 | `/reprimand user reason` | Leadership | Logs a `reprimand` event on a member's service record. |
+| `/set_rank user rank reason?` | Leadership | Sets a member's rank directly, skipping the promotion rules (for corrections). Logs a `rank_changed` event and swaps their Discord rank role. Does nothing if the rank is unchanged. |
+| `/edit_service_event event_id notes? status? rank? date? details?` | Leadership | Edits an existing service event; only the fields you give change. The event type can't be changed (delete and recreate it). Find event ids with `/service_record`. `details` replaces the old details. |
+| `/delete_service_event event_id` | Leadership | Deletes a service event, after a confirmation prompt. |
+| `/edit_member user name? notes?` | Leadership | Edits a member's name and/or notes. |
 
 ## Info
 
 | Command | Access | What it does |
 |---|---|---|
 | `/profile user` | Anyone | A member's profile: rank, enlistment, joined date and stats. |
-| `/service_record user rows?` | Anyone | The member's latest service events, newest first. |
+| `/service_record user rows?` | Anyone | The member's latest service events, newest first, with each event's ID. |
 | `/ranks` | Anyone | The rank hierarchy. |
 | `/ping` | Anyone | Checks the bot is alive (ephemeral). |
 
@@ -53,6 +58,7 @@ LOA commands only work in the LOA channel when one is configured.
 | `/create_session name operation? description? start? external_event_id? timeline?` | Civil Servant | Creates a session record. `start` is UTC `YYYY-MM-DD HH:MM` (default: now); `timeline` defaults to `A`. |
 | `/end_session end?` | Civil Servant | Ends the most recently started open session, after a confirmation prompt. `end` is UTC (default: now). |
 | `/edit_session session_id name? operation? description? timeline? start? end?` | Civil Servant | Edits a session; only the fields you give are changed. |
+| `/delete_session session_id` | Civil Servant | Permanently deletes a session, after a confirmation prompt. Refused if the session has attendance recorded. |
 | `/session_list timeline? page?` | Anyone | Lists sessions, 10 per page, newest first. |
 
 ## Attendance
@@ -68,6 +74,7 @@ The active attendance list lives in the bot's memory (lost on restart) until you
 | `/remove_attendance user` | Removes someone from the list. |
 | `/discard_attendance` | Throws the list away; nothing is saved. |
 | `/submit_attendance` | Saves the list to the database. Asks for confirmation first if people are unaccounted for. |
+| `/attendance_history user rows?` | A member's attendance history: counts by status, attendance rate (present out of all recorded sessions), and their latest sessions (default 10, max 25). |
 
 ## Settings (Leadership)
 

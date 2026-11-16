@@ -35,6 +35,8 @@ CIVIL_SERVANT_ROLE_ID = ROLES.get('civil_servant', None)
 JOIN_ROLE_ID = ROLES.get('join_role', None)
 CITIZEN_ROLE_IDS = ROLES.get('citizen', [])
 ENLISTED_ROLE_IDS = ROLES.get('enlisted', [])
+MILITARY_PERSONNEL_ROLE_ID = ROLES.get('military_personnel', None)
+DISTINGUISHED_CITIZEN_ROLE_ID = ROLES.get('distinguished_citizen', None)
 RANKS = ROLES.get('ranks', {})
 
 # Channel IDs

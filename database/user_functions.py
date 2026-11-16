@@ -25,7 +25,7 @@ JOIN public.identities_organizations o ON o.id = sr.organization_id AND o.name =
 LEFT JOIN LATERAL (
     SELECT e.event_type, e.occured_at FROM military.service_events e
     WHERE e.service_record_id = sr.id
-      AND e.event_type IN ('enlisted', 'reenlisted', 'discharged')
+      AND e.event_type IN ('enlisted', 'reenlisted', 'discharged', 'retired')
     ORDER BY e.occured_at DESC, e.id DESC LIMIT 1
 ) ev ON true
 """
@@ -391,7 +391,7 @@ async def get_service_events(discord_id: str, limit: int = 10) -> Optional[list]
             if row is None:
                 return None
             res = await session.execute(
-                text("""SELECT occured_at, event_type, rank, notes FROM military.service_events
+                text("""SELECT id, occured_at, event_type, rank, notes FROM military.service_events
                         WHERE service_record_id = :sr ORDER BY occured_at DESC, id DESC LIMIT :n"""),
                 {"sr": row.sr_id, "n": limit},
             )
@@ -445,7 +445,7 @@ async def _service_state(session, discord: int):
                 LEFT JOIN LATERAL (
                     SELECT e.event_type FROM military.service_events e
                     WHERE e.service_record_id = sr.id
-                      AND e.event_type IN ('enlisted', 'reenlisted', 'discharged')
+                      AND e.event_type IN ('enlisted', 'reenlisted', 'discharged', 'retired')
                     ORDER BY e.occured_at DESC, e.id DESC LIMIT 1
                 ) ev ON true
                 WHERE sr.player_identity_id = :pid"""),
@@ -501,9 +501,11 @@ async def enlist_member(discord_id: str, rank: str = "EN0") -> str:
         return "error"
 
 
-async def discharge_member(discord_id: str, reason: Optional[str] = None) -> str:
-    """Set a member's service record to 'discharged' and log the event (rank is kept for reinstatement):
-    'discharged', 'no_record' (no identity or service record), 'not_enlisted' (already inactive) or 'error'."""
+async def discharge_member(discord_id: str, reason: Optional[str] = None, kind: str = "discharged") -> str:
+    """End a member's service (kind 'discharged' or 'retired'): set the record to that status and log the event
+    (rank is kept for reinstatement). Returns kind on success, otherwise 'no_record' (no identity or service record), 'not_enlisted' (already inactive) or 'error'."""
+    if kind not in ("discharged", "retired"):
+        return "error"
     try:
         db = await get_shared_db_manager()
         async with db.get_session() as session:
@@ -513,16 +515,16 @@ async def discharge_member(discord_id: str, reason: Optional[str] = None) -> str
             if sr.service_status != "active" or sr.event_type == "discharged":
                 return "not_enlisted"
             await session.execute(
-                text("UPDATE military.service_records SET service_status = 'discharged', updated_at = now() WHERE id = :sr"),
-                {"sr": sr.id},
+                text("UPDATE military.service_records SET service_status = :kind, updated_at = now() WHERE id = :sr"),
+                {"sr": sr.id, "kind": kind},
             )
             await session.execute(
                 text("""INSERT INTO military.service_events (service_record_id, event_type, rank, notes, occured_at)
-                        VALUES (:sr, 'discharged', :rank, :reason, now())"""),
-                {"sr": sr.id, "rank": sr.current_rank, "reason": reason},
+                        VALUES (:sr, :kind, :rank, :reason, now())"""),
+                {"sr": sr.id, "kind": kind, "rank": sr.current_rank, "reason": reason},
             )
             await session.commit()
-            return "discharged"
+            return kind
     except Exception as e:
         print(f"Error discharging member: {e}")
         return "error"
