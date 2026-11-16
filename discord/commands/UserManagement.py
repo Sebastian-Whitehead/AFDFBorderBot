@@ -9,15 +9,19 @@ import nextcord
 from nextcord.ext import commands
 from nextcord import SlashOption
 from typing import Optional
+import datetime
+import json
 import logging
 
-from database import create_user, get_user_info, modify_user, set_steam_id, create_service_record, add_reprimand
+from database import create_user, get_user_info, modify_user, set_steam_id, create_service_record, add_reprimand, add_service_event
 from database.rank_codes import rank_choices, rank_index
 from ..utils import RankManager
 from ..utils.steam import resolve_steam_id
 from ..config import TESTING_GUILD_ID as GUILD_ID
 
 logger = logging.getLogger(__name__)
+
+EVENT_TYPES = ['enlisted', 'rank_changed', 'discharged', 'reenlisted', 'retired', 'reprimand']  # service_events_type_check
 
 
 class UserManagement(commands.Cog):
@@ -326,6 +330,49 @@ class UserManagement(commands.Cog):
             "error": "❌ Database error, nothing changed.",
         }
         await interaction.followup.send(messages[result], ephemeral=result != "recorded")
+
+    @nextcord.slash_command(
+        name="create_service_event",
+        description="Add an event to a member's service record",
+        guild_ids=[GUILD_ID] if GUILD_ID else None
+    )
+    async def create_service_event(
+        self,
+        interaction: nextcord.Interaction,
+        user: nextcord.User = SlashOption(description="Member the event belongs to"),
+        event_type: str = SlashOption(name="type", description="Event type", choices=EVENT_TYPES),
+        date: str = SlashOption(description="When it happened, UTC: YYYY-MM-DD or YYYY-MM-DD HH:MM"),
+        rank: Optional[str] = SlashOption(description="Rank at the time (optional)", choices=rank_choices(), required=False),
+        status: Optional[str] = SlashOption(description="Status (optional)", required=False),
+        notes: Optional[str] = SlashOption(description="Notes (optional)", required=False),
+        details: Optional[str] = SlashOption(description="Extra details as a JSON object (optional)", required=False),
+    ):
+        """Insert a row in military.service_events."""
+        await interaction.response.defer(ephemeral=True)
+        when = None
+        for fmt in ("%Y-%m-%d %H:%M", "%Y-%m-%d"):
+            try:
+                when = datetime.datetime.strptime(date, fmt).replace(tzinfo=datetime.timezone.utc)
+                break
+            except ValueError:
+                pass
+        if when is None:
+            await interaction.followup.send("❌ Date must look like `2026-11-20` or `2026-11-20 19:00` (UTC).")
+            return
+        if details:
+            try:
+                if not isinstance(json.loads(details), dict):
+                    raise ValueError
+            except ValueError:
+                await interaction.followup.send("❌ Details must be a JSON object, e.g. `{\"key\": \"value\"}`.")
+                return
+        result = await add_service_event(str(user.id), event_type, when, rank, status, notes, details)
+        messages = {
+            "created": f"✅ `{event_type}` event added to {user.mention}'s service record ({date} UTC).",
+            "no_record": f"❌ {user.mention} has no service record, so nothing was logged.",
+            "error": "❌ Database error, nothing changed.",
+        }
+        await interaction.followup.send(messages[result])
 
 
 def setup(bot):

@@ -356,6 +356,29 @@ async def add_reprimand(discord_id: str, reason: str, issued_by: str) -> str:
         return "error"
 
 
+async def add_service_event(discord_id: str, event_type: str, occured_at, rank: Optional[str] = None,
+                             status: Optional[str] = None, notes: Optional[str] = None,
+                             details: Optional[str] = None) -> str:
+    """Insert a service event (details is a JSON string): 'created', 'no_record' (no identity or service record) or 'error'."""
+    try:
+        db = await get_shared_db_manager()
+        async with db.get_session() as session:
+            row = await _find(session, discord_id)
+            if row is None:
+                return "no_record"
+            await session.execute(
+                text("""INSERT INTO military.service_events (service_record_id, event_type, rank, status, notes, details, occured_at)
+                        VALUES (:sr, :type, :rank, :status, :notes, CAST(:details AS jsonb), :at)"""),
+                {"sr": row.sr_id, "type": event_type, "rank": rank, "status": status,
+                 "notes": notes, "details": details, "at": occured_at},
+            )
+            await session.commit()
+            return "created"
+    except Exception as e:
+        print(f"Error adding service event: {e}")
+        return "error"
+
+
 async def get_service_events(discord_id: str, limit: int = 10) -> Optional[list]:
     """Newest-first service events for a user, or None if they have no service record (or on error)."""
     try:
@@ -405,35 +428,43 @@ async def set_steam_id(discord_id: str, steam_id: str) -> str:
         return "error"
 
 
+async def _service_state(session, discord: int):
+    """(identity id or None, service record row or None); the row has id, current_rank, service_status, event_type (newest enlisted/reenlisted/discharged)."""
+    pid = (await session.execute(
+        text("SELECT id FROM public.identities_player WHERE discord_id = :d"), {"d": discord}
+    )).scalar_one_or_none()
+    if pid is None:
+        return None, None
+    sr = (await session.execute(
+        text("""SELECT sr.id, sr.current_rank, sr.service_status, ev.event_type
+                FROM military.service_records sr
+                JOIN public.identities_organizations o ON o.id = sr.organization_id AND o.name = :org
+                LEFT JOIN LATERAL (
+                    SELECT e.event_type FROM military.service_events e
+                    WHERE e.service_record_id = sr.id
+                      AND e.event_type IN ('enlisted', 'reenlisted', 'discharged')
+                    ORDER BY e.occured_at DESC, e.id DESC LIMIT 1
+                ) ev ON true
+                WHERE sr.player_identity_id = :pid"""),
+        {"org": ORG, "pid": pid},
+    )).first()
+    return pid, sr
+
+
 async def enlist_member(discord_id: str, rank: str = "EN0") -> str:
-    """Enlist an existing identity: 'enlisted', 'already_enlisted', 'no_identity' or 'error'."""
+    """Enlist an existing identity: 'enlisted' (new record or first enlisted event), 'reinstated'
+    (inactive record set active again at its previous rank), 'already_enlisted', 'no_identity' or 'error'."""
     try:
         discord = int(discord_id)
         if not is_valid_rank(rank):
             return "error"
-        code = rank
         db = await get_shared_db_manager()
         async with db.get_session() as session:
-            pid = (await session.execute(
-                text("SELECT id FROM public.identities_player WHERE discord_id = :d"), {"d": discord}
-            )).scalar_one_or_none()
+            pid, sr = await _service_state(session, discord)
             if pid is None:
                 return "no_identity"
 
-            sr = (await session.execute(
-                text("""SELECT sr.id, sr.current_rank, ev.event_type
-                        FROM military.service_records sr
-                        JOIN public.identities_organizations o ON o.id = sr.organization_id AND o.name = :org
-                        LEFT JOIN LATERAL (
-                            SELECT e.event_type FROM military.service_events e
-                            WHERE e.service_record_id = sr.id
-                              AND e.event_type IN ('enlisted', 'reenlisted', 'discharged')
-                            ORDER BY e.occured_at DESC, e.id DESC LIMIT 1
-                        ) ev ON true
-                        WHERE sr.player_identity_id = :pid"""),
-                {"org": ORG, "pid": pid},
-            )).first()
-
+            result = "enlisted"
             if sr is None:
                 sr_id = (await session.execute(
                     text("""INSERT INTO military.service_records
@@ -441,18 +472,19 @@ async def enlist_member(discord_id: str, rank: str = "EN0") -> str:
                             SELECT :pid, o.id, :code, 'active'
                             FROM public.identities_organizations o WHERE o.name = :org
                             RETURNING id"""),
-                    {"pid": pid, "code": code, "org": ORG},
+                    {"pid": pid, "code": rank, "org": ORG},
                 )).scalar_one()
-                etype, ev_rank = "enlisted", code
+                etype, ev_rank = "enlisted", rank
+            elif sr.service_status != "active" or sr.event_type == "discharged":
+                sr_id, etype, ev_rank, result = sr.id, "reenlisted", sr.current_rank, "reinstated"
+                await session.execute(
+                    text("UPDATE military.service_records SET service_status = 'active', updated_at = now() WHERE id = :sr"),
+                    {"sr": sr_id},
+                )
             elif sr.event_type in ("enlisted", "reenlisted"):
                 return "already_enlisted"
-            else:
-                sr_id, ev_rank = sr.id, sr.current_rank
-                had_discharge = (await session.execute(
-                    text("SELECT 1 FROM military.service_events WHERE service_record_id = :sr AND event_type = 'discharged' LIMIT 1"),
-                    {"sr": sr_id},
-                )).first() is not None
-                etype = "reenlisted" if had_discharge else "enlisted"
+            else:  # record made by /create_service_record: active but never enlisted
+                sr_id, etype, ev_rank = sr.id, "enlisted", sr.current_rank
 
             await session.execute(
                 text("""INSERT INTO military.service_events (service_record_id, event_type, rank, occured_at)
@@ -460,7 +492,34 @@ async def enlist_member(discord_id: str, rank: str = "EN0") -> str:
                 {"sr": sr_id, "etype": etype, "code": ev_rank},
             )
             await session.commit()
-            return "enlisted"
+            return result
     except Exception as e:
         print(f"Error enlisting member: {e}")
+        return "error"
+
+
+async def discharge_member(discord_id: str, reason: Optional[str] = None) -> str:
+    """Set a member's service record to 'discharged' and log the event (rank is kept for reinstatement):
+    'discharged', 'no_record' (no identity or service record), 'not_enlisted' (already inactive) or 'error'."""
+    try:
+        db = await get_shared_db_manager()
+        async with db.get_session() as session:
+            pid, sr = await _service_state(session, int(discord_id))
+            if sr is None:
+                return "no_record"
+            if sr.service_status != "active" or sr.event_type == "discharged":
+                return "not_enlisted"
+            await session.execute(
+                text("UPDATE military.service_records SET service_status = 'discharged', updated_at = now() WHERE id = :sr"),
+                {"sr": sr.id},
+            )
+            await session.execute(
+                text("""INSERT INTO military.service_events (service_record_id, event_type, rank, notes, occured_at)
+                        VALUES (:sr, 'discharged', :rank, :reason, now())"""),
+                {"sr": sr.id, "rank": sr.current_rank, "reason": reason},
+            )
+            await session.commit()
+            return "discharged"
+    except Exception as e:
+        print(f"Error discharging member: {e}")
         return "error"

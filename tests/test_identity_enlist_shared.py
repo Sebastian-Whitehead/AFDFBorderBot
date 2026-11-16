@@ -139,3 +139,23 @@ async def test_create_service_record_only(shared_db):
     assert await create_service_record(d, "XX") == "error"
     assert await enlist_member(d) == "enlisted"  # enlisting an existing record just adds the event
     assert await _records(s) == 1 and await _events(s) == 1
+
+
+async def test_discharge_then_reinstate_keeps_rank(shared_db):
+    from database import create_service_record, discharge_member
+    s, d = ids(80)
+    assert await discharge_member(d) == "no_record"
+    assert await ensure_player_identity("zz_test_dis", s, d)
+    assert await create_service_record(d, "EN4") == "created"
+    assert await enlist_member(d) == "enlisted"
+    assert await discharge_member(d, "left") == "discharged"
+    assert await discharge_member(d) == "not_enlisted"
+    assert (await get_user_info(d))["enlisted"] is False
+    assert await enlist_member(d) == "reinstated"
+    info = await get_user_info(d)
+    assert info["enlisted"] is True and info["rank"] == "EN4"
+    assert await enlist_member(d) == "already_enlisted"
+    assert await _count(
+        "SELECT count(*) AS n FROM military.service_events e JOIN military.service_records r ON r.id = e.service_record_id "
+        "JOIN public.identities_player p ON p.id = r.player_identity_id WHERE p.steam_id = :s "
+        "AND e.event_type IN ('enlisted', 'discharged', 'reenlisted')", s=int(s)) == 3

@@ -14,7 +14,8 @@ def _setup(monkeypatch, mod):
             monkeypatch.setattr(mod, name, val)
     order = MagicMock()  # parent mock records relative call order
     i = MagicMock()
-    i.response.send_message = AsyncMock()
+    i.response.defer = AsyncMock()
+    i.followup.send = AsyncMock()
     i.guild.get_role.side_effect = lambda rid: MagicMock(name=f"role{rid}")
     i.guild.get_channel.return_value = MagicMock(send=AsyncMock())
     user = MagicMock(id=int(DISCORD), mention="<@x>", global_name="Bob")
@@ -26,7 +27,7 @@ def _setup(monkeypatch, mod):
 
 
 def _ephemeral_sent(i):
-    return any(c.kwargs.get("ephemeral") is True for c in i.response.send_message.call_args_list)
+    return any(c.kwargs.get("ephemeral") is True for c in i.followup.send.call_args_list)
 
 
 async def _approve(cog_mod, cog, i, user, steam):
@@ -112,3 +113,40 @@ async def test_c_approve_url_converted_before_db(checkpoint, monkeypatch):
     monkeypatch.setattr(m, "ensure_player_identity", ensure)
     await _approve(m, cog, i, user, f"https://steamcommunity.com/profiles/{STEAM}")
     assert ensure.await_args.kwargs["steam_id"] == STEAM
+
+
+async def test_e3_enlist_reinstated_gets_previous_rank_role(enlistment, monkeypatch):
+    m, cog = enlistment
+    i, user, _ = _setup(monkeypatch, m)
+    monkeypatch.setattr(m, "enlist_member", AsyncMock(return_value="reinstated"))
+    monkeypatch.setattr(m, "get_user_info", AsyncMock(return_value={"rank": "EN4"}))
+    await m.Enlistment.enlist.callback(cog, i, user)
+    roles = user.add_roles.await_args.args
+    assert len(roles) == 2  # mil dep + rank role, not the base enlisted role
+    i.guild.get_role.assert_any_call(int(cog.rank_manager.get_rank("EN4")["role_id"]))
+
+
+async def test_e4_enlist_already_enlisted_changes_no_roles(enlistment, monkeypatch):
+    m, cog = enlistment
+    i, user, _ = _setup(monkeypatch, m)
+    monkeypatch.setattr(m, "enlist_member", AsyncMock(return_value="already_enlisted"))
+    await m.Enlistment.enlist.callback(cog, i, user)
+    user.add_roles.assert_not_awaited()
+
+
+async def test_e5_discharge_removes_roles(enlistment, monkeypatch):
+    m, cog = enlistment
+    i, user, _ = _setup(monkeypatch, m)
+    monkeypatch.setattr(m, "discharge_member", AsyncMock(return_value="discharged"))
+    monkeypatch.setattr(m, "get_user_info", AsyncMock(return_value={"rank": "EN4"}))
+    await m.Enlistment.discharge.callback(cog, i, user, "bye")
+    assert len(user.remove_roles.await_args.args) == 3  # 2 enlisted + EN4 rank role
+
+
+@pytest.mark.parametrize("result", ["no_record", "not_enlisted", "error"])
+async def test_e6_discharge_failure_changes_no_roles(enlistment, monkeypatch, result):
+    m, cog = enlistment
+    i, user, _ = _setup(monkeypatch, m)
+    monkeypatch.setattr(m, "discharge_member", AsyncMock(return_value=result))
+    await m.Enlistment.discharge.callback(cog, i, user, None)
+    user.remove_roles.assert_not_awaited()
