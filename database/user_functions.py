@@ -305,7 +305,7 @@ async def ensure_player_identity(name: str, steam_id: Optional[str], discord_id:
 
 
 async def create_service_record(discord_id: str, rank: str) -> str:
-    """Create only the service record (no events) for an existing identity:
+    """Create the service record plus a 'Service record created' event at that rank for an existing identity:
     'created', 'already_exists', 'no_identity' or 'error'."""
     try:
         discord = int(discord_id)
@@ -327,10 +327,16 @@ async def create_service_record(discord_id: str, rank: str) -> str:
                 {"p": pid, "o": org},
             )).first():
                 return "already_exists"
-            await session.execute(
+            sr_id = (await session.execute(
                 text("""INSERT INTO military.service_records (player_identity_id, organization_id, current_rank, service_status)
-                        VALUES (:p, :o, :r, 'active')"""),
+                        VALUES (:p, :o, :r, 'active') RETURNING id"""),
                 {"p": pid, "o": org, "r": code},
+            )).scalar_one()
+            # 'rank_changed' not 'enlisted': /enlist treats an enlisted event as already enlisted
+            await session.execute(
+                text("""INSERT INTO military.service_events (service_record_id, event_type, rank, notes, occured_at)
+                        VALUES (:sr, 'rank_changed', :r, 'Service record created', now())"""),
+                {"sr": sr_id, "r": code},
             )
             await session.commit()
             return "created"

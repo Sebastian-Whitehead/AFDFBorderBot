@@ -55,7 +55,7 @@ Design decisions:
 | `/enlist user` | Leadership | Creates service record (rank `EN0`) + `enlisted` event before adding roles; needs an identity |
 | `/add_member user [steam_id] [rank] [notes]` | | Identity + service record, no roles |
 | `/add_steam user steam_url` | | Attach a Steam ID to an existing identity; never overwrites a different one |
-| `/create_service_record user rank` | | Record only, no event, no roles |
+| `/create_service_record user rank` | | Record plus a "Service record created" event, no roles |
 | `/promote user new_rank [reason]`, `/demote user new_rank reason` | | Update record rank + `rank_changed` event; no Discord role swap |
 | `/reprimand user reason` | | Logs a `reprimand` service event |
 | `/profile user`, `/service_record user [rows]`, `/ranks`, `/ping` | | Read only |

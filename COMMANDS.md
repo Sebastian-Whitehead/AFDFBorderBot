@@ -22,7 +22,7 @@ All commands are slash commands. `?` marks an optional option. Commands that tou
 |---|---|---|
 | `/add_member user steam_id? service_record? rank? notes?` | Leadership | Adds a player identity (Discord, optional Steam ID, notes). `service_record: True` also creates the military service record at `rank` (default EN0). `rank` only applies with `service_record`. |
 | `/add_steam user steam_url` | Leadership | Attaches a Steam ID (SteamID64 or profile URL) to an existing identity. |
-| `/create_service_record user rank` | Leadership | Creates only the service record (no events, no role changes) for an existing identity. |
+| `/create_service_record user rank` | Leadership | Creates the service record for an existing identity, with a `rank_changed` event ("Service record created") at that rank. No role changes. |
 | `/create_service_event user type date rank? status? notes? details?` | Leadership | Adds an event to a member's service record. `type` is one of `enlisted`, `rank_changed`, `discharged`, `reenlisted`, `retired`, `reprimand`. `date` is UTC, `YYYY-MM-DD` or `YYYY-MM-DD HH:MM`. `details` is a JSON object. Only inserts the event; it does not change the record's rank or status. |
 | `/promote user new_rank reason?` | Leadership | Promotes a member by one or two ranks, logs it on their service record, and swaps their Discord rank role. If the role swap fails, the rank change is kept and the reply says so. |
 | `/demote user new_rank reason` | Leadership | Demotes a member to a lower rank, logs it on their service record, and swaps their Discord rank role (same failure handling as `/promote`). |
