@@ -28,14 +28,16 @@ class Checkpoint(commands.Cog):
             await ctx.response.send_message("❌ Bot configuration error - not enough citizen roles configured!", ephemeral=True)
             return
 
+        await ctx.response.defer()
+
         if steam_id:
             steam_id = await resolve_steam_id(steam_id)
             if steam_id is None:
-                await ctx.response.send_message("❌ Steam ID must be numeric (SteamID64) or a Steam profile link that can be resolved.", ephemeral=True)
+                await ctx.followup.send("❌ Steam ID must be numeric (SteamID64) or a Steam profile link that can be resolved.", ephemeral=True)
                 return
 
         if not await ensure_player_identity(name=user.global_name or user.name, steam_id=steam_id, discord_id=str(user.id)):
-            await ctx.response.send_message("❌ Could not save the player in the database (Steam or Discord ID already linked to someone else).", ephemeral=True)
+            await ctx.followup.send("❌ Could not save the player in the database (Steam or Discord ID already linked to someone else).", ephemeral=True)
             return
 
         try:
@@ -45,7 +47,7 @@ class Checkpoint(commands.Cog):
             role_to_add1 = ctx.guild.get_role(CITIZEN_ROLE_IDS[1])
             
             if not role_to_remove or not role_to_add or not role_to_add1:
-                await ctx.response.send_message("❌ Could not find required roles in this server!", ephemeral=True)
+                await ctx.followup.send("❌ Could not find required roles in this server!", ephemeral=True)
                 return
 
             await user.add_roles(role_to_add, role_to_add1)
@@ -54,10 +56,10 @@ class Checkpoint(commands.Cog):
             main_channel = guild.get_channel(MAIN_CHANNEL_ID)
             
             if not main_channel:
-                await ctx.response.send_message("❌ Could not find main channel!", ephemeral=True)
+                await ctx.followup.send("❌ Could not find main channel!", ephemeral=True)
                 return
 
-            await ctx.response.send_message(
+            await ctx.followup.send(
                 f"✅ {user.mention}'s request to enter the border has been Accepted! Welcome to the Federation")
 
             with open('embeds/newcitizen-main.json') as embed_file:
@@ -76,7 +78,7 @@ class Checkpoint(commands.Cog):
             await main_channel.send(content=user.mention, embed=citizen_embed)
 
         except NotFound:
-            await ctx.response.send_message("Member not found.", ephemeral=True)
+            await ctx.followup.send("Member not found.", ephemeral=True)
 
 # Function to set up the Cog
 def setup(bot):

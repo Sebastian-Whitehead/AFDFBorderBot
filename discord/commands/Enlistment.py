@@ -12,21 +12,22 @@ class Enlistment(commands.Cog):
     @slash_command(description="Enlist in the army", guild_ids=[TESTING_GUILD_ID] if TESTING_GUILD_ID else None)
     @commands.has_role(LEADERSHIP_ROLE_ID)
     async def enlist(self, ctx: Interaction, user: Member):
+        await ctx.response.defer()
         # Check if required roles are configured
         if not ENLISTED_ROLE_IDS or not LEADERSHIP_ROLE_ID:
-            await ctx.response.send_message("❌ Bot configuration error - missing required roles!", ephemeral=True)
+            await ctx.followup.send("❌ Bot configuration error - missing required roles!", ephemeral=True)
             return
             
         if len(ENLISTED_ROLE_IDS) < 2:
-            await ctx.response.send_message("❌ Bot configuration error - not enough enlisted roles configured!", ephemeral=True)
+            await ctx.followup.send("❌ Bot configuration error - not enough enlisted roles configured!", ephemeral=True)
             return
 
         result = await enlist_member(str(user.id))
         if result == "no_identity":
-            await ctx.response.send_message(f"❌ {user.mention} has no player record yet. Approve them (or /add_member) first.", ephemeral=True)
+            await ctx.followup.send(f"❌ {user.mention} has no player record yet. Approve them (or /add_member) first.", ephemeral=True)
             return
         if result == "error":
-            await ctx.response.send_message("❌ Database error, roles not changed.", ephemeral=True)
+            await ctx.followup.send("❌ Database error, roles not changed.", ephemeral=True)
             return
 
         try:
@@ -34,16 +35,16 @@ class Enlistment(commands.Cog):
             mil_dep_role = ctx.guild.get_role(ENLISTED_ROLE_IDS[1])
             
             if not enlistment_role or not mil_dep_role:
-                await ctx.response.send_message("❌ Could not find required roles in this server!", ephemeral=True)
+                await ctx.followup.send("❌ Could not find required roles in this server!", ephemeral=True)
                 return
                 
             await user.add_roles(enlistment_role, mil_dep_role)
-            await ctx.response.send_message(f"✅ {user.mention} has been enlisted in the army!")
+            await ctx.followup.send(f"✅ {user.mention} has been enlisted in the army!")
 
         except NotFound:
-            await ctx.response.send_message("❌ User not found", ephemeral=True)
+            await ctx.followup.send("❌ User not found", ephemeral=True)
         except Exception as e:
-            await ctx.response.send_message(f"❌ An error occurred: {str(e)}", ephemeral=True)
+            await ctx.followup.send(f"❌ An error occurred: {str(e)}", ephemeral=True)
     
 
 
