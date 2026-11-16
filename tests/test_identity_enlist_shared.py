@@ -159,3 +159,13 @@ async def test_discharge_then_reinstate_keeps_rank(shared_db):
         "SELECT count(*) AS n FROM military.service_events e JOIN military.service_records r ON r.id = e.service_record_id "
         "JOIN public.identities_player p ON p.id = r.player_identity_id WHERE p.steam_id = :s "
         "AND e.event_type IN ('enlisted', 'discharged', 'reenlisted')", s=int(s)) == 3
+
+
+async def test_create_user_identity_only(shared_db):
+    from database import create_user
+    s, d = ids(81)
+    u = await create_user("zz_test_idonly", s, d, service_record=False)
+    assert u and u["rank"] is None and u["enlisted"] is False
+    assert await _records(s) == 0 and await _identities(s) == 1
+    assert await enlist_member(d) == "enlisted"  # military side can be added later
+    assert await _records(s) == 1

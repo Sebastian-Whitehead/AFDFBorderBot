@@ -79,9 +79,11 @@ async def create_user(
     discord_id: Optional[str] = None,
     rank: str = "EN0",
     notes: Optional[str] = None,
-    enlisted: bool = False
+    enlisted: bool = False,
+    service_record: bool = True
 ) -> Optional[Dict[str, Any]]:
-    """Create a new user in the database. steam_id may be None if discord_id is given."""
+    """Create a new user in the database. steam_id may be None if discord_id is given.
+    service_record=False creates the player identity only (enlisted is then ignored)."""
     try:
         steam = int(steam_id) if steam_id else None
         discord = int(discord_id) if discord_id else None
@@ -130,20 +132,21 @@ async def create_user(
                     elif ident.discord_id != discord:
                         return None  # rolled back on session close
 
-            sr_id = (await session.execute(
-                text("""INSERT INTO military.service_records
-                        (player_identity_id, organization_id, current_rank, service_status)
-                        SELECT :pid, o.id, :code, 'active'
-                        FROM public.identities_organizations o WHERE o.name = :org
-                        RETURNING id"""),
-                {"pid": ident.id, "code": code, "org": ORG},
-            )).scalar_one()
-            if enlisted:
-                await session.execute(
-                    text("""INSERT INTO military.service_events (service_record_id, event_type, rank, occured_at)
-                            VALUES (:sr, 'enlisted', :code, now())"""),
-                    {"sr": sr_id, "code": code},
-                )
+            if service_record:
+                sr_id = (await session.execute(
+                    text("""INSERT INTO military.service_records
+                            (player_identity_id, organization_id, current_rank, service_status)
+                            SELECT :pid, o.id, :code, 'active'
+                            FROM public.identities_organizations o WHERE o.name = :org
+                            RETURNING id"""),
+                    {"pid": ident.id, "code": code, "org": ORG},
+                )).scalar_one()
+                if enlisted:
+                    await session.execute(
+                        text("""INSERT INTO military.service_events (service_record_id, event_type, rank, occured_at)
+                                VALUES (:sr, 'enlisted', :code, now())"""),
+                        {"sr": sr_id, "code": code},
+                    )
             if notes:
                 await session.execute(
                     text("""UPDATE public.identities_player
@@ -158,8 +161,8 @@ async def create_user(
                 "name": name,
                 "steam_id": str(steam) if steam is not None else None,
                 "discord_id": str(discord) if discord is not None else None,
-                "rank": code,
-                "enlisted": bool(enlisted),
+                "rank": code if service_record else None,
+                "enlisted": bool(enlisted and service_record),
             }
 
     except Exception as e:

@@ -32,8 +32,8 @@ def _member(rank="EN2", **kw):
             "achievements": [], "notes": None, **kw}
 
 
-async def _add(um, cog, interaction, user, rank="EN0", steam=STEAM):
-    await um.UserManagement.add_member.callback(cog, interaction, user, steam, rank, None)
+async def _add(um, cog, interaction, user, rank=None, steam=STEAM, service_record=False):
+    await um.UserManagement.add_member.callback(cog, interaction, user, steam, service_record, rank, None)
 
 
 async def test_g1_add_member_new(env, monkeypatch):
@@ -43,7 +43,7 @@ async def test_g1_add_member_new(env, monkeypatch):
     monkeypatch.setattr(um, "create_user", create)
     await _add(um, cog, i, user)
     kw = create.await_args.kwargs
-    assert kw["steam_id"] == STEAM and kw["discord_id"] == DISCORD and kw["rank"] == "EN0"
+    assert kw["steam_id"] == STEAM and kw["discord_id"] == DISCORD and kw["service_record"] is False  # identity only by default
     assert _sent(i).kwargs["embed"].title == "✅ Member Added Successfully"
 
 
@@ -131,7 +131,7 @@ async def test_g11_flow_shared_db(shared_db, env):
     um, i, user, cog = env
     steam, discord_id = ids(1)
     user.id = int(discord_id)
-    await _add(um, cog, i, user, rank="EN2", steam=steam)
+    await _add(um, cog, i, user, rank="EN2", steam=steam, service_record=True)
     assert _sent(i).kwargs["embed"].title == "✅ Member Added Successfully"
     await um.UserManagement.promote_member.callback(cog, i, user, "EN3", None)
     assert _sent(i).kwargs["embed"].title == "🎉 Promotion Successful"
@@ -234,3 +234,22 @@ async def test_add_member_without_steam(env, monkeypatch):
     assert create.await_args.kwargs["steam_id"] is None and create.await_args.kwargs["discord_id"] == DISCORD
     assert _sent(i).kwargs["embed"].title == "✅ Member Added Successfully"
 
+
+
+async def test_add_member_with_service_record(env, monkeypatch):
+    um, i, user, cog = env
+    create = AsyncMock(return_value={"id": 1})
+    monkeypatch.setattr(um, "get_user_info", AsyncMock(return_value=None))
+    monkeypatch.setattr(um, "create_user", create)
+    await _add(um, cog, i, user, rank="EN3", service_record=True)
+    kw = create.await_args.kwargs
+    assert kw["service_record"] is True and kw["rank"] == "EN3"
+
+
+async def test_add_member_rank_without_service_record_rejected(env, monkeypatch):
+    um, i, user, cog = env
+    create = AsyncMock()
+    monkeypatch.setattr(um, "create_user", create)
+    await _add(um, cog, i, user, rank="EN3")
+    create.assert_not_awaited()
+    assert _sent(i).kwargs["ephemeral"] is True

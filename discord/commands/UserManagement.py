@@ -45,11 +45,16 @@ class UserManagement(commands.Cog):
         interaction: nextcord.Interaction,
         user: nextcord.User = SlashOption(description="Member to add"),
         steam_id: Optional[str] = SlashOption(description="Member's SteamID64 or Steam profile URL (optional)", required=False),
-        rank: str = SlashOption(description="Starting rank", default="EN0", choices=rank_choices()),
+        service_record: bool = SlashOption(description="Also create a military service record (default: no)", default=False),
+        rank: Optional[str] = SlashOption(description="Starting rank (only with service_record)", required=False, choices=rank_choices()),
         notes: Optional[str] = SlashOption(description="Additional notes", required=False)
     ):
-        """Add a new member to the database."""
+        """Add a player identity; a military service record only if service_record is true."""
         await interaction.response.defer()
+        if rank and not service_record:
+            await interaction.followup.send("❌ Rank only applies with `service_record: True`.", ephemeral=True)
+            return
+        rank = rank or "EN0"
         try:
             if steam_id:
                 steam_id = await resolve_steam_id(steam_id)
@@ -80,7 +85,8 @@ class UserManagement(commands.Cog):
                 steam_id=steam_id,
                 discord_id=discord_id,
                 rank=rank,
-                notes=notes
+                notes=notes,
+                service_record=service_record
             )
             if new_user is None:
                 await interaction.followup.send(
@@ -96,7 +102,8 @@ class UserManagement(commands.Cog):
             )
             embed.add_field(name="Steam ID", value=steam_id or "Not set", inline=True)
             embed.add_field(name="Discord", value=user.mention, inline=True)
-            embed.add_field(name="Rank", value=self._rank_text(rank), inline=True)
+            if service_record:
+                embed.add_field(name="Rank", value=self._rank_text(rank), inline=True)
             
             if notes:
                 embed.add_field(name="Notes", value=notes, inline=False)
