@@ -42,6 +42,7 @@ RANKS = ROLES.get('ranks', {})
 # Channel IDs
 LOG_CHANNEL_ID = CHANNELS.get('log_txt', None)
 MAIN_CHANNEL_ID = CHANNELS.get('main_txt', None)
+MILITARY_MAIN_CHANNEL_ID = CHANNELS.get('military_main_txt', None)
 CHECKPOINT_CHANNEL_ID = CHANNELS.get('checkpoint_txt', None)
 EVENTS_CHANNEL_ID = CHANNELS.get('events_vc', None)
 WELCOME_CHANNEL_ID = CHANNELS.get('welcome_txt', None)

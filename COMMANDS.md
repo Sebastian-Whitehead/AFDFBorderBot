@@ -95,7 +95,7 @@ Stored in the bot's local database and cached at startup.
 |---|---|---|
 | `listen-for-join-leave` | on | Posts join and leave messages. |
 | `new-citizen-welcome` | on | `/approve` posts the new-citizen welcome in the main channel. |
-| `enlist-welcome` | on | `/enlist` posts the AFDF welcome tour in the main channel (new enlistments only, not reinstatements). |
+| `enlist-welcome` | on | `/enlist` posts the AFDF welcome tour in the military main channel (new enlistments only, not reinstatements). |
 | `listen-for-border-officer` | on | Runs the border-officer monitor. |
 | `listen-for-event-start` | off | Event-start listener (currently disabled in the bot). |
 | `border-officer-check-interval` | see `/settings list` | Seconds between monitor checks; set with `/settings set-interval`. |

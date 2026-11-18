@@ -6,7 +6,7 @@ from nextcord.ext import commands
 
 from database import enlist_member, discharge_member, get_user_info
 from ..utils import RankManager, send_processed_embed
-from ..config import (get_setting, MAIN_CHANNEL_ID, LOA_CHANNEL_ID, ANNOUNCEMENTS_CHANNEL_ID,
+from ..config import (get_setting, MILITARY_MAIN_CHANNEL_ID, LOA_CHANNEL_ID, ANNOUNCEMENTS_CHANNEL_ID,
                       INFORMATION_DB_CHANNEL_ID, EVENTS_TXT_CHANNEL_ID, VIETNAM_CAMPAIGN_CHANNEL_ID,
                       ENLISTED_ROLE_IDS, LEADERSHIP_ROLE_ID, TESTING_GUILD_ID, MILITARY_PERSONNEL_ROLE_ID,
                       DISTINGUISHED_CITIZEN_ROLE_ID)
@@ -65,7 +65,7 @@ class Enlistment(commands.Cog):
 
             # Tour only for brand-new enlistments, not reinstated members
             if result == "enlisted" and (get_setting('enlist-welcome', True) if msg is None else msg):
-                channel = ctx.guild.get_channel(MAIN_CHANNEL_ID) if MAIN_CHANNEL_ID else None
+                channel = ctx.guild.get_channel(MILITARY_MAIN_CHANNEL_ID) if MILITARY_MAIN_CHANNEL_ID else None
                 if channel:
                     await send_processed_embed(channel, 'enlist-welcome.json', {
                         '{user}': user.mention,
