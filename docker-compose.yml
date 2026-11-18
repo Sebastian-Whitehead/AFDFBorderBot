@@ -21,23 +21,24 @@ services:
       - bot
       - full
 
-  pgadmin:
-    image: dpage/pgadmin4:8.12
-    restart: always
-    environment:
-      PGADMIN_DEFAULT_EMAIL: federation.aegean@gmail.com
-      PGADMIN_DEFAULT_PASSWORD: admin
-    volumes:
-      - ./pgadmin-data:/var/lib/pgadmin
-    ports:
-      - "5050:80"
-    depends_on:
-      postgres:
-        condition: service_healthy
-    profiles:
-      - database
-      - bot
-      - full
+  # pgAdmin disabled: crash-loops on Windows (chmod on bind mount). Re-enable if needed.
+  # pgadmin:
+  #   image: dpage/pgadmin4:8.12
+  #   restart: always
+  #   environment:
+  #     PGADMIN_DEFAULT_EMAIL: federation.aegean@gmail.com
+  #     PGADMIN_DEFAULT_PASSWORD: admin
+  #   volumes:
+  #     - pgadmin-data:/var/lib/pgadmin
+  #   ports:
+  #     - "5050:80"
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #   profiles:
+  #     - database
+  #     - bot
+  #     - full
 
   bot:
     build: .
