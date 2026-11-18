@@ -185,155 +185,156 @@ class UserManagement(commands.Cog):
             embed.add_field(name="⚠️ Roles not updated",
                             value=f"Database rank changed, but Discord roles could not be updated: {e}", inline=False)
 
-    @nextcord.slash_command(
-        name="promote",
-        description="Promote a member to a higher rank",
-        guild_ids=[GUILD_ID] if GUILD_ID else None
-    )
-    @commands.has_role(LEADERSHIP_ROLE_ID)
-    async def promote_member(
-        self,
-        interaction: nextcord.Interaction,
-        user: nextcord.Member = SlashOption(description="User to promote"),
-        new_rank: str = SlashOption(description="New rank", choices=rank_choices()),
-        reason: Optional[str] = SlashOption(description="Reason for promotion", required=False)
-    ):
-        """Promote a member to a higher rank."""
-        await interaction.response.defer(ephemeral=True)
-        try:
-            member = await get_user_info(str(user.id))
+# Disabled for now (backend modify_user/rank logic kept):
+#     @nextcord.slash_command(
+#         name="promote",
+#         description="Promote a member to a higher rank",
+#         guild_ids=[GUILD_ID] if GUILD_ID else None
+#     )
+#     @commands.has_role(LEADERSHIP_ROLE_ID)
+#     async def promote_member(
+#         self,
+#         interaction: nextcord.Interaction,
+#         user: nextcord.Member = SlashOption(description="User to promote"),
+#         new_rank: str = SlashOption(description="New rank", choices=rank_choices()),
+#         reason: Optional[str] = SlashOption(description="Reason for promotion", required=False)
+#     ):
+#         """Promote a member to a higher rank."""
+#         await interaction.response.defer(ephemeral=True)
+#         try:
+#             member = await get_user_info(str(user.id))
 
-            if not member:
-                await interaction.followup.send(
-                    f"❌ {user.mention} is not found in the database. Use `/add_member` first.",
-                    ephemeral=True
-                )
-                return
+#             if not member:
+#                 await interaction.followup.send(
+#                     f"❌ {user.mention} is not found in the database. Use `/add_member` first.",
+#                     ephemeral=True
+#                 )
+#                 return
 
-            # Validate promotion
-            if not self.rank_manager.is_valid_promotion(member["rank"], new_rank):
-                await interaction.followup.send(
-                    f"❌ Cannot promote from {self.rank_manager.get_rank(member['rank'])['name']} "
-                    f"to {self.rank_manager.get_rank(new_rank)['name']}. "
-                    f"Invalid rank progression.",
-                    ephemeral=True
-                )
-                return
+#             # Validate promotion
+#             if not self.rank_manager.is_valid_promotion(member["rank"], new_rank):
+#                 await interaction.followup.send(
+#                     f"❌ Cannot promote from {self.rank_manager.get_rank(member['rank'])['name']} "
+#                     f"to {self.rank_manager.get_rank(new_rank)['name']}. "
+#                     f"Invalid rank progression.",
+#                     ephemeral=True
+#                 )
+#                 return
             
-            # Update rank in database
-            notes = f"Promoted to {self.rank_manager.get_rank(new_rank)['name']}"
-            if reason:
-                notes += f" - Reason: {reason}"
+#             # Update rank in database
+#             notes = f"Promoted to {self.rank_manager.get_rank(new_rank)['name']}"
+#             if reason:
+#                 notes += f" - Reason: {reason}"
 
-            success = await modify_user(str(user.id), rank=new_rank, reason=notes)
+#             success = await modify_user(str(user.id), rank=new_rank, reason=notes)
 
-            if success:
+#             if success:
 
-                embed = nextcord.Embed(
-                    title="🎉 Promotion Successful",
-                    color=0x00ff00,
-                    description=f"**{member['name']}** has been promoted!"
-                )
-                embed.add_field(
-                    name="Previous Rank", 
-                    value=self._rank_text(member["rank"]), 
-                    inline=True
-                )
-                embed.add_field(
-                    name="New Rank", 
-                    value=self._rank_text(new_rank), 
-                    inline=True
-                )
-                embed.add_field(name="Member", value=user.mention, inline=True)
-                await self._sync_roles(embed, user, member["rank"], new_rank)
+#                 embed = nextcord.Embed(
+#                     title="🎉 Promotion Successful",
+#                     color=0x00ff00,
+#                     description=f"**{member['name']}** has been promoted!"
+#                 )
+#                 embed.add_field(
+#                     name="Previous Rank", 
+#                     value=self._rank_text(member["rank"]), 
+#                     inline=True
+#                 )
+#                 embed.add_field(
+#                     name="New Rank", 
+#                     value=self._rank_text(new_rank), 
+#                     inline=True
+#                 )
+#                 embed.add_field(name="Member", value=user.mention, inline=True)
+#                 await self._sync_roles(embed, user, member["rank"], new_rank)
                 
-                if reason:
-                    embed.add_field(name="Reason", value=reason, inline=False)
+#                 if reason:
+#                     embed.add_field(name="Reason", value=reason, inline=False)
                 
-                await interaction.followup.send(embed=embed)
-            else:
-                await interaction.followup.send(
-                    "❌ Failed to update rank in database.", 
-                    ephemeral=True
-                )
+#                 await interaction.followup.send(embed=embed)
+#             else:
+#                 await interaction.followup.send(
+#                     "❌ Failed to update rank in database.", 
+#                     ephemeral=True
+#                 )
                 
-        except Exception as e:
-            logger.error(f"Error promoting member: {e}")
-            await interaction.followup.send(
-                f"❌ Failed to promote member: {str(e)}", 
-                ephemeral=True
-            )
+#         except Exception as e:
+#             logger.error(f"Error promoting member: {e}")
+#             await interaction.followup.send(
+#                 f"❌ Failed to promote member: {str(e)}", 
+#                 ephemeral=True
+#             )
 
-    @nextcord.slash_command(
-        name="demote",
-        description="Demote a member to a lower rank",
-        guild_ids=[GUILD_ID] if GUILD_ID else None
-    )
-    @commands.has_role(LEADERSHIP_ROLE_ID)
-    async def demote_member(
-        self,
-        interaction: nextcord.Interaction,
-        user: nextcord.Member = SlashOption(description="User to demote"),
-        new_rank: str = SlashOption(description="New rank", choices=rank_choices()),
-        reason: str = SlashOption(description="Reason for demotion")
-    ):
-        """Demote a member to a lower rank."""
-        await interaction.response.defer(ephemeral=True)
-        try:
-            member = await get_user_info(str(user.id))
+#     @nextcord.slash_command(
+#         name="demote",
+#         description="Demote a member to a lower rank",
+#         guild_ids=[GUILD_ID] if GUILD_ID else None
+#     )
+#     @commands.has_role(LEADERSHIP_ROLE_ID)
+#     async def demote_member(
+#         self,
+#         interaction: nextcord.Interaction,
+#         user: nextcord.Member = SlashOption(description="User to demote"),
+#         new_rank: str = SlashOption(description="New rank", choices=rank_choices()),
+#         reason: str = SlashOption(description="Reason for demotion")
+#     ):
+#         """Demote a member to a lower rank."""
+#         await interaction.response.defer(ephemeral=True)
+#         try:
+#             member = await get_user_info(str(user.id))
 
-            if not member:
-                await interaction.followup.send(
-                    f"❌ {user.mention} is not found in the database.",
-                    ephemeral=True
-                )
-                return
+#             if not member:
+#                 await interaction.followup.send(
+#                     f"❌ {user.mention} is not found in the database.",
+#                     ephemeral=True
+#                 )
+#                 return
 
-            if rank_index(new_rank) >= rank_index(member["rank"]):
-                await interaction.followup.send(
-                    f"❌ New rank must be lower than current rank ({member['rank']}).",
-                    ephemeral=True
-                )
-                return
+#             if rank_index(new_rank) >= rank_index(member["rank"]):
+#                 await interaction.followup.send(
+#                     f"❌ New rank must be lower than current rank ({member['rank']}).",
+#                     ephemeral=True
+#                 )
+#                 return
 
-            # Update rank in database
-            notes = f"Demoted to {self.rank_manager.get_rank(new_rank)['name']} - Reason: {reason}"
-            success = await modify_user(str(user.id), rank=new_rank, reason=notes)
+#             # Update rank in database
+#             notes = f"Demoted to {self.rank_manager.get_rank(new_rank)['name']} - Reason: {reason}"
+#             success = await modify_user(str(user.id), rank=new_rank, reason=notes)
 
-            if success:
+#             if success:
 
-                embed = nextcord.Embed(
-                    title="⬇️ Demotion Applied",
-                    color=0xff9900,
-                    description=f"**{member['name']}** has been demoted."
-                )
-                embed.add_field(
-                    name="Previous Rank", 
-                    value=self._rank_text(member["rank"]), 
-                    inline=True
-                )
-                embed.add_field(
-                    name="New Rank", 
-                    value=self._rank_text(new_rank), 
-                    inline=True
-                )
-                embed.add_field(name="Member", value=user.mention, inline=True)
-                await self._sync_roles(embed, user, member["rank"], new_rank)
-                embed.add_field(name="Reason", value=reason, inline=False)
+#                 embed = nextcord.Embed(
+#                     title="⬇️ Demotion Applied",
+#                     color=0xff9900,
+#                     description=f"**{member['name']}** has been demoted."
+#                 )
+#                 embed.add_field(
+#                     name="Previous Rank", 
+#                     value=self._rank_text(member["rank"]), 
+#                     inline=True
+#                 )
+#                 embed.add_field(
+#                     name="New Rank", 
+#                     value=self._rank_text(new_rank), 
+#                     inline=True
+#                 )
+#                 embed.add_field(name="Member", value=user.mention, inline=True)
+#                 await self._sync_roles(embed, user, member["rank"], new_rank)
+#                 embed.add_field(name="Reason", value=reason, inline=False)
                 
-                await interaction.followup.send(embed=embed)
-            else:
-                await interaction.followup.send(
-                    "❌ Failed to update rank in database.", 
-                    ephemeral=True
-                )
+#                 await interaction.followup.send(embed=embed)
+#             else:
+#                 await interaction.followup.send(
+#                     "❌ Failed to update rank in database.", 
+#                     ephemeral=True
+#                 )
                 
-        except Exception as e:
-            logger.error(f"Error demoting member: {e}")
-            await interaction.followup.send(
-                f"❌ Failed to demote member: {str(e)}", 
-                ephemeral=True
-            )
+#         except Exception as e:
+#             logger.error(f"Error demoting member: {e}")
+#             await interaction.followup.send(
+#                 f"❌ Failed to demote member: {str(e)}", 
+#                 ephemeral=True
+#             )
 
     @nextcord.slash_command(
         name="reprimand",
