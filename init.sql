@@ -14,5 +14,6 @@ INSERT INTO bot_settings (setting_key, setting_value)
 VALUES 
     ('listen-for-join-leave', 'true'),
     ('new-citizen-welcome', 'true'),
+    ('enlist-welcome', 'true'),
     ('listen-for-border-officer', 'true'),
     ('listen-for-event-start', 'false');

@@ -12,7 +12,7 @@ All commands are slash commands. `?` marks an optional option. Commands that tou
 | Command | Access | What it does |
 |---|---|---|
 | `/approve user steam_id?` | Border Officer | Lets someone through the border. Creates their player identity (with an optional SteamID64 or Steam profile URL), gives the citizen roles, removes the join role, and posts the new-citizen welcome in the main channel. The welcome can be turned off with the `new-citizen-welcome` setting. Does not create a service record. |
-| `/enlist user` | Leadership | Enlists a member. No service record: creates one at EN0, logs `enlisted`, gives the enlisted roles. Already active and enlisted: does nothing. Inactive record: sets it active again at their previous rank, logs `reenlisted`, gives the roles for that rank. The member must already have a player identity. |
+| `/enlist user msg?` | Leadership | Enlists a member. No service record: creates one at EN0, logs `enlisted`, gives the enlisted roles. Already active and enlisted: does nothing. Inactive record: sets it active again at their previous rank, logs `reenlisted`, gives the roles for that rank. The member must already have a player identity. `msg` true/false forces the welcome tour on or off for this enlistment; leave it out to follow the `enlist-welcome` setting. |
 | `/discharge user reason?` | Leadership | Marks the member's service record `discharged`, logs a `discharged` event (with the reason as notes), and removes the enlisted and rank roles. Their rank is kept so `/enlist` can reinstate them. |
 | `/retire user reason?` | Leadership | Retires a member: marks the service record `retired`, logs a `retired` event (reason as notes), removes their rank role and the military personnel role, and gives the Distinguished Citizen role. Their rank is kept. `/enlist` can reinstate them later. |
 
@@ -83,7 +83,7 @@ Stored in the bot's local database and cached at startup.
 | Command | What it does |
 |---|---|
 | `/settings list` | Shows the current values. |
-| `/settings set setting value` | Turns a setting on or off: `listen-for-join-leave`, `new-citizen-welcome`, `listen-for-border-officer`, `listen-for-event-start`. |
+| `/settings set setting value` | Turns a setting on or off: `listen-for-join-leave`, `new-citizen-welcome`, `enlist-welcome`, `listen-for-border-officer`, `listen-for-event-start`. |
 | `/settings set-interval minutes` | Sets how often the border-officer monitor checks (1-60 minutes). |
 | `/toggle_joinleave action` | `Enable`, `Disable` or `Status` for the join/leave messages (same as the `listen-for-join-leave` setting). |
 
@@ -93,6 +93,7 @@ Stored in the bot's local database and cached at startup.
 |---|---|---|
 | `listen-for-join-leave` | on | Posts join and leave messages. |
 | `new-citizen-welcome` | on | `/approve` posts the new-citizen welcome in the main channel. |
+| `enlist-welcome` | on | `/enlist` posts the AFDF welcome tour in the main channel (new enlistments only, not reinstatements). |
 | `listen-for-border-officer` | on | Runs the border-officer monitor. |
 | `listen-for-event-start` | off | Event-start listener (currently disabled in the bot). |
 | `border-officer-check-interval` | see `/settings list` | Seconds between monitor checks; set with `/settings set-interval`. |

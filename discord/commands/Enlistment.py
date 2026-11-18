@@ -5,8 +5,11 @@ from nextcord import Interaction, Member, NotFound, SlashOption, slash_command
 from nextcord.ext import commands
 
 from database import enlist_member, discharge_member, get_user_info
-from ..utils import RankManager
-from ..config import ENLISTED_ROLE_IDS, LEADERSHIP_ROLE_ID, TESTING_GUILD_ID, MILITARY_PERSONNEL_ROLE_ID, DISTINGUISHED_CITIZEN_ROLE_ID
+from ..utils import RankManager, send_processed_embed
+from ..config import (get_setting, MAIN_CHANNEL_ID, LOA_CHANNEL_ID, ANNOUNCEMENTS_CHANNEL_ID,
+                      INFORMATION_DB_CHANNEL_ID, EVENTS_TXT_CHANNEL_ID, VIETNAM_CAMPAIGN_CHANNEL_ID,
+                      ENLISTED_ROLE_IDS, LEADERSHIP_ROLE_ID, TESTING_GUILD_ID, MILITARY_PERSONNEL_ROLE_ID,
+                      DISTINGUISHED_CITIZEN_ROLE_ID)
 
 class Enlistment(commands.Cog):
     def __init__(self, bot):
@@ -21,7 +24,8 @@ class Enlistment(commands.Cog):
 
     @slash_command(description="Enlist in the army", guild_ids=[TESTING_GUILD_ID] if TESTING_GUILD_ID else None)
     @commands.has_role(LEADERSHIP_ROLE_ID)
-    async def enlist(self, ctx: Interaction, user: Member):
+    async def enlist(self, ctx: Interaction, user: Member,
+                     msg: Optional[bool] = SlashOption(description="Send the welcome tour (default: server setting)", required=False)):
         await ctx.response.defer(ephemeral=True)
         # Check if required roles are configured
         if not ENLISTED_ROLE_IDS or not LEADERSHIP_ROLE_ID:
@@ -58,6 +62,20 @@ class Enlistment(commands.Cog):
             await user.add_roles(*roles)
             verb = "reinstated at their previous rank" if result == "reinstated" else "enlisted in the army"
             await ctx.followup.send(f"✅ {user.mention} has been {verb}!")
+
+            # Tour only for brand-new enlistments, not reinstated members
+            if result == "enlisted" and (get_setting('enlist-welcome', True) if msg is None else msg):
+                channel = ctx.guild.get_channel(MAIN_CHANNEL_ID) if MAIN_CHANNEL_ID else None
+                if channel:
+                    await send_processed_embed(channel, 'enlist-welcome.json', {
+                        '{user}': user.mention,
+                        '{username}': user.display_name,
+                        '{announcements}': str(ANNOUNCEMENTS_CHANNEL_ID),
+                        '{information_db}': str(INFORMATION_DB_CHANNEL_ID),
+                        '{events}': str(EVENTS_TXT_CHANNEL_ID),
+                        '{vietnam_campaign}': str(VIETNAM_CAMPAIGN_CHANNEL_ID),
+                        '{loa}': str(LOA_CHANNEL_ID),
+                    })
 
         except NotFound:
             await ctx.followup.send("❌ User not found", ephemeral=True)

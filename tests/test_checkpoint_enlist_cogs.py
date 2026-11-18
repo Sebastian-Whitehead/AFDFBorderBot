@@ -197,3 +197,40 @@ async def test_e8_retire_failure_changes_no_roles(enlistment, monkeypatch, resul
     await m.Enlistment.retire.callback(cog, i, user, None)
     user.add_roles.assert_not_awaited()
     user.remove_roles.assert_not_awaited()
+
+
+async def _enlist_welcome(enlistment, monkeypatch, result, setting, msg=None):
+    m, cog = enlistment
+    i, user, _ = _setup(monkeypatch, m)
+    send = AsyncMock(return_value=True)
+    monkeypatch.setattr(m, "send_processed_embed", send)
+    monkeypatch.setattr(m, "enlist_member", AsyncMock(return_value=result))
+    monkeypatch.setattr(m, "get_user_info", AsyncMock(return_value={"rank": "EN4"}))
+    monkeypatch.setattr(m, "get_setting", lambda key, default=None: setting if key == "enlist-welcome" else default)
+    await m.Enlistment.enlist.callback(cog, i, user, msg)
+    return send
+
+
+async def test_e5_enlist_posts_welcome(enlistment, monkeypatch):
+    send = await _enlist_welcome(enlistment, monkeypatch, "enlisted", True)
+    assert send.await_args.args[1] == "enlist-welcome.json"
+
+
+async def test_e6_enlist_welcome_setting_off(enlistment, monkeypatch):
+    send = await _enlist_welcome(enlistment, monkeypatch, "enlisted", False)
+    send.assert_not_awaited()
+
+
+async def test_e7_reinstated_gets_no_welcome(enlistment, monkeypatch):
+    send = await _enlist_welcome(enlistment, monkeypatch, "reinstated", True)
+    send.assert_not_awaited()
+
+
+async def test_e8_msg_true_overrides_setting_off(enlistment, monkeypatch):
+    send = await _enlist_welcome(enlistment, monkeypatch, "enlisted", False, msg=True)
+    send.assert_awaited_once()
+
+
+async def test_e9_msg_false_overrides_setting_on(enlistment, monkeypatch):
+    send = await _enlist_welcome(enlistment, monkeypatch, "enlisted", True, msg=False)
+    send.assert_not_awaited()

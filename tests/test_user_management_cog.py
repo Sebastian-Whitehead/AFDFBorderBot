@@ -11,6 +11,8 @@ import pytest
 STEAM = "76561190000000001"
 DISCORD = "900000000000000001"
 
+no_promote = pytest.mark.skip(reason="/promote and /demote commands are commented out")
+
 
 @pytest.fixture
 def env():
@@ -75,6 +77,7 @@ async def test_g4_add_member_create_fails(env, monkeypatch):
     assert "Failed to add member" in _sent(i).args[0] and _sent(i).kwargs["ephemeral"] is True
 
 
+@no_promote
 async def test_g5_promote(env, monkeypatch):
     um, i, user, cog = env
     modify = AsyncMock(return_value=True)
@@ -87,6 +90,7 @@ async def test_g5_promote(env, monkeypatch):
     assert _sent(i).kwargs["embed"].title == "🎉 Promotion Successful"
 
 
+@no_promote
 async def test_promote_swaps_roles(env, monkeypatch):
     um, i, user, cog = env
     sync = AsyncMock()
@@ -98,6 +102,7 @@ async def test_promote_swaps_roles(env, monkeypatch):
     assert _sent(i).kwargs["embed"].title == "🎉 Promotion Successful"
 
 
+@no_promote
 async def test_promote_db_failure_no_role_calls(env, monkeypatch):
     um, i, user, cog = env
     sync = AsyncMock()
@@ -109,6 +114,7 @@ async def test_promote_db_failure_no_role_calls(env, monkeypatch):
     assert "Failed to update rank" in _sent(i).args[0]
 
 
+@no_promote
 async def test_promote_role_failure_still_succeeds_with_warning(env, monkeypatch):
     um, i, user, cog = env
     monkeypatch.setattr(um, "get_user_info", AsyncMock(return_value=_member("EN2")))
@@ -121,6 +127,7 @@ async def test_promote_role_failure_still_succeeds_with_warning(env, monkeypatch
     assert "Missing Permissions" in warn
 
 
+@no_promote
 async def test_demote_swaps_roles_and_warns_on_failure(env, monkeypatch):
     um, i, user, cog = env
     sync = AsyncMock()
@@ -135,6 +142,7 @@ async def test_demote_swaps_roles_and_warns_on_failure(env, monkeypatch):
     assert embed.title == "⬇️ Demotion Applied" and "boom" in {f.name: f.value for f in embed.fields}["⚠️ Roles not updated"]
 
 
+@no_promote
 async def test_g6_promote_too_far(env, monkeypatch):
     um, i, user, cog = env
     modify = AsyncMock(return_value=True)
@@ -145,6 +153,7 @@ async def test_g6_promote_too_far(env, monkeypatch):
     modify.assert_not_awaited()
 
 
+@no_promote
 async def test_g7_demote(env, monkeypatch):
     um, i, user, cog = env
     modify = AsyncMock(return_value=True)
@@ -184,12 +193,10 @@ async def test_g11_flow_shared_db(shared_db, env, monkeypatch):
     monkeypatch.setattr(um, "sync_rank_roles", AsyncMock())
     await _add(um, cog, i, user, rank="EN2", steam=steam, service_record=True)
     assert _sent(i).kwargs["embed"].title == "✅ Member Added Successfully"
-    await um.UserManagement.promote_member.callback(cog, i, user, "EN3", None)
-    assert _sent(i).kwargs["embed"].title == "🎉 Promotion Successful"
     import discord.commands.Info as info
     await info.Info.view_profile.callback(info.Info(bot=MagicMock()), i, user)
     assert "Money" not in [f.name for f in _sent(i).kwargs["embed"].fields]
-    assert (await get_user_info(discord_id))["rank"] == "EN3"
+    assert (await get_user_info(discord_id))["rank"] == "EN2"
 
 
 def test_add_steam_parse():
@@ -241,8 +248,7 @@ async def test_create_service_record_command(env, monkeypatch):
 def test_rank_options_have_22_choices(env):
     import inspect
     um, _, _, _ = env
-    for cmd, param in [(um.UserManagement.add_member, "rank"), (um.UserManagement.create_service_record_cmd, "rank"),
-                       (um.UserManagement.promote_member, "new_rank"), (um.UserManagement.demote_member, "new_rank")]:
+    for cmd, param in [(um.UserManagement.add_member, "rank"), (um.UserManagement.create_service_record_cmd, "rank")]:
         opt = inspect.signature(cmd.callback).parameters[param].default
         assert len(opt.choices) == 22
 
@@ -309,5 +315,5 @@ async def test_add_member_rank_without_service_record_rejected(env, monkeypatch)
 def test_member_and_service_record_commands_need_leadership(env):
     um, *_ = env
     for name in ("add_member", "add_steam", "create_service_record_cmd", "create_service_event",
-                 "promote_member", "demote_member", "reprimand"):
+                 "reprimand"):
         assert getattr(um.UserManagement, name).callback.__commands_checks__, f"{name} has no role check"

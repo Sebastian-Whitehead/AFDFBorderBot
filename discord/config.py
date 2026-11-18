@@ -46,6 +46,10 @@ CHECKPOINT_CHANNEL_ID = CHANNELS.get('checkpoint_txt', None)
 EVENTS_CHANNEL_ID = CHANNELS.get('events_vc', None)
 WELCOME_CHANNEL_ID = CHANNELS.get('welcome_txt', None)
 LOA_CHANNEL_ID = CHANNELS.get('loa_txt', None)
+ANNOUNCEMENTS_CHANNEL_ID = CHANNELS.get('announcements_txt', None)
+INFORMATION_DB_CHANNEL_ID = CHANNELS.get('information_db_txt', None)
+EVENTS_TXT_CHANNEL_ID = CHANNELS.get('events_txt', None)
+VIETNAM_CAMPAIGN_CHANNEL_ID = CHANNELS.get('vietnam_campaign_txt', None)
 
 # Async function to load settings from database
 async def load_settings():

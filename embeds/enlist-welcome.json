@@ -1,0 +1,40 @@
+{
+  "content": "{user}",
+  "tts": false,
+  "embeds": [
+    {
+      "title": "WELCOME TO THE AFDF, {username}",
+      "description": "You can find our latest mod preset, which is what we'll use this Saturday, here: [LATEST MODPACK - TIMELINE A](https://discord.com/channels/1140569342619168778/1229466005059801179)\n\nNow on to the tour.",
+      "color": 2326507,
+      "author": {
+        "name": "AEGEAN FEDERATION DEFENCE FORCES"
+      },
+      "thumbnail": {
+        "url": "https://i.postimg.cc/L5DSDhHy/emblem-af48a45dbb99.png"
+      },
+      "fields": [
+        {
+          "name": "AFDF | Information",
+          "value": "<#{announcements}> is at the top. All Military Department announcements are made here, like deployment notices, promotions, or updates to our ORBAT (the ORBAT is in <#{announcements}>).\n<#{information_db}> has info on our ranks and more, scroll up to find it.\n<#{events}> is where we post extra events at times, like our participation in the massive PVP event called OFCRA, or Laser's Vietnam campaign (info on the campaign is in <#{vietnam_campaign}>)."
+        },
+        {
+          "name": "Documents",
+          "value": "Documents is where you find our TRADOCs, written almost exclusively by Laser. They are our SOP and some lore. Not required reading, but it is always nice to give it a look over if you have the time. I especially recommend 11-1, 11-2 and 11-3 for info on our Platoon and how we operate."
+        },
+        {
+          "name": "Leave of Absence",
+          "value": "<#{loa}> is where your LoAs go when you can't attend one of our Timeline A events. To post one, use the `/loa` command."
+        },
+        {
+          "name": "General",
+          "value": "General is this chat. We usually try to keep it on topic of the unit, but as you can see, silliness creeps through even the tiniest crack. We have a DCS chat if that is something you do, otherwise the only thing left is the most underused VC on the server, barracks."
+        }
+      ]
+    }
+  ],
+  "components": [],
+  "actions": {},
+  "flags": 0,
+  "username": "Aegean Federation Defence Forces",
+  "avatar_url": "https://i.postimg.cc/FHCv6FWw/Civilian-Shield.png"
+}
