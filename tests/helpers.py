@@ -29,6 +29,8 @@ async def cleanup_shared():
     pids = f"SELECT id FROM public.identities_player WHERE {_MATCH}"
     recs = f"SELECT id FROM military.service_records WHERE player_identity_id IN ({pids})"
     for q in (
+        f"DELETE FROM military.attendance WHERE service_record_id IN ({recs})",
+        "DELETE FROM military.sessions WHERE session_name LIKE 'zz_test_%'",
         f"DELETE FROM military.leave_requests WHERE service_record_id IN ({recs})",
         f"DELETE FROM military.service_events WHERE service_record_id IN ({recs})",
         f"DELETE FROM military.service_records WHERE player_identity_id IN ({pids})",

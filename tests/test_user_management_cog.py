@@ -212,11 +212,11 @@ def test_add_steam_parse():
 
 async def test_add_steam_command(env, monkeypatch):
     um, i, user, cog = env
-    called = AsyncMock(return_value="updated")
-    monkeypatch.setattr(um, "set_steam_id", called)
+    called = AsyncMock(return_value="linked")
+    monkeypatch.setattr(um, "merge_identities", called)
     await um.UserManagement.add_steam.callback(cog, i, user, "https://steamcommunity.com/profiles/76561198150696236")
     called.assert_awaited_once_with(DISCORD, "76561198150696236")
-    assert "added" in _sent(i).args[0]
+    assert "linked" in _sent(i).args[0]
     called.reset_mock()
     monkeypatch.setattr(um, "resolve_steam_id", AsyncMock(return_value=None))
     await um.UserManagement.add_steam.callback(cog, i, user, "https://steamcommunity.com/id/vanity")
@@ -314,6 +314,77 @@ async def test_add_member_rank_without_service_record_rejected(env, monkeypatch)
 
 def test_member_and_service_record_commands_need_leadership(env):
     um, *_ = env
-    for name in ("add_member", "add_steam", "create_service_record_cmd", "create_service_event",
+    for name in ("add_member", "add_steam", "force_merge", "merge_service_records_cmd", "create_service_record_cmd", "create_service_event",
                  "reprimand"):
         assert getattr(um.UserManagement, name).callback.__commands_checks__, f"{name} has no role check"
+
+
+URL = "https://steamcommunity.com/profiles/76561198150696236"
+
+
+def _side(sr_id=None, rank=None, status=None):
+    return MagicMock(id=1, alias="a", steam_id=1, discord_id=2, sr_id=sr_id, current_rank=rank, service_status=status, accounts=1)
+
+
+def _merge_env(um, monkeypatch, approve, steam=None, discord=None):
+    monkeypatch.setattr(um, "resolve_steam_id", AsyncMock(return_value="76561198150696236"))
+    monkeypatch.setattr(um, "get_merge_preview", AsyncMock(return_value={"steam": steam, "discord": discord, "survivor": "discord"}))
+    monkeypatch.setattr(um, "confirm", AsyncMock(return_value=approve))
+    i_edit = AsyncMock()
+    return i_edit
+
+
+async def test_force_merge_declined(env, monkeypatch):
+    um, i, user, cog = env
+    _merge_env(um, monkeypatch, False, _side(), _side())
+    merge = AsyncMock()
+    monkeypatch.setattr(um, "merge_identities", merge)
+    await um.UserManagement.force_merge.callback(cog, i, user, URL)
+    merge.assert_not_awaited()
+
+
+async def test_force_merge_approved_and_conflict(env, monkeypatch):
+    um, i, user, cog = env
+    _merge_env(um, monkeypatch, True, _side(), _side())
+    i.edit_original_message = AsyncMock()
+    merge = AsyncMock(return_value="merged")
+    monkeypatch.setattr(um, "merge_identities", merge)
+    await um.UserManagement.force_merge.callback(cog, i, user, URL)
+    merge.assert_awaited_once_with(DISCORD, "76561198150696236", force=True)
+    assert "merged" in i.edit_original_message.call_args.kwargs["content"]
+    merge.return_value = "service_record_conflict"
+    await um.UserManagement.force_merge.callback(cog, i, user, URL)
+    assert "/merge_service_records" in i.edit_original_message.call_args.kwargs["content"]
+
+
+async def test_force_merge_no_identity_skips_prompt(env, monkeypatch):
+    um, i, user, cog = env
+    _merge_env(um, monkeypatch, True, None, None)
+    await um.UserManagement.force_merge.callback(cog, i, user, URL)
+    um.confirm.assert_not_awaited()
+    assert _sent(i).kwargs["ephemeral"] is True
+
+
+async def test_merge_service_records_no_record(env, monkeypatch):
+    um, i, user, cog = env
+    _merge_env(um, monkeypatch, True, _side(5, "EN1", "active"), _side())
+    merge = AsyncMock()
+    monkeypatch.setattr(um, "merge_service_records", merge)
+    await um.UserManagement.merge_service_records_cmd.callback(cog, i, user, URL)
+    merge.assert_not_awaited()
+    um.confirm.assert_not_awaited()
+
+
+async def test_merge_service_records_declined_and_approved(env, monkeypatch):
+    um, i, user, cog = env
+    _merge_env(um, monkeypatch, False, _side(5, "EN1", "active"), _side(6, "EN2", "active"))
+    merge = AsyncMock(return_value="merged")
+    monkeypatch.setattr(um, "merge_service_records", merge)
+    await um.UserManagement.merge_service_records_cmd.callback(cog, i, user, URL)
+    merge.assert_not_awaited()
+    um.confirm.return_value = True
+    i.edit_original_message = AsyncMock()
+    await um.UserManagement.merge_service_records_cmd.callback(cog, i, user, URL)
+    merge.assert_awaited_once_with(DISCORD, "76561198150696236")
+    msg = i.edit_original_message.call_args.kwargs["content"]
+    assert "EN1" in msg and "EN2" in msg and "/set_rank" in msg

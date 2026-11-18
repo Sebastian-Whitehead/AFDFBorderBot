@@ -1,0 +1,10 @@
+{
+  "content": "",
+  "embeds": [
+    {
+      "title": "⚠️ Force merge identities?",
+      "description": "Steam ID **{steam_id}** and {member} will be joined into one identity.\n\n**Steam identity:** {steam_side}\n**Discord identity:** {discord_side}\n\n**Survives:** the {survivor} identity (the one with a service record; the Discord one if neither has one). The other identity is **deleted**.\n\n• Any other Steam or Discord ID on the surviving identity is replaced and no longer attached to anyone.\n• Bank accounts move to the survivor and keep separate balances (clashing names get \"(merged from id)\").\n• If both have a service record this fails: run `/merge_service_records` first.\n\nThis cannot be undone. Are you sure?",
+      "color": 15844367
+    }
+  ]
+}

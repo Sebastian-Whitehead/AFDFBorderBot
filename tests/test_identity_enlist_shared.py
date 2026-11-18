@@ -112,19 +112,19 @@ async def test_create_user_without_steam(shared_db):
     assert (await get_user_info(d))["steam_id"] is None
 
 
-async def test_set_steam_id_outcomes(shared_db):
-    from database import set_steam_id
+async def test_merge_identities_outcomes(shared_db):
+    from database import merge_identities
     s, d = ids(72)
     s2, _ = ids(73)
-    assert await set_steam_id(d, s) == "no_identity"
+    assert await merge_identities(d, s) == "no_identity"
     assert await ensure_player_identity("zz_test_ss", None, d)
-    assert await set_steam_id(d, s) == "updated"
-    assert await set_steam_id(d, s) == "already_set"
-    assert await set_steam_id(d, s2) == "different_steam"
+    assert await merge_identities(d, s) == "linked"
+    assert await merge_identities(d, s) == "already_linked"
+    assert await merge_identities(d, s2) == "different_steam"
     s3, d3 = ids(74)
-    assert await ensure_player_identity("zz_test_ss2", None, d3)
-    assert await set_steam_id(d3, s) == "steam_in_use"
-    assert await set_steam_id("abc", s) == "error"
+    assert await ensure_player_identity("zz_test_ss2", s3, d3)
+    assert await merge_identities(d, s3) == "steam_linked_to_other_discord"
+    assert await merge_identities("abc", s) == "error"
 
 
 async def test_create_service_record_only(shared_db):

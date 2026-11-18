@@ -1,0 +1,10 @@
+{
+  "content": "",
+  "embeds": [
+    {
+      "title": "⚠️ Merge service records?",
+      "description": "The service record on Steam ID **{steam_id}** will be merged into {member}'s record.\n\n**Steam record:** {steam_side}\n**{member}'s record:** {discord_side}\n\n• The Steam record is **deleted**; its events, attendance and LOA move to {member}'s record.\n• Steam is the source of truth: rank and status become **{new_rank}** / **{new_status}** (now {old_rank} / {old_status}), even if that is lower.\n• Clashing attendance and active LOA: the Steam record wins.\n• Discord rank roles are **not** changed. Use `/set_rank` to fix them.\n\nThis cannot be undone. Are you sure?",
+      "color": 15844367
+    }
+  ]
+}

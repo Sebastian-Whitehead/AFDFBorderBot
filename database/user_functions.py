@@ -266,37 +266,18 @@ async def ensure_player_identity(name: str, steam_id: Optional[str], discord_id:
     try:
         db = await get_shared_db_manager()
         async with db.get_session() as session:
-            if steam is None:
-                # fab_ensure_player_account rejects a NULL steam_id, so insert the identity directly
-                if not (await session.execute(
-                    text("SELECT 1 FROM public.identities_player WHERE discord_id = :d"), {"d": discord}
+            if steam is not None:
+                await _claim_null_steam(session, discord, steam)
+                if (await session.execute(
+                    text("SELECT 1 FROM public.identities_player WHERE discord_id = :d AND steam_id IS DISTINCT FROM :s"),
+                    {"d": discord, "s": steam},
                 )).first():
-                    await session.execute(
-                        text("INSERT INTO public.identities_player (alias, discord_id) VALUES (nullif(:n, ''), :d)"),
-                        {"n": name, "d": discord},
-                    )
-                await session.commit()
-                return True
-            await _claim_null_steam(session, discord, steam)
-            if (await session.execute(
-                text("SELECT 1 FROM public.identities_player WHERE discord_id = :d AND steam_id IS DISTINCT FROM :s"),
-                {"d": discord, "s": steam},
-            )).first():
-                return False
+                    return False
+            # the SQL function takes steam and/or discord, links them, and raises on a conflict (-> False below)
             await session.execute(
                 text("SELECT public.fab_ensure_player_account(:name, :steam, :discord)"),
                 {"name": name, "steam": steam, "discord": discord},
             )
-            ident = (await session.execute(
-                text("SELECT id, discord_id FROM public.identities_player WHERE steam_id = :s"), {"s": steam}
-            )).one()
-            if ident.discord_id is None:
-                await session.execute(
-                    text("UPDATE public.identities_player SET discord_id = :d WHERE id = :id"),
-                    {"d": discord, "id": ident.id},
-                )
-            elif ident.discord_id != discord:
-                return False  # rolled back on session close
             await session.commit()
             return True
     except Exception as e:
@@ -407,34 +388,86 @@ async def get_service_events(discord_id: str, limit: int = 10) -> Optional[list]
         return None
 
 
-async def set_steam_id(discord_id: str, steam_id: str) -> str:
-    """Attach a Steam ID to an existing identity: 'updated', 'already_set', 'no_identity',
-    'different_steam' (identity already has another), 'steam_in_use' (another identity has it) or 'error'."""
+_MERGE_CODES = ("no_identity", "steam_linked_to_other_discord", "different_steam", "service_record_conflict",
+                "record_not_found", "same_record", "different_organization")
+
+
+def _merge_error(e: Exception) -> str:
+    """The SQL function's error code (its RAISE message), else 'error'."""
+    return next((c for c in _MERGE_CODES if c in str(e)), "error")
+
+
+async def merge_identities(discord_id: str, steam_id: str, force: bool = False) -> str:
+    """Link/merge the Discord identity and the Steam identity (public.fab_merge_player_identities):
+    'merged', 'linked', 'already_linked', a SQL error code (see _MERGE_CODES) or 'error'."""
     try:
         discord, steam = int(discord_id), int(steam_id)
         db = await get_shared_db_manager()
         async with db.get_session() as session:
-            row = (await session.execute(
-                text("SELECT id, steam_id FROM public.identities_player WHERE discord_id = :d"), {"d": discord}
-            )).first()
-            if row is None:
-                return "no_identity"
-            if row.steam_id == steam:
-                return "already_set"
-            if row.steam_id is not None:
-                return "different_steam"
-            if (await session.execute(
-                text("SELECT 1 FROM public.identities_player WHERE steam_id = :s"), {"s": steam}
-            )).first():
-                return "steam_in_use"
-            await session.execute(
-                text("UPDATE public.identities_player SET steam_id = :s WHERE id = :id"), {"s": steam, "id": row.id}
-            )
+            res = (await session.execute(
+                text("SELECT public.fab_merge_player_identities(:s, :d, :f)"), {"s": steam, "d": discord, "f": force}
+            )).scalar_one()
             await session.commit()
-            return "updated"
+        if res["result"] == "merged":  # no undo, so keep what was deleted
+            print(f"Merged identities (discord {discord}, steam {steam}): {res}")
+        return res["result"]
     except Exception as e:
-        print(f"Error setting steam id: {e}")
-        return "error"
+        print(f"Error merging identities: {e}")
+        return _merge_error(e)
+
+
+async def _merge_side(session, col: str, value: int):
+    """Identity found by steam_id/discord_id with its AFDF record, or None."""
+    return (await session.execute(
+        text(f"""SELECT p.id, p.alias, p.steam_id, p.discord_id, sr.id AS sr_id, sr.current_rank, sr.service_status
+                 FROM public.identities_player p
+                 LEFT JOIN military.service_records sr ON sr.player_identity_id = p.id AND sr.organization_id =
+                      (SELECT id FROM public.identities_organizations WHERE name = :org)
+                 WHERE p.{col} = :v"""),
+        {"org": ORG, "v": value},
+    )).first()
+
+
+async def get_merge_preview(discord_id: str, steam_id: str) -> Optional[Dict[str, Any]]:
+    """Read-only view of both sides for a confirmation prompt: {'steam': row|None, 'discord': row|None, 'survivor': ...}.
+    A row has id, alias, steam_id, discord_id, sr_id, current_rank, service_status. survivor is
+    'steam' or 'discord': the side with a service record survives, the Discord one if neither (same rule as the SQL).
+    None on error."""
+    try:
+        db = await get_shared_db_manager()
+        async with db.get_session() as session:
+            st = await _merge_side(session, "steam_id", int(steam_id))
+            dc = await _merge_side(session, "discord_id", int(discord_id))
+        return {"steam": st, "discord": dc, "survivor": "steam" if st and st.sr_id else "discord"}
+    except Exception as e:
+        print(f"Error getting merge preview: {e}")
+        return None
+
+
+async def merge_service_records(discord_id: str, steam_id: str) -> str:
+    """Merge the Steam identity's service record into the Discord identity's (public.fab_merge_service_records):
+    'merged', 'no_identity', 'no_record' (either side has none), a SQL error code or 'error'.
+    On success returns 'merged' and the SQL result is printed (it includes the previous rank/status)."""
+    try:
+        prev = await get_merge_preview(discord_id, steam_id)
+        if prev is None:
+            return "error"
+        if not prev["steam"] or not prev["discord"]:
+            return "no_identity"
+        if not prev["steam"].sr_id or not prev["discord"].sr_id:
+            return "no_record"
+        db = await get_shared_db_manager()
+        async with db.get_session() as session:
+            res = (await session.execute(
+                text("SELECT public.fab_merge_service_records(:f, :t)"),
+                {"f": prev["steam"].sr_id, "t": prev["discord"].sr_id},
+            )).scalar_one()
+            await session.commit()
+        print(f"Merged service records (discord {discord_id}, steam {steam_id}): {res}")
+        return "merged"
+    except Exception as e:
+        print(f"Error merging service records: {e}")
+        return _merge_error(e)
 
 
 async def _service_state(session, discord: int):
