@@ -9,7 +9,7 @@ DISCORD = "900000000000000068"
 def _setup(monkeypatch, mod):
     """Make config constants truthy and wire a guild whose roles/channel exist."""
     for name, val in (("JOIN_ROLE_ID", 1), ("CITIZEN_ROLE_IDS", [2, 3]), ("MAIN_CHANNEL_ID", 4),
-                      ("ENLISTED_ROLE_IDS", [5, 6]), ("LEADERSHIP_ROLE_ID", 7)):
+                      ("MILITARY_PERSONNEL_ROLE_ID", 6), ("LEADERSHIP_ROLE_ID", 7)):
         if hasattr(mod, name):
             monkeypatch.setattr(mod, name, val)
     order = MagicMock()  # parent mock records relative call order

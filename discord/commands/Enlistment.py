@@ -6,9 +6,12 @@ from nextcord.ext import commands
 
 from database import enlist_member, discharge_member, get_user_info
 from ..utils import RankManager, send_processed_embed, member_replacements
+from ..utils.rank_roles import rank_role_id as code_role_id
 from ..config import (get_setting, MILITARY_MAIN_CHANNEL_ID,
-                      ENLISTED_ROLE_IDS, LEADERSHIP_ROLE_ID, TESTING_GUILD_ID, MILITARY_PERSONNEL_ROLE_ID,
+                      LEADERSHIP_ROLE_ID, TESTING_GUILD_ID, MILITARY_PERSONNEL_ROLE_ID,
                       DISTINGUISHED_CITIZEN_ROLE_ID)
+
+BASE_RANK = "EN0"  # everyone enlists at this rank; its role is the "enlistment" role
 
 class Enlistment(commands.Cog):
     def __init__(self, bot):
@@ -27,12 +30,8 @@ class Enlistment(commands.Cog):
                      msg: Optional[bool] = SlashOption(description="Send the welcome tour (default: server setting)", required=False)):
         await ctx.response.defer(ephemeral=True)
         # Check if required roles are configured
-        if not ENLISTED_ROLE_IDS or not LEADERSHIP_ROLE_ID:
+        if not code_role_id(BASE_RANK) or not MILITARY_PERSONNEL_ROLE_ID or not LEADERSHIP_ROLE_ID:
             await ctx.followup.send("❌ Bot configuration error - missing required roles!", ephemeral=True)
-            return
-            
-        if len(ENLISTED_ROLE_IDS) < 2:
-            await ctx.followup.send("❌ Bot configuration error - not enough enlisted roles configured!", ephemeral=True)
             return
 
         result = await enlist_member(str(user.id))
@@ -44,8 +43,8 @@ class Enlistment(commands.Cog):
             return
 
         try:
-            enlistment_role = ctx.guild.get_role(ENLISTED_ROLE_IDS[0])
-            mil_dep_role = ctx.guild.get_role(ENLISTED_ROLE_IDS[1])
+            enlistment_role = ctx.guild.get_role(code_role_id(BASE_RANK))
+            mil_dep_role = ctx.guild.get_role(MILITARY_PERSONNEL_ROLE_ID)
             
             if not enlistment_role or not mil_dep_role:
                 await ctx.followup.send("❌ Could not find required roles in this server!", ephemeral=True)
@@ -86,7 +85,7 @@ class Enlistment(commands.Cog):
             await ctx.followup.send(msg, ephemeral=True)
             return
         rank_role_id = await self._rank_role_id(user)
-        roles = [r for r in (ctx.guild.get_role(i) for i in [*ENLISTED_ROLE_IDS, rank_role_id] if i) if r]
+        roles = [r for r in (ctx.guild.get_role(i) for i in (code_role_id(BASE_RANK), MILITARY_PERSONNEL_ROLE_ID, rank_role_id) if i) if r]
         try:
             await user.remove_roles(*roles)
         except Exception as e:
