@@ -1,9 +1,9 @@
-"""Rank codes (stored in Supabase and used by the bot), ordered low -> high, from ids.json."""
-import json
+"""Rank codes (stored in Supabase and used by the bot), ordered low -> high, from ids.yml."""
+import yaml
 from pathlib import Path
 
-RANKS: dict[str, dict] = json.loads(
-    (Path(__file__).parent.parent / "ids.json").read_text(encoding="utf-8"))["roles"]["ranks"]
+RANKS: dict[str, dict] = yaml.safe_load(
+    (Path(__file__).parent.parent / "ids.yml").read_text(encoding="utf-8"))["roles"]["ranks"]
 _INDEX = {code: i for i, code in enumerate(RANKS)}
 
 

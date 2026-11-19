@@ -32,13 +32,13 @@ Tests read `.env.test`: `TEST_LOCAL_DATABASE_URL`, `TEST_SHARED_DATABASE_URL`, `
 
 - `discord/` is a local package (not pip `discord`): `bot.py`, `config.py` (settings cache), `commands/` (Attendance, Checkpoint, Enlistment, GuildEvent, Info, LOA, Session, SettingsManagement, UserManagement), `listeners/` (BorderOfficerMonitor, GuildEventListener, JoinLeaveHandler), `utils/` (EmbedProcessor, RankManager, steam, `confirm.py`: shared Approve/Decline prompt that shows an embed from `embeds/`).
 - `database/`: `db_manager.py` (local + shared engines), `user_functions.py`, `session_functions.py` (sessions), `attendance_functions.py` (attendance rows), `loa_functions.py`, `settings_manager.py`, `rank_codes.py`, `models.py`.
-- `embeds/`, `Settings.json`, `ids.json`: static config and data.
+- `embeds/`, `Settings.json`, `ids.yml`: static config and data.
 
 Data split:
 
 - **Supabase (shared with the game)**: `public.identities_player`, `military.service_records`, `military.service_events`, `military.leave_requests`, `military.sessions`, `military.attendance`, organization `AFDF-Para Raiders`. The bot never reads or writes `economy.*` and never handles money.
 - **Local Postgres**: `bot_settings` only.
-- Ranks are identified by code everywhere (`EN0`-`EN8`, `OF0`-`OF11`, `PRES`), defined in order in `ids.json` (`roles.ranks`: abbr, name, Discord role id) and read via `database/rank_codes.py`. Commands offer them as a dropdown.
+- Ranks are identified by code everywhere (`EN0`-`EN8`, `OF0`-`OF11`, `PRES`), defined in order in `ids.yml` (`roles.ranks`: abbr, name, Discord role id) and read via `database/rank_codes.py`. Commands offer them as a dropdown.
 
 Design decisions:
 

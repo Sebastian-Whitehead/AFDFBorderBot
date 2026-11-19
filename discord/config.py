@@ -1,4 +1,4 @@
-import json
+import yaml
 import logging
 import sys
 import os
@@ -12,10 +12,10 @@ logger = logging.getLogger(__name__)
 
 # Load IDS with error handling
 try:
-    with open('ids.json') as f:
-        IDS = json.load(f)
-except (FileNotFoundError, json.JSONDecodeError) as e:
-    logger.error(f"Error loading ids.json: {e}")
+    with open('ids.yml', encoding='utf-8') as f:
+        IDS = yaml.safe_load(f)
+except (FileNotFoundError, yaml.YAMLError) as e:
+    logger.error(f"Error loading ids.yml: {e}")
     IDS = {}
 
 # Settings will be loaded from database - initialize placeholders

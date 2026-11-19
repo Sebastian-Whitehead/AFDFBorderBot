@@ -11,9 +11,9 @@ Discord bot (nextcord) for the AFDF server: border approval, enlistment, events,
 - `discord/` is a LOCAL package, not the pip `discord` lib (the bot uses `nextcord`). Don't rename it or add a pip `discord.py`.
   - `bot.py` create_bot/load_extensions; `config.py` settings cache (load_settings/get_setting/update_setting).
   - `commands/` cogs (Attendance, Checkpoint, Enlistment, GuildEvent, Info, LOA, Session, SettingsManagement, UserManagement); `listeners/` cogs (BorderOfficerMonitor, GuildEventListener, JoinLeaveHandler); `utils/` (EmbedProcessor, RankManager, steam.py: Steam ID/URL resolution, confirm.py: shared Approve/Decline prompt, `confirm(interaction, embed_file, ...)`, needs a deferred interaction).
-- `database/`: `db_manager.py` (global manager via `get_db_manager()`, local + shared engines), `models.py`, `user_functions.py`, `session_functions.py` (sessions), `attendance_functions.py` (attendance rows), `loa_functions.py`, `rank_codes.py` (ordered rank codes from ids.json), `settings_manager.py`. Settings live in the local DB (`BotSetting`), loaded async at startup.
+- `database/`: `db_manager.py` (global manager via `get_db_manager()`, local + shared engines), `models.py`, `user_functions.py`, `session_functions.py` (sessions), `attendance_functions.py` (attendance rows), `loa_functions.py`, `rank_codes.py` (ordered rank codes from ids.yml), `settings_manager.py`. Settings live in the local DB (`BotSetting`), loaded async at startup.
 - Data split: shared Supabase holds users (`public.identities_player`, `military.service_records`/`service_events`) LOA (`military.leave_requests`), sessions and attendance (`military.sessions`, `military.attendance`); local DB holds `bot_settings` only. The bot never reads/writes `economy.*` and never handles money.
-- `embeds/`, `Settings.json`, `ids.json`: static config/data. `init.sql`: DB schema.
+- `embeds/`, `Settings.json`, `ids.yml`: static config/data. `init.sql`: DB schema.
 
 ## Gotchas
 - `requirements.txt` is UTF-16 encoded; rewrite it as UTF-16 or convert deliberately, don't append with a UTF-8 tool.

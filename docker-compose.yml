@@ -54,7 +54,7 @@ services:
     volumes:
       - ./embeds:/app/embeds:ro
       - ./main.py:/app/main.py:ro
-      - ./ids.json:/app/ids.json:ro
+      - ./ids.yml:/app/ids.yml:ro
     profiles:
       - bot
       - full

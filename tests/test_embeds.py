@@ -1,4 +1,5 @@
 import json
+import yaml
 import re
 from pathlib import Path
 from types import SimpleNamespace
@@ -9,7 +10,7 @@ from discord.config import CHANNELS, ROLES
 from discord.utils.embed_processor import EmbedProcessor, member_replacements
 
 EMBEDS = Path(__file__).parent.parent / "embeds"
-SPEC = json.loads((EMBEDS / "placeholders.json").read_text(encoding="utf-8"))
+SPEC = yaml.safe_load((EMBEDS / "placeholders.yml").read_text(encoding="utf-8"))
 PLACEHOLDER = re.compile(r"\{([^{}\s]+)\}")
 MEMBER_KEYS = {k.strip("{}") for k in member_replacements(SimpleNamespace(mention="", display_name="", id=0)).keys()}
 
@@ -26,7 +27,7 @@ def _strings(node):
 
 
 def test_every_embed_is_listed():
-    assert {p.name for p in EMBEDS.glob("*.json")} - {"placeholders.json"} == set(SPEC)
+    assert {p.name for p in EMBEDS.glob("*.json")} == set(SPEC)
 
 
 @pytest.mark.parametrize("name", sorted(SPEC))
@@ -39,9 +40,9 @@ def test_placeholders_are_known(name):
             if key:
                 assert kind in ("channel", "role", "setting"), f"{name}: unknown {{{ph}}}"
                 if kind != "setting":
-                    assert isinstance((CHANNELS if kind == "channel" else ROLES).get(key), int), f"{name}: no single id for {{{ph}}} in ids.json"
+                    assert isinstance((CHANNELS if kind == "channel" else ROLES).get(key), int), f"{name}: no single id for {{{ph}}} in ids.yml"
             else:
-                assert ph in allowed, f"{name}: {{{ph}}} is not a known placeholder (add it to placeholders.json or fix the typo)"
+                assert ph in allowed, f"{name}: {{{ph}}} is not a known placeholder (add it to placeholders.yml or fix the typo)"
 
 
 def test_generic_placeholders_resolve():

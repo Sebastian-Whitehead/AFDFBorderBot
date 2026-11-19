@@ -1,0 +1,50 @@
+# Discord ids for the AFDF server (guild, channels, roles). Loaded by discord/config.py.
+testing_guild: 1140569342619168778
+# Channel ids. Use a key in an embed as {channel:<key>}.
+channels:
+  log_txt: 1308822019990618203
+  main_txt: 1140617864110411776
+  military_main_txt: 1306900816581365823
+  checkpoint_txt: 1205850873616539709
+  events_vc: 1142560963606880286
+  welcome_txt: 1205840777872408666
+  loa_txt: 1229440062320808038
+  announcements_txt: 1142462177119326312
+  information_db_txt: 1214375200284606504
+  events_txt: 1216842771709825155
+  vietnam_campaign_txt: 1554227224524099605
+# Role ids. A single-id key works in embeds as {role:<key>}.
+roles:
+  leadership: 1215619605834371093
+  border_officer: 1205844937233666049
+  civil_servant: 1205875873992024146
+  join_role: 1206607575899181168
+  military_personnel: 1205876199746969650
+  distinguished_citizen: 1227366845380821112
+  # Several ids, so not usable as a {role:} placeholder.
+  citizen: [1140584332247957615, 1140616787050889286]
+  # Rank code -> abbreviation, full name, Discord role id.
+  # Order matters: lowest to highest rank. role_id null = no Discord role yet.
+  ranks:
+    EN0: {abbr: VC, name: Voluntary Conscript, role_id: 1206596239379005490}
+    EN1: {abbr: 2PTE, name: Second Private, role_id: 1206248630982279208}
+    EN2: {abbr: PVT, name: Private, role_id: 1206248629917061140}
+    EN3: {abbr: LCPL, name: Lance Corporal, role_id: 1206248627291422800}
+    EN4: {abbr: CPL, name: Corporal, role_id: 1206248624577839124}
+    EN5: {abbr: SGT, name: Sergeant, role_id: 1206248618214953042}
+    EN6: {abbr: SSGT, name: Staff Sergeant, role_id: 1206248421825183794}
+    EN7: {abbr: WO2, name: Warrant Officer Class Two, role_id: 1206248420424024186}
+    EN8: {abbr: WO1, name: Warrant Officer Class One, role_id: 1206248419727773736}
+    OF0: {abbr: OCDT, name: Cadet, role_id: 1435277990660669531}
+    OF1: {abbr: 2LT, name: Second Lieutenant, role_id: 1432651947059449858}
+    OF2: {abbr: LT, name: Lieutenant, role_id: 1433112450521239695}
+    OF3: {abbr: CPT, name: Captain, role_id: 1433112454862471250}
+    OF4: {abbr: MAJ, name: Major, role_id: 1433112458360524800}
+    OF5: {abbr: LT COL, name: Lieutenant Colonel, role_id: null}
+    OF6: {abbr: COL, name: Colonel, role_id: null}
+    OF7: {abbr: BRIG, name: Brigadier, role_id: null}
+    OF8: {abbr: MAJ GEN, name: Major General, role_id: null}
+    OF9: {abbr: LT GEN, name: Lieutenant General, role_id: null}
+    OF10: {abbr: GEN, name: General, role_id: null}
+    OF11: {abbr: FM, name: Field Marshal, role_id: null}
+    PRES: {abbr: PRES, name: President, role_id: 1206351206293835837}

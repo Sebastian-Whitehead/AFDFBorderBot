@@ -1,4 +1,4 @@
-"""Rank lookups and promotion rules, over the ordered rank codes in ids.json."""
+"""Rank lookups and promotion rules, over the ordered rank codes in ids.yml."""
 from typing import Dict, Optional
 
 from database.rank_codes import RANKS, is_valid_rank, rank_index

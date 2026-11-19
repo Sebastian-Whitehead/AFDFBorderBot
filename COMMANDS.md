@@ -4,7 +4,7 @@ All commands are slash commands. `?` marks an optional option. Commands that tou
 
 **Access** is the role the command checks. "Anyone" means the bot does not check a role (server permissions on the command in Discord still apply).
 
-- **Leadership**, **Border Officer**, **Civil Servant**: roles from `ids.json`.
+- **Leadership**, **Border Officer**, **Civil Servant**: roles from `ids.yml`.
 - Names use underscores (`/loa_list`), except the `/settings` subcommands.
 
 ## Border and enlistment
