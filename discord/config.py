@@ -66,9 +66,14 @@ async def load_settings():
         logger.error(f"Error loading settings from database: {e}")
         # Keep default values if database fails
 
+# Used when a setting isn't in the DB (existing databases predate these keys)
+SETTING_DEFAULTS = {
+    'modpack-url': "https://discord.com/channels/1140569342619168778/1229466005059801179",
+}
+
 def get_setting(key: str, default=None):
     """Get a setting value from the cached settings."""
-    return SETTINGS.get(key, default)
+    return SETTINGS.get(key, SETTING_DEFAULTS.get(key, default))
 
 async def update_setting(key: str, value) -> bool:
     """Update a setting."""

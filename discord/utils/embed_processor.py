@@ -3,10 +3,40 @@ Utility for processing embed data with placeholder replacements.
 """
 
 import json
+import re
 from pathlib import Path
 from typing import Dict, Any, Optional
 
 import nextcord
+
+# Placeholders any embed can use without code: {channel:loa_txt} {role:leadership} {setting:modpack-url}
+_GENERIC = re.compile(r'\{(channel|role|setting):([\w\-]+)\}')
+
+
+def _resolve_generic(match):
+    from ..config import CHANNELS, ROLES, get_setting  # lazy: config pulls in the database package
+    kind, key = match.groups()
+    if kind == 'setting':
+        value = get_setting(key)
+    else:
+        value = (CHANNELS if kind == 'channel' else ROLES).get(key)
+        if isinstance(value, int):  # list-valued roles (citizen, enlisted, ranks) can't be mentioned
+            value = f"<#{value}>" if kind == 'channel' else f"<@&{value}>"
+        else:
+            value = None
+    return match.group(0) if value is None else str(value)  # unknown stays literal; tests/test_embeds.py catches it
+
+
+def member_replacements(member) -> Dict[str, str]:
+    """Per-member placeholders shared by the join/leave/approve/enlist embeds (and /test-msg)."""
+    return {
+        '{user}': member.mention,
+        '{username}': member.display_name,
+        '{User}': member.mention,
+        '{Username}': member.display_name,
+        '{userid}': str(member.id),
+        '{usertag}': str(member),
+    }
 
 
 class EmbedProcessor:
@@ -29,8 +59,8 @@ class EmbedProcessor:
         
         for placeholder, replacement in replacements.items():
             text = text.replace(placeholder, replacement)
-        
-        return text
+
+        return _GENERIC.sub(_resolve_generic, text)
     
     @staticmethod
     def process_embed_data(embed_data: Dict[str, Any], replacements: Dict[str, str]) -> Optional[Dict[str, Any]]:

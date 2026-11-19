@@ -5,14 +5,10 @@ from nextcord import Interaction, Member, NotFound, SlashOption, slash_command
 from nextcord.ext import commands
 
 from database import enlist_member, discharge_member, get_user_info
-from ..utils import RankManager, send_processed_embed
-from ..config import (get_setting, MILITARY_MAIN_CHANNEL_ID, LOA_CHANNEL_ID, ANNOUNCEMENTS_CHANNEL_ID,
-                      INFORMATION_DB_CHANNEL_ID, EVENTS_TXT_CHANNEL_ID, VIETNAM_CAMPAIGN_CHANNEL_ID,
+from ..utils import RankManager, send_processed_embed, member_replacements
+from ..config import (get_setting, MILITARY_MAIN_CHANNEL_ID,
                       ENLISTED_ROLE_IDS, LEADERSHIP_ROLE_ID, TESTING_GUILD_ID, MILITARY_PERSONNEL_ROLE_ID,
                       DISTINGUISHED_CITIZEN_ROLE_ID)
-
-# Fallback until `/settings set-modpack-url` is used
-DEFAULT_MODPACK_URL = "https://discord.com/channels/1140569342619168778/1229466005059801179"
 
 class Enlistment(commands.Cog):
     def __init__(self, bot):
@@ -70,16 +66,7 @@ class Enlistment(commands.Cog):
             if result == "enlisted" and (get_setting('enlist-welcome', True) if msg is None else msg):
                 channel = ctx.guild.get_channel(MILITARY_MAIN_CHANNEL_ID) if MILITARY_MAIN_CHANNEL_ID else None
                 if channel:
-                    await send_processed_embed(channel, 'enlist-welcome.json', {
-                        '{user}': user.mention,
-                        '{username}': user.display_name,
-                        '{announcements}': str(ANNOUNCEMENTS_CHANNEL_ID),
-                        '{information_db}': str(INFORMATION_DB_CHANNEL_ID),
-                        '{events}': str(EVENTS_TXT_CHANNEL_ID),
-                        '{vietnam_campaign}': str(VIETNAM_CAMPAIGN_CHANNEL_ID),
-                        '{loa}': str(LOA_CHANNEL_ID),
-                        '{modpack_url}': get_setting('modpack-url', DEFAULT_MODPACK_URL),
-                    })
+                    await send_processed_embed(channel, 'enlist-welcome.json', member_replacements(user))
 
         except NotFound:
             await ctx.followup.send("❌ User not found", ephemeral=True)

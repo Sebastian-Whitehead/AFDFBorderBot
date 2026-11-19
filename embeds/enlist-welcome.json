@@ -4,7 +4,7 @@
   "embeds": [
     {
       "title": "WELCOME TO THE AFDF, {username}",
-      "description": "You can find our latest mod preset, which is what we'll use this Saturday, here: [LATEST MODPACK - TIMELINE A]({modpack_url})\n\nNow on to the tour.",
+      "description": "You can find our latest mod preset, which is what we'll use this Saturday, here: [LATEST MODPACK - TIMELINE A]({setting:modpack-url})\n\nNow on to the tour.",
       "color": 2326507,
       "author": {
         "name": "AEGEAN FEDERATION DEFENCE FORCES"
@@ -15,7 +15,7 @@
       "fields": [
         {
           "name": "AFDF | Information",
-          "value": "<#{announcements}> is at the top. All Military Department announcements are made here, like deployment notices, promotions, or updates to our ORBAT (the ORBAT is in <#{announcements}>).\n<#{information_db}> has info on our ranks and more, scroll up to find it.\n<#{events}> is where we post extra events at times, like our participation in the massive PVP event called OFCRA, or Laser's Vietnam campaign (info on the campaign is in <#{vietnam_campaign}>)."
+          "value": "{channel:announcements_txt} is at the top. All Military Department announcements are made here, like deployment notices, promotions, or updates to our ORBAT (the ORBAT is in {channel:announcements_txt}).\n{channel:information_db_txt} has info on our ranks and more, scroll up to find it.\n{channel:events_txt} is where we post extra events at times, like our participation in the massive PVP event called OFCRA, or Laser's Vietnam campaign (info on the campaign is in {channel:vietnam_campaign_txt})."
         },
         {
           "name": "Documents",
@@ -23,7 +23,7 @@
         },
         {
           "name": "Leave of Absence",
-          "value": "<#{loa}> is where your LoAs go when you can't attend one of our Timeline A events. To post one, use the `/loa` command."
+          "value": "{channel:loa_txt} is where your LoAs go when you can't attend one of our Timeline A events. To post one, use the `/loa` command."
         },
         {
           "name": "General",

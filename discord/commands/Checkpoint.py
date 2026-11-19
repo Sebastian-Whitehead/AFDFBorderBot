@@ -5,7 +5,7 @@ from nextcord.ext import commands
 from nextcord import Interaction, Member, NotFound, SlashOption, slash_command
 
 from database import ensure_player_identity
-from ..utils import send_processed_embed
+from ..utils import send_processed_embed, member_replacements
 from ..utils.steam import resolve_steam_id
 from ..config import get_setting, TESTING_GUILD_ID, JOIN_ROLE_ID, BORDER_OFFICER_ROLE_ID, CITIZEN_ROLE_IDS, MAIN_CHANNEL_ID
 
@@ -65,10 +65,7 @@ class Checkpoint(commands.Cog):
             if not welcome:
                 return
 
-            await send_processed_embed(main_channel, 'newcitizen-main.json', {
-                '{user}': user.mention,
-                '{username}': user.display_name,
-            })
+            await send_processed_embed(main_channel, 'newcitizen-main.json', member_replacements(user))
 
         except NotFound:
             await ctx.followup.send("Member not found.", ephemeral=True)

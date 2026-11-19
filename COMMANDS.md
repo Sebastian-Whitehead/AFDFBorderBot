@@ -88,6 +88,7 @@ Stored in the bot's local database and cached at startup.
 | `/settings set setting value` | Turns a setting on or off: `listen-for-join-leave`, `new-citizen-welcome`, `enlist-welcome`, `listen-for-border-officer`, `listen-for-event-start`. |
 | `/settings set-interval minutes` | Sets how often the border-officer monitor checks (1-60 minutes). |
 | `/settings set-modpack-url url` | Sets the modpack link in the `/enlist` welcome (`modpack-url`). Must start with http:// or https://. |
+| `/test-msg msg_type channel?` | Leadership. Sends the `join`, `approve` or `enlist` welcome message for a fake member, John Doe (no ping, nothing saved). Posts in the given channel, or the current one. |
 | `/toggle_joinleave action` | `Enable`, `Disable` or `Status` for the join/leave messages (same as the `listen-for-join-leave` setting). |
 
 ## Settings reference

@@ -5,7 +5,7 @@ from nextcord.ext import commands
 from nextcord import Member, Interaction, SlashOption
 
 from ..config import JOIN_ROLE_ID, WELCOME_CHANNEL_ID, get_setting, update_setting, LEADERSHIP_ROLE_ID, TESTING_GUILD_ID
-from ..utils import send_processed_embed
+from ..utils import send_processed_embed, member_replacements
 
 logger = logging.getLogger(__name__)
 
@@ -33,15 +33,7 @@ class JoinLeaveHandler(commands.Cog):
         if WELCOME_CHANNEL_ID:
             welcome_channel = member.guild.get_channel(WELCOME_CHANNEL_ID)
             if welcome_channel:
-                replacements = {
-                    '{user}': member.mention,
-                    '{username}': member.display_name,
-                    '{User}': member.mention,
-                    '{Username}': member.display_name,
-                    '{userid}': str(member.id),
-                    '{usertag}': str(member),
-                }
-                await send_processed_embed(welcome_channel, 'member_join.json', replacements)
+                await send_processed_embed(welcome_channel, 'member_join.json', member_replacements(member))
 
     @commands.Cog.listener()
     async def on_member_remove(self, member: Member):
@@ -53,15 +45,7 @@ class JoinLeaveHandler(commands.Cog):
         if WELCOME_CHANNEL_ID:
             welcome_channel = member.guild.get_channel(WELCOME_CHANNEL_ID)
             if welcome_channel:
-                replacements = {
-                    '{user}': member.mention,
-                    '{username}': member.display_name,
-                    '{User}': member.mention,
-                    '{Username}': member.display_name,
-                    '{userid}': str(member.id),
-                    '{usertag}': str(member),
-                }
-                await send_processed_embed(welcome_channel, 'member_leave.json', replacements)
+                await send_processed_embed(welcome_channel, 'member_leave.json', member_replacements(member))
 
     @nextcord.slash_command(
         name="toggle_joinleave", 
