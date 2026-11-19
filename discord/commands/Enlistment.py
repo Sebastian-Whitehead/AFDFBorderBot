@@ -11,6 +11,9 @@ from ..config import (get_setting, MILITARY_MAIN_CHANNEL_ID, LOA_CHANNEL_ID, ANN
                       ENLISTED_ROLE_IDS, LEADERSHIP_ROLE_ID, TESTING_GUILD_ID, MILITARY_PERSONNEL_ROLE_ID,
                       DISTINGUISHED_CITIZEN_ROLE_ID)
 
+# Fallback until `/settings set-modpack-url` is used
+DEFAULT_MODPACK_URL = "https://discord.com/channels/1140569342619168778/1229466005059801179"
+
 class Enlistment(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -75,6 +78,7 @@ class Enlistment(commands.Cog):
                         '{events}': str(EVENTS_TXT_CHANNEL_ID),
                         '{vietnam_campaign}': str(VIETNAM_CAMPAIGN_CHANNEL_ID),
                         '{loa}': str(LOA_CHANNEL_ID),
+                        '{modpack_url}': get_setting('modpack-url', DEFAULT_MODPACK_URL),
                     })
 
         except NotFound:

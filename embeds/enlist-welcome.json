@@ -4,7 +4,7 @@
   "embeds": [
     {
       "title": "WELCOME TO THE AFDF, {username}",
-      "description": "You can find our latest mod preset, which is what we'll use this Saturday, here: [LATEST MODPACK - TIMELINE A](https://discord.com/channels/1140569342619168778/1229466005059801179)\n\nNow on to the tour.",
+      "description": "You can find our latest mod preset, which is what we'll use this Saturday, here: [LATEST MODPACK - TIMELINE A]({modpack_url})\n\nNow on to the tour.",
       "color": 2326507,
       "author": {
         "name": "AEGEAN FEDERATION DEFENCE FORCES"

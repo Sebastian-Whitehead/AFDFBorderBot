@@ -78,7 +78,11 @@ class SettingsManagement(commands.Cog):
                             inline=False
                         )
             
-            embed.set_footer(text="Use /settings set for boolean values or /settings set-interval for check interval")
+            modpack_url = get_setting('modpack-url', None)
+            if modpack_url:
+                embed.add_field(name="Modpack Link (enlist welcome)", value=f"`modpack-url`: {modpack_url}", inline=False)
+
+            embed.set_footer(text="Use /settings set for boolean values, /settings set-interval for check interval, /settings set-modpack-url for the modpack link")
             await interaction.response.send_message(embed=embed, ephemeral=True)
             
         except Exception as e:
@@ -225,6 +229,28 @@ class SettingsManagement(commands.Cog):
                 color=0xff0000
             )
             await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    @settings.subcommand(
+        name="set-modpack-url",
+        description="Set the modpack link used in the /enlist welcome"
+    )
+    async def settings_set_modpack_url(
+        self,
+        interaction: Interaction,
+        url: str = SlashOption(description="Full link starting with http:// or https://")
+    ):
+        """Set the modpack link shown in the enlist welcome embed."""
+        if LEADERSHIP_ROLE_ID and not any(role.id == LEADERSHIP_ROLE_ID for role in interaction.user.roles):
+            await interaction.response.send_message("❌ You need the Leadership role to use this command.", ephemeral=True)
+            return
+        url = url.strip()
+        if not url.startswith(("http://", "https://")):
+            await interaction.response.send_message("❌ The link must start with http:// or https://", ephemeral=True)
+            return
+        if await update_setting('modpack-url', url):
+            await interaction.response.send_message(f"✅ Modpack link set to {url}", ephemeral=True)
+        else:
+            await interaction.response.send_message("❌ Failed to update the modpack link", ephemeral=True)
 
 
 def setup(bot):
