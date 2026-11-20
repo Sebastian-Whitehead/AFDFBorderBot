@@ -24,13 +24,15 @@
         {
           "id": 627968075,
           "name": "🕒 **TIMING SCHEDULE**",
-          "value": "We have a voting system, that sees us play two days out of Friday, Saturday or Sunday. The times are as listed:\n\n>>> Friday will always have a later start time, usually at <t:1755446400:t>.\nSaturday & Sunday will start earlier, usually at <t:1755439200:t>",
+          "value": "We play once a week, on Saturday.\n\n >>> Saturday will start, usually at <t:1795271400:t>.",
           "inline": false
         },
         {
           "id": 741863167,
           "name": "❕ **TIMELINES**",
-          "value": "We have 2 Active Timelines, (A) & (B). + one variable Timeline (C)\n\n- A is our MILSIM Timeline, played by our subunit, the AFDF, you can join by inquiring, the join requirement is to have attended one public event prior to inquiring. The events cannot be reloaded, and the Timeline is entirely permadeath, operations are usually one-life events.\n\n- B is our relaxed Timeline, although our AI is still present on its realism preset, it is hard, but little is expected of you.\n\n- C is our variable Timeline, where we play off one-time events or a short campaign around anything in any fictional universe."
+          "value": "**A** is the Aegean Federation timeline.\n
+                    **B** is the Aegean Federation Universe missions\n
+                    **C** is for all off-universe events, robots, WW2, 1700s, everything."
         }
       ]
     }
