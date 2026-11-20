@@ -3,7 +3,7 @@
   "embeds": [
     {
       "title": "Sessions: timeline {timeline}",
-      "description": "```\n{table}\n```",
+      "description": "{table}",
       "color": 10289176,
       "footer": {
         "text": "Page {page}/{pages} · {total} total · times in UTC"

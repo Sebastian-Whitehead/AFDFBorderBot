@@ -96,7 +96,7 @@ async def test_session_list_table_and_paging(monkeypatch):
     lister.assert_awaited_once_with("A", 2)
     emb = i.followup.send.call_args.kwargs["embeds"][0]
     assert "Page 2/2" in emb.footer.text and "11 total" in emb.footer.text and "A" in emb.title
-    assert "| 11 | 4  | A" in emb.description and "Op Night" in emb.description and "open" in emb.description
+    assert "11. **Op Night**" in emb.description and "2026-11-20 19:00 -> open" in emb.description
     lister.return_value = ([], 11)
     await ge.Session.session_list.callback(ge.Session(bot=MagicMock()), i, "A", 9)
     assert "No sessions on page 9" in i.followup.send.call_args.args[0]

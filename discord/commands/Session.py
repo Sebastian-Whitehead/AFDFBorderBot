@@ -91,13 +91,10 @@ class Session(commands.Cog):
             await interaction.followup.send(f"No sessions on page {page} for timeline **{timeline}** ({total} total).")
             return
         fmt = "%Y-%m-%d %H:%M"
-        table = [("#", "ID", "Timeline", "Name", "Operation", "Start", "End")] + [
-            (str((page - 1) * PAGE_SIZE + n), str(r["id"]), r["timeline"], r["session_name"][:24], (r["operation"] or "-")[:24],
-             r["start_at"].strftime(fmt), r["end_at"].strftime(fmt) if r["end_at"] else "open")
-            for n, r in enumerate(rows, 1)]
-        w = [max(len(r[i]) for r in table) for i in range(7)]
-        lines = ["| " + " | ".join(c.ljust(w[i]) for i, c in enumerate(r)) + " |" for r in table]
-        lines.insert(1, "|" + "|".join("-" * (n + 2) for n in w) + "|")
+        # plain markdown list (no code block) so long lines wrap cleanly
+        lines = [f"{(page - 1) * PAGE_SIZE + n:>2}. **{r['session_name'][:40]}**" + (f" ({r['operation'][:40]})" if r["operation"] else "")
+                 + f"\n↳ {r['start_at'].strftime(fmt)} -> " + (r["end_at"].strftime(fmt) if r["end_at"] else "open")
+                 for n, r in enumerate(rows, 1)]
         pages = -(-total // PAGE_SIZE)
         await interaction.followup.send(embeds=load_embeds("session_list.json", {
             "{timeline}": timeline, "{table}": "\n".join(lines), "{page}": str(page), "{pages}": str(pages), "{total}": str(total)}))
