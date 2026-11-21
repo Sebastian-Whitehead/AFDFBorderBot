@@ -109,6 +109,11 @@ class EmbedProcessor:
                         embed['author']['name'], replacements
                     )
                 
+                # Process image urls (e.g. {avatar_url})
+                for key in ('thumbnail', 'image'):
+                    if 'url' in embed.get(key, {}):
+                        embed[key]['url'] = EmbedProcessor.replace_placeholders(embed[key]['url'], replacements)
+
                 # Process fields
                 if 'fields' in embed:
                     for field in embed['fields']:
