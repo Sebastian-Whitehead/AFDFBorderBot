@@ -3,11 +3,14 @@ Utility for processing embed data with placeholder replacements.
 """
 
 import json
+import logging
 import re
 from pathlib import Path
 from typing import Dict, Any, Optional
 
 import nextcord
+
+logger = logging.getLogger(__name__)
 
 # Placeholders any embed can use without code: {channel:loa_txt} {role:leadership} {setting:modpack-url}
 _GENERIC = re.compile(r'\{(channel|role|setting):([\w\-]+)\}')
@@ -137,7 +140,7 @@ class EmbedProcessor:
             with open(embed_path, 'r', encoding='utf-8') as f:
                 return json.load(f)
         except (FileNotFoundError, json.JSONDecodeError) as e:
-            print(f"Error loading embed file {filename}: {e}")
+            logger.error(f"Error loading embed file {filename}: {e}")
             return None
     
     @staticmethod
@@ -174,7 +177,7 @@ class EmbedProcessor:
             return True
             
         except Exception as e:
-            print(f"Error sending embed: {e}")
+            logger.exception(f"Error sending embed: {e}")
             return False
 
 

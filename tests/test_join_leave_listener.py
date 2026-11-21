@@ -37,7 +37,8 @@ async def test_join_welcome_still_sent_if_role_fails(env):
 
 async def test_leave_sends_goodbye(env):
     m, cog, member, sent = env
-    await cog.on_member_remove(member)
+    cog.bot.get_guild.return_value = member.guild
+    await cog.on_raw_member_remove(MagicMock(user=member, guild_id=1))
     assert sent.await_args.args[1] == "member_leave.json"
 
 
@@ -45,7 +46,7 @@ async def test_disabled_setting_does_nothing(env, monkeypatch):
     m, cog, member, sent = env
     monkeypatch.setattr(m, "get_setting", lambda k, d=None: False)
     await cog.on_member_join(member)
-    await cog.on_member_remove(member)
+    await cog.on_raw_member_remove(MagicMock(user=member, guild_id=1))
     member.add_roles.assert_not_awaited()
     sent.assert_not_awaited()
 
