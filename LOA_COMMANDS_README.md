@@ -5,7 +5,7 @@
 ` /loa_cancel ` — Cancel your LOA
 
 - One date = a single day. Two dates = from start until end.
-- Date formats: YYYY-MM-DD or MM/DD/YYYY.
+- Date formats: YYYY-MM-DD, DD/MM/YYYY, or DD/MM (next occurrence of that date, today included).
 - Use these in the LOA channel only.
 - Only one active LOA per user.
 - For help, contact @parz1val.

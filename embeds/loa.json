@@ -5,17 +5,17 @@
     {
       "id": 652627557,
       "title": "LEAVE OF ABSENCE NOTIFICATION FROM {username}",
-      "description": "*Submitted LOA lasts {period}.*\n",
+      "description": "*Submitted LOA {period}.*\n",
       "color": 10289176,
       "footer": {
         "text": "-- Logothete of the Military --"
       },
       "author": {
-        "name": "NOTICE!",
+        "name": "NOTICE! {username}",
         "icon_url": "https://i.postimg.cc/3RzmFDD1/2.png"
       },
       "thumbnail": {
-        "url": "https://i.postimg.cc/QMqrJ7Y3/absence-icon-scaled.png"
+        "url": "{avatar_url}"
       },
       "fields": [
         {

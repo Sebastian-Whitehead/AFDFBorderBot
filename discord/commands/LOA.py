@@ -19,7 +19,7 @@ class LOA(commands.Cog):
         self,
         interaction: Interaction,
         start_date: str = SlashOption(
-            description="First day of your LOA, or the only day if no end date is given (YYYY-MM-DD or MM/DD/YYYY)"
+            description="First day of your LOA, or the only day if no end date is given (YYYY-MM-DD, DD/MM/YYYY or DD/MM)"
         ),
         end_date: str = SlashOption(
             description="Last day of your LOA (optional; leave empty for a single-day LOA)",
@@ -53,11 +53,11 @@ class LOA(commands.Cog):
                 parsed_end_date = await LOAManager.parse_end_date(end_date)
                 if parsed_start_date is None or parsed_end_date is None:
                     await interaction.followup.send(
-                        "❌ Invalid date format. Please use YYYY-MM-DD or MM/DD/YYYY format.", 
+                        "❌ Invalid date format. Please use YYYY-MM-DD, DD/MM/YYYY or DD/MM format.",
                         ephemeral=True
                     )
                     return
-                
+
                 if parsed_end_date < parsed_start_date:
                     await interaction.followup.send(
                         "❌ End date cannot be before the start date.",
@@ -76,7 +76,7 @@ class LOA(commands.Cog):
             except Exception as e:
                 logger.error(f"Error parsing end date: {e}")
                 await interaction.followup.send(
-                    "❌ Invalid date format. Please use YYYY-MM-DD or MM/DD/YYYY format.", 
+                    "❌ Invalid date format. Please use YYYY-MM-DD, DD/MM/YYYY or DD/MM format.",
                     ephemeral=True
                 )
                 return
@@ -102,10 +102,12 @@ class LOA(commands.Cog):
                 '{User}': interaction.user.mention,
                 '{Username}': interaction.user.display_name,
                 '{userid}': str(interaction.user.id),
+                '{avatar_url}': interaction.user.display_avatar.url,
                 '{usertag}': str(interaction.user),
                 '{end_date}': str(parsed_end_date),
-                '{period}': (f"on {parsed_start_date}" if parsed_start_date == parsed_end_date
-                             else f"from {parsed_start_date} until {parsed_end_date}"),
+                '{period}': (f"is for {parsed_start_date} (1 day)" if parsed_start_date == parsed_end_date
+                             else f"runs from {parsed_start_date} until {parsed_end_date} "
+                                  f"({(parsed_end_date - parsed_start_date).days + 1} days)"),
                 '{reason}': display_reason if display_reason else "No reason provided",
                 '{submitted_date}': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             }

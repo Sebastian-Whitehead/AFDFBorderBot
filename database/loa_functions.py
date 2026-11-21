@@ -155,12 +155,22 @@ class LOAManager:
             except ValueError:
                 pass
             
-            # Try MM/DD/YYYY format
+            # DD/MM/YYYY
             try:
-                return datetime.strptime(end_date_str, "%m/%d/%Y").date()
+                return datetime.strptime(end_date_str, "%d/%m/%Y").date()
             except ValueError:
                 pass
-                
+
+            # DD/MM: next occurrence, today included (range covers 29/02 leap years)
+            today = date.today()
+            for year in range(today.year, today.year + 5):
+                try:
+                    d = datetime.strptime(f"{end_date_str}/{year}", "%d/%m/%Y").date()
+                except ValueError:
+                    continue
+                if d >= today:
+                    return d
+
             return None
             
         except Exception as e:
