@@ -5,7 +5,7 @@ member_join.json: member
 member_leave.json: member
 newcitizen-main.json: member
 enlist-welcome.json: member
-loa.json: [username, period, reason]
+loa.json: [username, period, reason, avatar_url]
 attendance_absent_warning.json: [absent_list]
 delete_service_event_warning.json: [event_id, event_type, date]
 delete_session_warning.json: [session_name, session_id, attendance_count]
