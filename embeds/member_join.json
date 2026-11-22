@@ -1,5 +1,5 @@
 {
-  "content": "Welcome, {user}.\nPlease wait for one of our **Immigration Department** officers to contact you to begin the check-in process.\nPlease, proceed to the [checkpoint](https://discord.com/channels/1140569342619168778/1205850873616539709). and type something so we know you can send a message.",
+  "content": "Welcome, {user}.\nPlease wait for one of our **Immigration Department** officers ({border_officer}) to contact you to begin the check-in process.\nPlease, proceed to the [checkpoint](https://discord.com/channels/1140569342619168778/1205850873616539709). and type something so we know you can send a message.",
   "tts": false,
   "embeds": [
     {

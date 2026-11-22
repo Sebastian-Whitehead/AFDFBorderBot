@@ -10,6 +10,8 @@ from typing import Dict, Any, Optional
 
 import nextcord
 
+from ..config import BORDER_OFFICER_ROLE_ID
+
 logger = logging.getLogger(__name__)
 
 # Placeholders any embed can use without code: {channel:loa_txt} {role:leadership} {setting:modpack-url}
@@ -39,6 +41,7 @@ def member_replacements(member) -> Dict[str, str]:
         '{Username}': member.display_name,
         '{userid}': str(member.id),
         '{usertag}': str(member),
+        '{border_officer}': f'<@&{BORDER_OFFICER_ROLE_ID}>' if BORDER_OFFICER_ROLE_ID else 'Border Officers',
     }
 
 
