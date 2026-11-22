@@ -124,6 +124,31 @@ class Attendance(commands.Cog):
         self.active["entries"][uid] = self._entry(attendance_status, bool(old and old["in_vc"]), self.active["loas"].get(uid), old and old["note"])
         await interaction.followup.send(_render(self.active))
 
+    @slash_command(description="Add everyone currently in your voice channel to the attendance list", guild_ids=GUILDS)
+    @commands.has_role(CIVIL_SERVANT_ROLE_ID)
+    async def log_attendance(self, interaction: Interaction):
+        await interaction.response.defer(ephemeral=True)
+        if not self.active:
+            await interaction.followup.send("❌ No active attendance list. Use /start_attendance first.")
+            return
+        voice = getattr(interaction.user, "voice", None)
+        if not voice or not voice.channel:
+            await interaction.followup.send("❌ Join a voice channel first.")
+            return
+        entries = self.active["entries"]
+        for m in voice.channel.members:
+            if m.bot:
+                continue
+            uid = str(m.id)
+            old = entries.get(uid)
+            if old is None:
+                entries[uid] = self._entry("present", True, self.active["loas"].get(uid))
+            else:
+                old["in_vc"] = True
+                if old["status"] == "absent":  # showed up late
+                    old["status"] = "present"
+        await interaction.followup.send(_render(self.active))
+
     @slash_command(description="Remove a person from the attendance list", guild_ids=GUILDS)
     @commands.has_role(CIVIL_SERVANT_ROLE_ID)
     async def remove_attendance(self, interaction: Interaction, user: nextcord.User = SlashOption(description="Member to remove")):
