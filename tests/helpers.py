@@ -11,7 +11,7 @@ async def cleanup():
     """Delete test settings rows from the current DATABASE_URL DB."""
     from database.db_manager import get_db_manager
     db = await get_db_manager()
-    await db.execute_dml_query("DELETE FROM bot_settings WHERE setting_key LIKE 'zz_test_%'")
+    await db.execute_raw_query("DELETE FROM bot_settings WHERE setting_key LIKE 'zz_test_%'")
 
 
 _MATCH = ("(steam_id BETWEEN 76561190000000000 AND 76561190000999999 "
@@ -37,4 +37,4 @@ async def cleanup_shared():
         f"DELETE FROM economy.accounts WHERE player_identity_id IN ({pids})",  # shadow-only; FK requires it
         f"DELETE FROM public.identities_player WHERE {_MATCH}",
     ):
-        await db.execute_dml_query(q)
+        await db.execute_raw_query(q)

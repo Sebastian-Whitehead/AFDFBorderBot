@@ -2,15 +2,18 @@
 Discord bot initialization and configuration.
 """
 
+import logging
 import os
 
 from dotenv import load_dotenv
 
 import nextcord
-from nextcord.ext import commands
+from nextcord.ext import application_checks, commands
 from nextcord import Interaction
 
 from .config import TESTING_GUILD_ID, load_settings
+
+logger = logging.getLogger(__name__)
 
 
 def create_bot():
@@ -20,14 +23,18 @@ def create_bot():
 
     @bot.event
     async def on_ready():
-        print(f'We have logged in as {bot.user}')
+        logger.info(f'Logged in as {bot.user}')
         # Load settings from database
         await load_settings()
-        print("Settings loaded from database")
+        logger.info("Settings loaded from database")
+
+    @bot.event
+    async def on_application_command(ctx: Interaction):
+        logger.info(f"/{ctx.application_command.qualified_name} by {ctx.user} ({ctx.user.id})")
 
     @bot.event
     async def on_application_command_error(ctx: Interaction, error):
-        if isinstance(error, commands.MissingRole):
+        if isinstance(error, (commands.MissingRole, application_checks.ApplicationMissingRole)):
             msg = "You do not have the correct role to use this command."
         elif isinstance(error, commands.MissingPermissions):
             msg = "You do not have the correct permissions to use this command."
@@ -35,6 +42,8 @@ def create_bot():
             msg = "Member not found."
         else:
             msg = f"An error occurred: {error}"
+            logger.error(f"Unhandled error in /{ctx.application_command.qualified_name} by {ctx.user} ({ctx.user.id})",
+                         exc_info=error)
         # Commands defer for slow DB calls, so the first response may already be used.
         send = ctx.followup.send if ctx.response.is_done() else ctx.response.send_message
         await send(msg, ephemeral=True)
@@ -47,12 +56,10 @@ def load_extensions(bot):
     # Listeners
     bot.load_extension("discord.listeners.BorderOfficerMonitor")
     bot.load_extension("discord.listeners.JoinLeaveHandler")
-    #bot.load_extension("discord.listeners.GuildEventListener")  # DEPRECATED: Converted to commands
 
     # Commands
     bot.load_extension("discord.commands.Checkpoint")
     bot.load_extension("discord.commands.Enlistment")
-    bot.load_extension("discord.commands.GuildEvent")
     bot.load_extension("discord.commands.Session")
     bot.load_extension("discord.commands.LOA")
     bot.load_extension("discord.commands.SettingsManagement")

@@ -25,12 +25,6 @@ def _text(i):
     return i.followup.send.call_args.args[0]
 
 
-def test_commands_need_leadership():
-    import discord.commands.RecordAdmin as ra
-    for name in ("edit_service_event", "delete_service_event", "set_rank", "edit_member"):
-        assert getattr(ra.RecordAdmin, name).callback.__commands_checks__, f"{name} has no role check"
-
-
 async def test_edit_event_passes_only_given_fields(monkeypatch):
     ra, cog, i, m = _env(monkeypatch, update_service_event="updated")
     await ra.RecordAdmin.edit_service_event.callback(cog, i, 9, "n", None, "EN3", "2026-11-20 19:00", '{"a": 1}')

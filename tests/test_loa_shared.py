@@ -25,10 +25,10 @@ async def test_l8_service_record_link(shared_db):
     assert len(rows) == 1
 
 
-async def test_l9_us_format(shared_db):
+async def test_l9_dd_mm_yyyy_format(shared_db):
     s, d = ids(31)
     assert await create_user("zz_test_l", s, d)
-    await L.create_or_update_loa(d, "u", "01/31/2030")
+    await L.create_or_update_loa(d, "u", "31/01/2030")
     assert (await L.get_active_loa_by_discord_id(d))["end_date"] == "2030-01-31"
 
 
@@ -54,7 +54,7 @@ async def test_l11_cleanup_expired(shared_db):
         await L.create_or_update_loa(d, "u", "2030-01-31")
     y = date.today() - timedelta(days=1)
     # backdate directly: end_date >= start_date CHECK forbids a past end via the manager
-    await db.execute_dml_query(
+    await db.execute_raw_query(
         "UPDATE military.leave_requests SET start_date = :s, end_date = :e WHERE service_record_id IN ("
         "SELECT sr.id FROM military.service_records sr JOIN public.identities_player p "
         "ON p.id = sr.player_identity_id WHERE p.discord_id = :d)",

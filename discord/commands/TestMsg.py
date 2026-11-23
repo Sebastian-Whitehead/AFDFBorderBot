@@ -2,7 +2,7 @@ from typing import Optional
 
 import nextcord
 from nextcord import Interaction, SlashOption
-from nextcord.ext import commands
+from nextcord.ext import application_checks, commands
 
 from ..config import LEADERSHIP_ROLE_ID, TESTING_GUILD_ID
 from ..utils import send_processed_embed, member_replacements
@@ -32,7 +32,7 @@ class TestMsg(commands.Cog):
 
     @nextcord.slash_command(name="test-msg", description="Send a welcome message for a fake member (John Doe)",
                             guild_ids=[TESTING_GUILD_ID] if TESTING_GUILD_ID else None)
-    @commands.has_role(LEADERSHIP_ROLE_ID)
+    @application_checks.has_role(LEADERSHIP_ROLE_ID)
     async def test_msg(self, ctx: Interaction,
                        msg_type: str = SlashOption(name="msg_type", description="Which welcome message", choices=list(MESSAGES)),
                        channel: Optional[nextcord.TextChannel] = SlashOption(description="Where to send it (default: this channel)", required=False, default=None)):

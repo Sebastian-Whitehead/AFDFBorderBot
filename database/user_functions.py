@@ -6,6 +6,7 @@ military.service_records row in the AFDF-Para Raiders org.
 """
 
 from datetime import date
+import logging
 from typing import Optional, Dict, Any
 
 from sqlalchemy import text
@@ -13,7 +14,25 @@ from sqlalchemy import text
 from .db_manager import get_shared_db_manager
 from .rank_codes import is_valid_rank
 
+logger = logging.getLogger(__name__)
+
 ORG = "AFDF-Para Raiders"
+
+_LATEST_EVENT_FILTER = """
+    WHERE e.service_record_id = sr.id
+      AND e.event_type IN ('enlisted', 'reenlisted', 'discharged', 'retired')
+    ORDER BY e.occured_at DESC, e.id DESC LIMIT 1
+"""
+
+_INSERT_RECORD = """INSERT INTO military.service_records
+                            (player_identity_id, organization_id, current_rank, service_status)
+                            SELECT :pid, o.id, :code, 'active'
+                            FROM public.identities_organizations o WHERE o.name = :org
+                            RETURNING id"""
+
+SET_NOTES = """UPDATE public.identities_player
+                            SET details = coalesce(details, '{}'::jsonb) || jsonb_build_object('notes', CAST(:notes AS text))
+                            WHERE id = :id"""
 
 # One row per bot user; ev = newest enlisted/reenlisted/discharged event (decision D3).
 _BOT_USER = """
@@ -24,10 +43,7 @@ JOIN military.service_records sr ON sr.player_identity_id = p.id
 JOIN public.identities_organizations o ON o.id = sr.organization_id AND o.name = :org
 LEFT JOIN LATERAL (
     SELECT e.event_type, e.occured_at FROM military.service_events e
-    WHERE e.service_record_id = sr.id
-      AND e.event_type IN ('enlisted', 'reenlisted', 'discharged', 'retired')
-    ORDER BY e.occured_at DESC, e.id DESC LIMIT 1
-) ev ON true
+""" + _LATEST_EVENT_FILTER + """) ev ON true
 """
 
 
@@ -134,11 +150,7 @@ async def create_user(
 
             if service_record:
                 sr_id = (await session.execute(
-                    text("""INSERT INTO military.service_records
-                            (player_identity_id, organization_id, current_rank, service_status)
-                            SELECT :pid, o.id, :code, 'active'
-                            FROM public.identities_organizations o WHERE o.name = :org
-                            RETURNING id"""),
+                    text(_INSERT_RECORD),
                     {"pid": ident.id, "code": code, "org": ORG},
                 )).scalar_one()
                 if enlisted:
@@ -149,9 +161,7 @@ async def create_user(
                     )
             if notes:
                 await session.execute(
-                    text("""UPDATE public.identities_player
-                            SET details = coalesce(details, '{}'::jsonb) || jsonb_build_object('notes', CAST(:notes AS text))
-                            WHERE id = :id"""),
+                    text(SET_NOTES),
                     {"notes": notes, "id": ident.id},
                 )
             await session.commit()
@@ -166,7 +176,7 @@ async def create_user(
             }
 
     except Exception as e:
-        print(f"Error creating user: {e}")
+        logger.exception(f"Error creating user: {e}")
         return None
 
 
@@ -178,7 +188,7 @@ async def get_user_info(identifier: str) -> Optional[Dict[str, Any]]:
             row = await _find(session, identifier)
             return _full(row) if row else None
     except Exception as e:
-        print(f"Error getting user info: {e}")
+        logger.exception(f"Error getting user info: {e}")
         return None
 
 
@@ -218,9 +228,7 @@ async def modify_user(
                 )
             if notes is not None:
                 await session.execute(
-                    text("""UPDATE public.identities_player
-                            SET details = coalesce(details, '{}'::jsonb) || jsonb_build_object('notes', CAST(:notes AS text))
-                            WHERE id = :id"""),
+                    text(SET_NOTES),
                     {"notes": notes, "id": row.id},
                 )
             if enlisted is not None:
@@ -241,7 +249,7 @@ async def modify_user(
             return True
 
     except Exception as e:
-        print(f"Error modifying user: {e}")
+        logger.exception(f"Error modifying user: {e}")
         return False
 
 
@@ -281,7 +289,7 @@ async def ensure_player_identity(name: str, steam_id: Optional[str], discord_id:
             await session.commit()
             return True
     except Exception as e:
-        print(f"Error ensuring player identity: {e}")
+        logger.exception(f"Error ensuring player identity: {e}")
         return False
 
 
@@ -322,7 +330,7 @@ async def create_service_record(discord_id: str, rank: str) -> str:
             await session.commit()
             return "created"
     except Exception as e:
-        print(f"Error creating service record: {e}")
+        logger.exception(f"Error creating service record: {e}")
         return "error"
 
 
@@ -342,7 +350,7 @@ async def add_reprimand(discord_id: str, reason: str, issued_by: str) -> str:
             await session.commit()
             return "recorded"
     except Exception as e:
-        print(f"Error adding reprimand: {e}")
+        logger.exception(f"Error adding reprimand: {e}")
         return "error"
 
 
@@ -365,7 +373,7 @@ async def add_service_event(discord_id: str, event_type: str, occured_at, rank: 
             await session.commit()
             return "created"
     except Exception as e:
-        print(f"Error adding service event: {e}")
+        logger.exception(f"Error adding service event: {e}")
         return "error"
 
 
@@ -384,7 +392,7 @@ async def get_service_events(discord_id: str, limit: int = 10) -> Optional[list]
             )
             return [dict(r._mapping) for r in res]
     except Exception as e:
-        print(f"Error getting service events: {e}")
+        logger.exception(f"Error getting service events: {e}")
         return None
 
 
@@ -409,10 +417,10 @@ async def merge_identities(discord_id: str, steam_id: str, force: bool = False) 
             )).scalar_one()
             await session.commit()
         if res["result"] == "merged":  # no undo, so keep what was deleted
-            print(f"Merged identities (discord {discord}, steam {steam}): {res}")
+            logger.info(f"Merged identities (discord {discord}, steam {steam}): {res}")
         return res["result"]
     except Exception as e:
-        print(f"Error merging identities: {e}")
+        logger.exception(f"Error merging identities: {e}")
         return _merge_error(e)
 
 
@@ -440,7 +448,7 @@ async def get_merge_preview(discord_id: str, steam_id: str) -> Optional[Dict[str
             dc = await _merge_side(session, "discord_id", int(discord_id))
         return {"steam": st, "discord": dc, "survivor": "steam" if st and st.sr_id else "discord"}
     except Exception as e:
-        print(f"Error getting merge preview: {e}")
+        logger.exception(f"Error getting merge preview: {e}")
         return None
 
 
@@ -463,10 +471,10 @@ async def merge_service_records(discord_id: str, steam_id: str) -> str:
                 {"f": prev["steam"].sr_id, "t": prev["discord"].sr_id},
             )).scalar_one()
             await session.commit()
-        print(f"Merged service records (discord {discord_id}, steam {steam_id}): {res}")
+        logger.info(f"Merged service records (discord {discord_id}, steam {steam_id}): {res}")
         return "merged"
     except Exception as e:
-        print(f"Error merging service records: {e}")
+        logger.exception(f"Error merging service records: {e}")
         return _merge_error(e)
 
 
@@ -483,10 +491,7 @@ async def _service_state(session, discord: int):
                 JOIN public.identities_organizations o ON o.id = sr.organization_id AND o.name = :org
                 LEFT JOIN LATERAL (
                     SELECT e.event_type FROM military.service_events e
-                    WHERE e.service_record_id = sr.id
-                      AND e.event_type IN ('enlisted', 'reenlisted', 'discharged', 'retired')
-                    ORDER BY e.occured_at DESC, e.id DESC LIMIT 1
-                ) ev ON true
+                    """ + _LATEST_EVENT_FILTER + """) ev ON true
                 WHERE sr.player_identity_id = :pid"""),
         {"org": ORG, "pid": pid},
     )).first()
@@ -509,11 +514,7 @@ async def enlist_member(discord_id: str, rank: str = "EN0") -> str:
             result = "enlisted"
             if sr is None:
                 sr_id = (await session.execute(
-                    text("""INSERT INTO military.service_records
-                            (player_identity_id, organization_id, current_rank, service_status)
-                            SELECT :pid, o.id, :code, 'active'
-                            FROM public.identities_organizations o WHERE o.name = :org
-                            RETURNING id"""),
+                    text(_INSERT_RECORD),
                     {"pid": pid, "code": rank, "org": ORG},
                 )).scalar_one()
                 etype, ev_rank = "enlisted", rank
@@ -536,7 +537,7 @@ async def enlist_member(discord_id: str, rank: str = "EN0") -> str:
             await session.commit()
             return result
     except Exception as e:
-        print(f"Error enlisting member: {e}")
+        logger.exception(f"Error enlisting member: {e}")
         return "error"
 
 
@@ -565,5 +566,5 @@ async def discharge_member(discord_id: str, reason: Optional[str] = None, kind: 
             await session.commit()
             return kind
     except Exception as e:
-        print(f"Error discharging member: {e}")
+        logger.exception(f"Error discharging member: {e}")
         return "error"

@@ -87,16 +87,6 @@ class DatabaseManager:
             raise RuntimeError("Database not initialized. Call initialize() first.")
         return self._session_factory()
     
-    async def health_check(self) -> bool:
-        """Check if database is accessible."""
-        try:
-            async with self.get_session() as session:
-                result = await session.execute(text("SELECT 1"))
-                return result.scalar() == 1
-        except Exception as e:
-            logger.error(f"Database health check failed: {e}")
-            return False
-    
     async def execute_raw_query(self, query: str, params: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         """Execute a raw SQL query and return results."""
         async with self.get_session() as session:
@@ -114,27 +104,6 @@ class DatabaseManager:
             except Exception as e:
                 await session.rollback()
                 logger.error(f"Query failed: {e}")
-                raise
-
-    async def execute_dml_query(self, query: str, params: Optional[Dict[str, Any]] = None) -> None:
-        """Execute a DML query (INSERT, UPDATE, DELETE) that doesn't return rows."""
-        async with self.get_session() as session:
-            try:
-                await session.execute(text(query), params or {})
-                await session.commit()
-            except Exception as e:
-                await session.rollback()
-                logger.error(f"DML Query failed: {e}")
-                raise
-
-    async def execute_select_query(self, query: str, params: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
-        """Execute a SELECT query and return results."""
-        async with self.get_session() as session:
-            try:
-                result = await session.execute(text(query), params or {})
-                return [dict(row._mapping) for row in result.fetchall()]
-            except Exception as e:
-                logger.error(f"SELECT Query failed: {e}")
                 raise
 
 
@@ -164,11 +133,6 @@ async def get_shared_db_manager() -> DatabaseManager:
         _shared_db_manager = DatabaseManager(_to_asyncpg_url(url))
         await _shared_db_manager.initialize()
     return _shared_db_manager
-
-
-async def initialize_database():
-    """Initialize the global database manager."""
-    await get_db_manager()
 
 
 async def close_database():

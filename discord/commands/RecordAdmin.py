@@ -1,17 +1,16 @@
 """Leadership commands to correct records: service events, ranks, member name/notes."""
 
-import datetime
-import json
 from typing import Optional
 
 import nextcord
 from nextcord import Interaction, slash_command, SlashOption
-from nextcord.ext import commands
+from nextcord.ext import application_checks, commands
 
 from database.rank_codes import rank_choices
 from database.record_functions import get_service_event, update_service_event, delete_service_event, set_member_rank, update_member
 from ..utils import RankManager
 from ..utils.confirm import confirm
+from ..utils.parse import parse_utc, valid_json_object, DATE_OR_DATETIME_FMT
 from ..utils.rank_roles import sync_rank_roles
 from ..config import TESTING_GUILD_ID, LEADERSHIP_ROLE_ID
 
@@ -25,7 +24,7 @@ class RecordAdmin(commands.Cog):
         self.rank_manager = RankManager()
 
     @slash_command(description="Edit a service event (only the fields you give are changed)", guild_ids=GUILDS)
-    @commands.has_role(LEADERSHIP_ROLE_ID)
+    @application_checks.has_role(LEADERSHIP_ROLE_ID)
     async def edit_service_event(
         self,
         interaction: Interaction,
@@ -37,24 +36,13 @@ class RecordAdmin(commands.Cog):
         details: Optional[str] = SlashOption(description="New details as a JSON object (replaces the old ones)", required=False),
     ):
         await interaction.response.defer(ephemeral=True)
-        when = None
-        if date:
-            for fmt in ("%Y-%m-%d %H:%M", "%Y-%m-%d"):
-                try:
-                    when = datetime.datetime.strptime(date, fmt).replace(tzinfo=datetime.timezone.utc)
-                    break
-                except ValueError:
-                    pass
-            if when is None:
-                await interaction.followup.send("❌ Date must look like `2026-11-20` or `2026-11-20 19:00` (UTC).")
-                return
-        if details:
-            try:
-                if not isinstance(json.loads(details), dict):
-                    raise ValueError
-            except ValueError:
-                await interaction.followup.send("❌ Details must be a JSON object, e.g. `{\"key\": \"value\"}`.")
-                return
+        when = parse_utc(date, DATE_OR_DATETIME_FMT) if date else None
+        if date and when is None:
+            await interaction.followup.send("❌ Date must look like `2026-11-20` or `2026-11-20 19:00` (UTC).")
+            return
+        if details and not valid_json_object(details):
+            await interaction.followup.send("❌ Details must be a JSON object, e.g. `{\"key\": \"value\"}`.")
+            return
         changes = {"notes": notes, "status": status, "rank": rank, "occured_at": when, "details": details or None}
         result = await update_service_event(event_id, **changes)
         messages = {
@@ -66,7 +54,7 @@ class RecordAdmin(commands.Cog):
         await interaction.followup.send(messages[result])
 
     @slash_command(description="Delete a service event", guild_ids=GUILDS)
-    @commands.has_role(LEADERSHIP_ROLE_ID)
+    @application_checks.has_role(LEADERSHIP_ROLE_ID)
     async def delete_service_event(
         self,
         interaction: Interaction,
@@ -91,7 +79,7 @@ class RecordAdmin(commands.Cog):
         await interaction.edit_original_message(content=messages[result], embeds=[], view=None)
 
     @slash_command(description="Set a member's rank directly (no promotion rules)", guild_ids=GUILDS)
-    @commands.has_role(LEADERSHIP_ROLE_ID)
+    @application_checks.has_role(LEADERSHIP_ROLE_ID)
     async def set_rank(
         self,
         interaction: Interaction,
@@ -118,7 +106,7 @@ class RecordAdmin(commands.Cog):
         await interaction.followup.send(f"✅ {user.mention} set from {old_rank} to {name} ({rank}).")
 
     @slash_command(description="Edit a member's name and/or notes", guild_ids=GUILDS)
-    @commands.has_role(LEADERSHIP_ROLE_ID)
+    @application_checks.has_role(LEADERSHIP_ROLE_ID)
     async def edit_member(
         self,
         interaction: Interaction,

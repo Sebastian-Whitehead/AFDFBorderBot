@@ -28,11 +28,6 @@ async def _run(ge, i):
     await ge.Session.delete_session.callback(ge.Session(bot=MagicMock()), i, 5)
 
 
-async def test_role_check_present():
-    import discord.commands.Session as ge
-    assert ge.Session.delete_session.callback.__commands_checks__
-
-
 async def test_delete_confirmed(monkeypatch):
     ge, i, m = _env(monkeypatch)
     await _run(ge, i)

@@ -30,8 +30,7 @@ async def test_c3_local_url_unchanged(local_db):
 
 async def test_c4_shared_health(shared_db):
     mgr = await get_shared_db_manager()
-    assert await mgr.health_check() is True
-    rows = await mgr.execute_select_query("SELECT to_regclass('military.leave_requests') AS t")
+    rows = await mgr.execute_raw_query("SELECT to_regclass('military.leave_requests') AS t")
     assert rows[0]["t"] is not None
 
 

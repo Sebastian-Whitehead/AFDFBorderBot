@@ -30,7 +30,7 @@ Tests read `.env.test`: `TEST_LOCAL_DATABASE_URL`, `TEST_SHARED_DATABASE_URL`, `
 
 ## Architecture
 
-- `discord/` is a local package (not pip `discord`): `bot.py`, `config.py` (settings cache), `commands/` (Attendance, Checkpoint, Enlistment, GuildEvent, Info, LOA, Session, SettingsManagement, UserManagement), `listeners/` (BorderOfficerMonitor, GuildEventListener, JoinLeaveHandler), `utils/` (EmbedProcessor, RankManager, steam, `confirm.py`: shared Approve/Decline prompt that shows an embed from `embeds/`).
+- `discord/` is a local package (not pip `discord`): `bot.py`, `config.py` (settings cache), `commands/` (Attendance, Checkpoint, Enlistment, Info, LOA, Session, SettingsManagement, UserManagement), `listeners/` (BorderOfficerMonitor, JoinLeaveHandler), `utils/` (EmbedProcessor, RankManager, steam, `confirm.py`: shared Approve/Decline prompt that shows an embed from `embeds/`).
 - `database/`: `db_manager.py` (local + shared engines), `user_functions.py`, `session_functions.py` (sessions), `attendance_functions.py` (attendance rows), `loa_functions.py`, `settings_manager.py`, `rank_codes.py`, `models.py`.
 - `embeds/`, `Settings.json`, `ids.yml`: static config and data.
 
@@ -58,7 +58,6 @@ Design decisions:
 | `/force_merge user steam_url` | | Confirm, then force-merge the member's identity with the Steam identity |
 | `/merge_service_records user steam_url` | | Confirm, then merge the Steam record into the member's (Steam rank/status win) |
 | `/create_service_record user rank` | | Record plus a "Service record created" event, no roles |
-| `/promote user new_rank [reason]`, `/demote user new_rank reason` | | Update record rank + `rank_changed` event; no Discord role swap |
 | `/reprimand user reason` | | Logs a `reprimand` service event |
 | `/profile user`, `/service_record user [rows]`, `/ranks`, `/ping` | | Read only |
 | `/loa start_date [end_date] [reason]`, `/loa_list`, `/loa_cancel` | LOA channel only | Writes `military.leave_requests`; needs a service record |
@@ -74,7 +73,7 @@ Design decisions:
 
 The active attendance list is in bot memory (one list for the whole bot): a restart loses it. Replies are private to the sender.
 
-`/create_weekend_events` and the old voice-channel `/attendance` are commented out in `GuildEvent.py` (the Attendance cog replaces `/attendance`). `/leaderboard` was removed.
+`/leaderboard`, `/create_weekend_events` and the old voice-channel `/attendance` were removed (the Attendance cog replaces `/attendance`).
 
 ## Testing
 

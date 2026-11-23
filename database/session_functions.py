@@ -25,7 +25,7 @@ async def create_session(name: str, operation: Optional[str] = None, description
             await session.commit()
             return new_id
     except Exception as e:
-        print(f"Error creating session: {e}")
+        logger.exception(f"Error creating session: {e}")
         return None
 
 
@@ -47,7 +47,7 @@ async def end_latest_session(end_at=None):
             await session.commit()
             return "ended", dict(row)
     except Exception as e:
-        print(f"Error ending session: {e}")
+        logger.exception(f"Error ending session: {e}")
         return "error", None
 
 

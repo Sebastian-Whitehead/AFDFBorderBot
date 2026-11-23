@@ -15,7 +15,7 @@ KEY = "zz_test_setting"
 async def clean_settings(local_db):
     async def wipe():
         db = await get_db_manager()
-        await db.execute_dml_query("DELETE FROM bot_settings WHERE setting_key LIKE 'zz_test_%'")
+        await db.execute_raw_query("DELETE FROM bot_settings WHERE setting_key LIKE 'zz_test_%'")
         (await get_settings_manager())._cache.pop(KEY, None)
 
     await wipe()
@@ -35,3 +35,31 @@ async def test_s1_setting_round_trip(clean_settings):
     assert await get_setting(KEY) is None
     assert (await get_all_settings())[KEY] == "second"
     assert await get_setting(KEY) == "second"
+
+
+async def test_config_update_setting_false_when_db_write_fails(monkeypatch):
+    import discord.config as cfg
+
+    async def fail(key, value):
+        return False
+
+    monkeypatch.setattr(cfg, "update_db_setting", fail)
+    monkeypatch.setitem(cfg.SETTINGS, KEY, "old")
+    assert await cfg.update_setting(KEY, "new") is False
+    assert cfg.get_setting(KEY) == "old"
+
+
+def test_leadership_commands_enforce_role():
+    import nextcord
+    from nextcord.ext import commands
+    from discord.commands.SettingsManagement import SettingsManagement
+    from discord.listeners.BorderOfficerMonitor import BorderOfficerMonitor
+    bot = commands.Bot(intents=nextcord.Intents.none())
+    bot.add_cog(SettingsManagement(bot))
+    BorderOfficerMonitor.check_online_status.start = lambda self: None  # no event loop in this sync test
+    bot.add_cog(BorderOfficerMonitor(bot))
+    cmds = {c.qualified_name: c for c in bot.get_all_application_commands()}
+    subs = list(cmds["settings"].children.values()) + [cmds["border_officer_monitor_start"]]
+    assert len(subs) == 5
+    for c in subs:
+        assert c.checks, f"{c.qualified_name} has no enforced role check"

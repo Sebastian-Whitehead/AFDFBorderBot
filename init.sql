@@ -15,5 +15,4 @@ VALUES
     ('listen-for-join-leave', 'true'),
     ('new-citizen-welcome', 'true'),
     ('enlist-welcome', 'true'),
-    ('listen-for-border-officer', 'true'),
-    ('listen-for-event-start', 'false');
+    ('listen-for-border-officer', 'true');

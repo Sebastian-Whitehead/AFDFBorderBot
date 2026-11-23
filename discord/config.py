@@ -1,10 +1,6 @@
 import yaml
 import logging
-import sys
-import os
 
-# Add the parent directory to the path so we can import from database
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from database.settings_manager import update_setting as update_db_setting, get_settings_manager
 
 # Set up logging for config issues
@@ -36,20 +32,13 @@ JOIN_ROLE_ID = ROLES.get('join_role', None)
 CITIZEN_ROLE_IDS = ROLES.get('citizen', [])
 MILITARY_PERSONNEL_ROLE_ID = ROLES.get('military_personnel', None)
 DISTINGUISHED_CITIZEN_ROLE_ID = ROLES.get('distinguished_citizen', None)
-RANKS = ROLES.get('ranks', {})
 
 # Channel IDs
-LOG_CHANNEL_ID = CHANNELS.get('log_txt', None)
 MAIN_CHANNEL_ID = CHANNELS.get('main_txt', None)
 MILITARY_MAIN_CHANNEL_ID = CHANNELS.get('military_main_txt', None)
 CHECKPOINT_CHANNEL_ID = CHANNELS.get('checkpoint_txt', None)
-EVENTS_CHANNEL_ID = CHANNELS.get('events_vc', None)
 WELCOME_CHANNEL_ID = CHANNELS.get('welcome_txt', None)
 LOA_CHANNEL_ID = CHANNELS.get('loa_txt', None)
-ANNOUNCEMENTS_CHANNEL_ID = CHANNELS.get('announcements_txt', None)
-INFORMATION_DB_CHANNEL_ID = CHANNELS.get('information_db_txt', None)
-EVENTS_TXT_CHANNEL_ID = CHANNELS.get('events_txt', None)
-VIETNAM_CAMPAIGN_CHANNEL_ID = CHANNELS.get('vietnam_campaign_txt', None)
 
 # Async function to load settings from database
 async def load_settings():
@@ -77,9 +66,9 @@ def get_setting(key: str, default=None):
 async def update_setting(key: str, value) -> bool:
     """Update a setting."""
     try:
-        await update_db_setting(key, value) #update the setting in the database
-        await load_settings() # Reload settings from database to update cache
-        
+        if not await update_db_setting(key, value):
+            return False
+        SETTINGS[key] = value
         logger.info(f"Setting {key} updated")
         return True
     except Exception as e:

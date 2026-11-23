@@ -2,10 +2,10 @@
 from typing import Optional
 
 from nextcord import Interaction, Member, NotFound, SlashOption, slash_command
-from nextcord.ext import commands
+from nextcord.ext import application_checks, commands
 
 from database import enlist_member, discharge_member, get_user_info
-from ..utils import RankManager, send_processed_embed, member_replacements
+from ..utils import send_processed_embed, member_replacements
 from ..utils.rank_roles import rank_role_id as code_role_id
 from ..config import (get_setting, MILITARY_MAIN_CHANNEL_ID,
                       LEADERSHIP_ROLE_ID, TESTING_GUILD_ID, MILITARY_PERSONNEL_ROLE_ID,
@@ -16,16 +16,14 @@ BASE_RANK = "EN0"  # everyone enlists at this rank; its role is the "enlistment"
 class Enlistment(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.rank_manager = RankManager()
 
     async def _rank_role_id(self, user: Member) -> Optional[int]:
         """Discord role id for the member's current rank (None if the rank has no role)."""
         info = await get_user_info(str(user.id))
-        rank = self.rank_manager.get_rank(info["rank"]) if info else None
-        return int(rank["role_id"]) if rank and rank.get("role_id") else None
+        return code_role_id(info["rank"]) if info else None
 
     @slash_command(description="Enlist in the army", guild_ids=[TESTING_GUILD_ID] if TESTING_GUILD_ID else None)
-    @commands.has_role(LEADERSHIP_ROLE_ID)
+    @application_checks.has_role(LEADERSHIP_ROLE_ID)
     async def enlist(self, ctx: Interaction, user: Member,
                      msg: Optional[bool] = SlashOption(description="Send the welcome tour (default: server setting)", required=False)):
         await ctx.response.defer(ephemeral=True)
@@ -73,7 +71,7 @@ class Enlistment(commands.Cog):
             await ctx.followup.send(f"❌ An error occurred: {str(e)}", ephemeral=True)
     
     @slash_command(description="Discharge a member: marks their service record inactive", guild_ids=[TESTING_GUILD_ID] if TESTING_GUILD_ID else None)
-    @commands.has_role(LEADERSHIP_ROLE_ID)
+    @application_checks.has_role(LEADERSHIP_ROLE_ID)
     async def discharge(self, ctx: Interaction, user: Member,
                         reason: Optional[str] = SlashOption(description="Reason (optional)", required=False)):
         await ctx.response.defer(ephemeral=True)
@@ -94,7 +92,7 @@ class Enlistment(commands.Cog):
         await ctx.followup.send(f"✅ {user.mention} has been discharged.")
 
     @slash_command(description="Retire a member: marks their service record retired and gives Distinguished Citizen", guild_ids=[TESTING_GUILD_ID] if TESTING_GUILD_ID else None)
-    @commands.has_role(LEADERSHIP_ROLE_ID)
+    @application_checks.has_role(LEADERSHIP_ROLE_ID)
     async def retire(self, ctx: Interaction, user: Member,
                      reason: Optional[str] = SlashOption(description="Reason (optional)", required=False)):
         await ctx.response.defer(ephemeral=True)

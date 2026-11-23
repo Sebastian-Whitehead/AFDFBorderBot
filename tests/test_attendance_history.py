@@ -20,16 +20,16 @@ async def hist_db(shared_db):
     db = await get_shared_db_manager()
     sids = []
     for n, name in enumerate(NAMES):
-        await db.execute_dml_query(
+        await db.execute_raw_query(
             "INSERT INTO military.sessions (session_name, start_at) VALUES (:n, :t)",
             {"n": "zz_test_hist_" + name, "t": datetime.datetime(2030, 1, 1 + n, 12, tzinfo=datetime.timezone.utc)})
     rows = await db.execute_raw_query(
         "SELECT id FROM military.sessions WHERE session_name LIKE 'zz_test_hist_%' ORDER BY start_at")
     sids = [r["id"] for r in rows]
     yield sids
-    await db.execute_dml_query(
+    await db.execute_raw_query(
         "DELETE FROM military.attendance WHERE session_id IN (SELECT id FROM military.sessions WHERE session_name LIKE 'zz_test_hist_%')")
-    await db.execute_dml_query("DELETE FROM military.sessions WHERE session_name LIKE 'zz_test_hist_%'")
+    await db.execute_raw_query("DELETE FROM military.sessions WHERE session_name LIKE 'zz_test_hist_%'")
 
 
 async def test_history_counts_order_limit(hist_db):
@@ -75,7 +75,7 @@ def _user():
 
 async def test_cog_has_role_check():
     import discord.commands.Attendance as am
-    assert getattr(am.Attendance.attendance_history.callback, "__commands_checks__", None)
+    assert am.Attendance.attendance_history.checks
 
 
 async def test_cog_embed(env):

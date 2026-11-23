@@ -5,10 +5,20 @@ from datetime import datetime
 import logging
 
 from ..config import LOA_CHANNEL_ID, TESTING_GUILD_ID
-from ..utils import send_processed_embed
+from ..utils import send_processed_embed, member_replacements
 from database.loa_functions import LOAManager
 
 logger = logging.getLogger(__name__)
+
+async def _wrong_channel(interaction) -> bool:
+    """Reply and return True when used outside the configured LOA channel."""
+    if LOA_CHANNEL_ID and interaction.channel.id != LOA_CHANNEL_ID:
+        await interaction.response.send_message(
+            f"❌ This command can only be used in <#{LOA_CHANNEL_ID}>.", ephemeral=True
+        )
+        return True
+    return False
+
 
 class LOA(commands.Cog):
     def __init__(self, bot):
@@ -34,53 +44,33 @@ class LOA(commands.Cog):
     ):
         """Submit a Leave of Absence request."""
         
-        # Check if command is being used in the correct channel
-        if LOA_CHANNEL_ID and interaction.channel.id != LOA_CHANNEL_ID:
-            await interaction.response.send_message(
-                f"❌ This command can only be used in <#{LOA_CHANNEL_ID}>.", 
-                ephemeral=True
-            )
+        if await _wrong_channel(interaction):
             return
-        
         await interaction.response.defer(ephemeral=True)
         
         try:
             # One date means a single-day LOA
             end_date = end_date or start_date
-            # Validate that the end date is not in the past
-            try:
-                parsed_start_date = await LOAManager.parse_end_date(start_date)
-                parsed_end_date = await LOAManager.parse_end_date(end_date)
-                if parsed_start_date is None or parsed_end_date is None:
-                    await interaction.followup.send(
-                        "❌ Invalid date format. Please use YYYY-MM-DD, DD/MM/YYYY or DD/MM format.",
-                        ephemeral=True
-                    )
-                    return
-
-                if parsed_end_date < parsed_start_date:
-                    await interaction.followup.send(
-                        "❌ End date cannot be before the start date.",
-                        ephemeral=True
-                    )
-                    return
-
-                today = datetime.now().date()
-                if parsed_end_date < today:
-                    await interaction.followup.send(
-                        "❌ End date cannot be in the past. Please choose a date from today onwards.", 
-                        ephemeral=True
-                    )
-                    return
-                    
-            except Exception as e:
-                logger.error(f"Error parsing end date: {e}")
+            parsed_start_date = await LOAManager.parse_end_date(start_date)
+            parsed_end_date = await LOAManager.parse_end_date(end_date)
+            if parsed_start_date is None or parsed_end_date is None:
                 await interaction.followup.send(
                     "❌ Invalid date format. Please use YYYY-MM-DD, DD/MM/YYYY or DD/MM format.",
                     ephemeral=True
                 )
                 return
-            
+
+            if parsed_end_date < parsed_start_date:
+                await interaction.followup.send("❌ End date cannot be before the start date.", ephemeral=True)
+                return
+
+            if parsed_end_date < datetime.now().date():
+                await interaction.followup.send(
+                    "❌ End date cannot be in the past. Please choose a date from today onwards.",
+                    ephemeral=True
+                )
+                return
+
             # Create or update LOA in database
             discord_id = str(interaction.user.id)
             username = interaction.user.display_name
@@ -97,13 +87,8 @@ class LOA(commands.Cog):
             
             # Prepare replacements for the embed
             replacements = {
-                '{user}': interaction.user.mention,
-                '{username}': interaction.user.display_name,
-                '{User}': interaction.user.mention,
-                '{Username}': interaction.user.display_name,
-                '{userid}': str(interaction.user.id),
+                **member_replacements(interaction.user),
                 '{avatar_url}': interaction.user.display_avatar.url,
-                '{usertag}': str(interaction.user),
                 '{end_date}': str(parsed_end_date),
                 '{period}': (f"is for {parsed_start_date} (1 day)" if parsed_start_date == parsed_end_date
                              else f"runs from {parsed_start_date} until {parsed_end_date} "
@@ -129,14 +114,8 @@ class LOA(commands.Cog):
     async def loa_list_command(self, interaction: Interaction):
         """List all current active Leave of Absence requests."""
         
-        # Check if command is being used in the correct channel
-        if LOA_CHANNEL_ID and interaction.channel.id != LOA_CHANNEL_ID:
-            await interaction.response.send_message(
-                f"❌ This command can only be used in <#{LOA_CHANNEL_ID}>.", 
-                ephemeral=True
-            )
+        if await _wrong_channel(interaction):
             return
-        
         await interaction.response.defer(ephemeral=True)
         
         try:
@@ -157,28 +136,15 @@ class LOA(commands.Cog):
             active_loas = []
             for loa_data in active_loas_data:
                 try:
-                    # Parse the end date
                     end_date = await LOAManager.parse_end_date(loa_data['end_date'])
-                    
-                    # Check if LOA is still active (end date is today or in the future)
+                    # Active = ends today or later
                     if end_date and end_date >= today:
                         active_loas.append({
                             'username': loa_data['username'],
-                            'discord_id': loa_data['discord_id'],
                             'end_date': end_date,
                             'end_date_str': loa_data['end_date'],
                             'reason': loa_data['reason'],
-                            'start_date': loa_data['start_date'].strftime("%Y-%m-%d") if isinstance(loa_data['start_date'], datetime) else str(loa_data['start_date'])
-                        })
-                    elif not end_date:
-                        # If date parsing fails, include it but mark as unparseable
-                        active_loas.append({
-                            'username': loa_data['username'],
-                            'discord_id': loa_data['discord_id'],
-                            'end_date': None,
-                            'end_date_str': loa_data['end_date'],
-                            'reason': loa_data['reason'],
-                            'start_date': loa_data['start_date'].strftime("%Y-%m-%d") if isinstance(loa_data['start_date'], datetime) else str(loa_data['start_date'])
+                            'start_date': str(loa_data['start_date'])
                         })
                 except Exception as e:
                     logger.warning(f"Error processing LOA data: {e}")
@@ -227,14 +193,8 @@ class LOA(commands.Cog):
     async def loa_cancel_command(self, interaction: Interaction):
         """Cancel your active Leave of Absence request."""
         
-        # Check if command is being used in the correct channel
-        if LOA_CHANNEL_ID and interaction.channel.id != LOA_CHANNEL_ID:
-            await interaction.response.send_message(
-                f"❌ This command can only be used in <#{LOA_CHANNEL_ID}>.", 
-                ephemeral=True
-            )
+        if await _wrong_channel(interaction):
             return
-        
         await interaction.response.defer(ephemeral=True)
         
         try:

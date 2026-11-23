@@ -10,10 +10,10 @@ from datetime import datetime, date
 from sqlalchemy import text
 
 from .db_manager import get_shared_db_manager
+from .user_functions import ORG as ORG_NAME
 
 logger = logging.getLogger(__name__)
 
-ORG_NAME = 'AFDF-Para Raiders'
 
 _SR_ID = """
     SELECT sr.id FROM military.service_records sr

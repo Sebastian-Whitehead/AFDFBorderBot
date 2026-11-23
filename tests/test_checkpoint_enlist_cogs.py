@@ -123,7 +123,7 @@ async def test_e3_enlist_reinstated_gets_previous_rank_role(enlistment, monkeypa
     await m.Enlistment.enlist.callback(cog, i, user)
     roles = user.add_roles.await_args.args
     assert len(roles) == 2  # mil dep + rank role, not the base enlisted role
-    i.guild.get_role.assert_any_call(int(cog.rank_manager.get_rank("EN4")["role_id"]))
+    i.guild.get_role.assert_any_call(m.code_role_id("EN4"))
 
 
 async def test_e4_enlist_already_enlisted_changes_no_roles(enlistment, monkeypatch):

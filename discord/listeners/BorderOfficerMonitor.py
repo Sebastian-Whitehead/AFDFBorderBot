@@ -1,7 +1,7 @@
 import logging
 
 import nextcord
-from nextcord.ext import commands, tasks
+from nextcord.ext import application_checks, commands, tasks
 
 from ..config import LEADERSHIP_ROLE_ID, TESTING_GUILD_ID, BORDER_OFFICER_ROLE_ID, CHECKPOINT_CHANNEL_ID, get_setting
 
@@ -37,16 +37,9 @@ class BorderOfficerMonitor(commands.Cog):
             self.LastOnlineStatus = None
             return
 
-        # Check and update interval setting (only check every 10th iteration to reduce overhead)
-        if self.check_count % 10 == 0:  # Check every 10 cycles
-            check_interval = get_setting('border-officer-check-interval', DEFAULT_CHECK_INTERVAL)
-            
-            # Update the loop interval if it has changed
-            if self.current_interval != check_interval:
-                logger.info(f"BorderOfficerMonitor: Updating check interval from {self.current_interval}s to {check_interval}s")
-                self.current_interval = check_interval
-                self.check_online_status.change_interval(seconds=check_interval)
-                return  # Exit this iteration to let the new interval take effect
+        # Re-read the interval setting every 10th iteration to reduce overhead
+        if self.check_count % 10 == 0 and self.update_check_interval():
+            return  # Exit this iteration to let the new interval take effect
         self.check_count += 1
 
         # Check if required config is available
@@ -139,10 +132,8 @@ class BorderOfficerMonitor(commands.Cog):
         description="Restart the border officer monitor loop if it has stopped",
         guild_ids=[TESTING_GUILD_ID] if TESTING_GUILD_ID else None,
     )
+    @application_checks.has_role(LEADERSHIP_ROLE_ID)
     async def monitor_start(self, interaction: nextcord.Interaction):
-        if LEADERSHIP_ROLE_ID and not any(r.id == LEADERSHIP_ROLE_ID for r in interaction.user.roles):
-            await interaction.response.send_message("You need the Leadership role to use this command.", ephemeral=True)
-            return
         if self.check_online_status.is_running():
             await interaction.response.send_message("The monitor is already running.", ephemeral=True)
             return
@@ -151,12 +142,14 @@ class BorderOfficerMonitor(commands.Cog):
         await interaction.response.send_message("Border officer monitor restarted.", ephemeral=True)
 
     def update_check_interval(self):
-        """Force an immediate update of the check interval from settings."""
+        """Apply the check interval from settings; returns True if the loop interval changed."""
         check_interval = get_setting('border-officer-check-interval', DEFAULT_CHECK_INTERVAL)
         if self.current_interval != check_interval:
-            logger.info(f"BorderOfficerMonitor: Force updating check interval from {self.current_interval}s to {check_interval}s")
+            logger.info(f"BorderOfficerMonitor: Updating check interval from {self.current_interval}s to {check_interval}s")
             self.current_interval = check_interval
             self.check_online_status.change_interval(seconds=check_interval)
+            return True
+        return False
 
 
 def setup(bot):

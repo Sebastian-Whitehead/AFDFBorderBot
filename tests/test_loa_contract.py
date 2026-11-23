@@ -14,7 +14,8 @@ KEYS = {"id", "discord_id", "username", "start_date", "end_date", "reason",
 
 async def test_l1_parse_end_date():
     assert await L.parse_end_date("2030-01-31") == date(2030, 1, 31)
-    assert await L.parse_end_date("01/31/2030") == date(2030, 1, 31)
+    assert await L.parse_end_date("31/01/2030") == date(2030, 1, 31)  # DD/MM/YYYY
+    assert await L.parse_end_date("01/31/2030") is None  # month 31
     assert await L.parse_end_date("31-01-2030") is None
     assert await L.parse_end_date("garbage") is None
 

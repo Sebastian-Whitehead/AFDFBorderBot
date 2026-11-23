@@ -22,10 +22,6 @@ class Info(commands.Cog):
         self.bot = bot
         self.rank_manager = RankManager()
 
-    def _rank_text(self, code: str) -> str:
-        info = self.rank_manager.get_rank(code)
-        return f"{info['name']} ({info['code']})"
-
     @nextcord.slash_command(
         name="ping",
         description="Check that the bot is alive",
@@ -83,7 +79,7 @@ class Info(commands.Cog):
             # Rank and service
             embed.add_field(
                 name="Rank", 
-                value=self._rank_text(member["rank"]), 
+                value=self.rank_manager.rank_text(member["rank"]), 
                 inline=True
             )
             embed.add_field(name="Deaths", value=str(member["deaths"]), inline=True)

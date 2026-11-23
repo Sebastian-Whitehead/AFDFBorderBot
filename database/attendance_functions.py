@@ -6,10 +6,10 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy import text
 
 from .db_manager import get_shared_db_manager
+from .user_functions import ORG
 
 logger = logging.getLogger(__name__)
 
-ORG = "AFDF-Para Raiders"
 
 
 async def load_session_attendance(session_id: int) -> Optional[tuple]:

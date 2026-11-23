@@ -26,8 +26,6 @@ All commands are slash commands. `?` marks an optional option. Commands that tou
 | `/merge_service_records user steam_url` | Leadership | Asks for confirmation, then merges the service record on the Steam identity into the member's. The Steam record wins: rank and status are copied from it, and it is deleted. Events, attendance and LOA move over. Discord rank roles are not changed; use `/set_rank`. |
 | `/create_service_record user rank` | Leadership | Creates the service record for an existing identity, with a `rank_changed` event ("Service record created") at that rank. No role changes. |
 | `/create_service_event user type date rank? status? notes? details?` | Leadership | Adds an event to a member's service record. `type` is one of `enlisted`, `rank_changed`, `discharged`, `reenlisted`, `retired`, `reprimand`. `date` is UTC, `YYYY-MM-DD` or `YYYY-MM-DD HH:MM`. `details` is a JSON object. Only inserts the event; it does not change the record's rank or status. |
-| `/promote user new_rank reason?` | Leadership | Promotes a member by one or two ranks, logs it on their service record, and swaps their Discord rank role. If the role swap fails, the rank change is kept and the reply says so. |
-| `/demote user new_rank reason` | Leadership | Demotes a member to a lower rank, logs it on their service record, and swaps their Discord rank role (same failure handling as `/promote`). |
 | `/reprimand user reason` | Leadership | Logs a `reprimand` event on a member's service record. |
 | `/set_rank user rank reason?` | Leadership | Sets a member's rank directly, skipping the promotion rules (for corrections). Logs a `rank_changed` event and swaps their Discord rank role. Does nothing if the rank is unchanged. |
 | `/edit_service_event event_id notes? status? rank? date? details?` | Leadership | Edits an existing service event; only the fields you give change. The event type can't be changed (delete and recreate it). Find event ids with `/service_record`. `details` replaces the old details. |
@@ -85,11 +83,10 @@ Stored in the bot's local database and cached at startup.
 | Command | What it does |
 |---|---|
 | `/settings list` | Shows the current values. |
-| `/settings set setting value` | Turns a setting on or off: `listen-for-join-leave`, `new-citizen-welcome`, `enlist-welcome`, `listen-for-border-officer`, `listen-for-event-start`. |
+| `/settings set setting value` | Turns a setting on or off: `listen-for-join-leave`, `new-citizen-welcome`, `enlist-welcome`, `listen-for-border-officer`. |
 | `/settings set-interval minutes` | Sets how often the border-officer monitor checks (1-60 minutes). |
 | `/settings set-modpack-url url` | Sets the modpack link in the `/enlist` welcome (`modpack-url`). Must start with http:// or https://. |
 | `/test-msg msg_type channel?` | Leadership. Sends the `join`, `approve` or `enlist` welcome message for a fake member, John Doe (no ping, nothing saved). Posts in the given channel, or the current one. |
-| `/toggle_joinleave action` | `Enable`, `Disable` or `Status` for the join/leave messages (same as the `listen-for-join-leave` setting). |
 
 ## Settings reference
 
@@ -99,5 +96,4 @@ Stored in the bot's local database and cached at startup.
 | `new-citizen-welcome` | on | `/approve` posts the new-citizen welcome in the main channel. |
 | `enlist-welcome` | on | `/enlist` posts the AFDF welcome tour in the military main channel (new enlistments only, not reinstatements). |
 | `listen-for-border-officer` | on | Runs the border-officer monitor. |
-| `listen-for-event-start` | off | Event-start listener (currently disabled in the bot). |
 | `border-officer-check-interval` | see `/settings list` | Seconds between monitor checks; set with `/settings set-interval`. |

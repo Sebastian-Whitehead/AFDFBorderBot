@@ -1,12 +1,15 @@
 """Leadership record corrections: service events, direct rank set, identity name/notes."""
 
+import logging
 from typing import Optional
 
 from sqlalchemy import text
 
 from .db_manager import get_shared_db_manager
 from .rank_codes import is_valid_rank
-from .user_functions import _service_state
+from .user_functions import SET_NOTES, _service_state
+
+logger = logging.getLogger(__name__)
 
 # editable service_events columns; event_type is deliberately absent
 _EVENT_COLUMNS = {"notes": "notes = :notes", "status": "status = :status", "rank": "rank = :rank",
@@ -23,7 +26,7 @@ async def get_service_event(event_id: int):
             )).first()
             return ("ok", dict(row._mapping)) if row else ("not_found", None)
     except Exception as e:
-        print(f"Error getting service event: {e}")
+        logger.exception(f"Error getting service event: {e}")
         return "error", None
 
 
@@ -45,7 +48,7 @@ async def update_service_event(event_id: int, **fields) -> str:
             await session.commit()
             return "updated"
     except Exception as e:
-        print(f"Error updating service event: {e}")
+        logger.exception(f"Error updating service event: {e}")
         return "error"
 
 
@@ -62,7 +65,7 @@ async def delete_service_event(event_id: int) -> str:
             await session.commit()
             return "deleted"
     except Exception as e:
-        print(f"Error deleting service event: {e}")
+        logger.exception(f"Error deleting service event: {e}")
         return "error"
 
 
@@ -91,7 +94,7 @@ async def set_member_rank(discord_id: str, rank: str, notes: Optional[str] = Non
             await session.commit()
             return "ok", sr.current_rank
     except Exception as e:
-        print(f"Error setting rank: {e}")
+        logger.exception(f"Error setting rank: {e}")
         return "error", None
 
 
@@ -112,13 +115,11 @@ async def update_member(discord_id: str, name: Optional[str] = None, notes: Opti
                     text("UPDATE public.identities_player SET alias = :name WHERE id = :id"), {"name": name, "id": pid})
             if notes is not None:
                 await session.execute(
-                    text("""UPDATE public.identities_player
-                            SET details = coalesce(details, '{}'::jsonb) || jsonb_build_object('notes', CAST(:notes AS text))
-                            WHERE id = :id"""),
+                    text(SET_NOTES),
                     {"notes": notes, "id": pid},
                 )
             await session.commit()
             return "updated"
     except Exception as e:
-        print(f"Error updating member: {e}")
+        logger.exception(f"Error updating member: {e}")
         return "error"

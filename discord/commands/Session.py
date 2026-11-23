@@ -1,14 +1,14 @@
 """Session commands: create, end, edit and list rows of military.sessions."""
 
-import datetime
 from typing import Optional
 
 from nextcord import Interaction, slash_command, SlashOption
-from nextcord.ext import commands
+from nextcord.ext import application_checks, commands
 
 from database.session_functions import create_session as create_session_row, end_latest_session, get_session_for_delete, delete_session as delete_session_row, list_sessions, update_session, PAGE_SIZE
 from ..utils import load_embeds
 from ..utils.confirm import confirm
+from ..utils.parse import parse_utc
 from ..config import TESTING_GUILD_ID, CIVIL_SERVANT_ROLE_ID
 
 
@@ -17,7 +17,7 @@ class Session(commands.Cog):
         self.bot = bot
 
     @slash_command(description="Create a session record", guild_ids=[TESTING_GUILD_ID] if TESTING_GUILD_ID else None)
-    @commands.has_role(CIVIL_SERVANT_ROLE_ID)
+    @application_checks.has_role(CIVIL_SERVANT_ROLE_ID)
     async def create_session(
         self,
         interaction: Interaction,
@@ -35,9 +35,8 @@ class Session(commands.Cog):
             return
         start_at = None
         if start:
-            try:
-                start_at = datetime.datetime.strptime(start, "%Y-%m-%d %H:%M").replace(tzinfo=datetime.timezone.utc)
-            except ValueError:
+            start_at = parse_utc(start)
+            if start_at is None:
                 await interaction.followup.send("❌ Start must look like `2026-11-20 19:00` (UTC).")
                 return
         new_id = await create_session_row(name.strip(), operation, description, start_at, external_event_id, timeline.strip() or "A")
@@ -47,7 +46,7 @@ class Session(commands.Cog):
         await interaction.followup.send(f"✅ Session **{name.strip()}** created (id {new_id}).")
 
     @slash_command(description="End the most recently started open session", guild_ids=[TESTING_GUILD_ID] if TESTING_GUILD_ID else None)
-    @commands.has_role(CIVIL_SERVANT_ROLE_ID)
+    @application_checks.has_role(CIVIL_SERVANT_ROLE_ID)
     async def end_session(
         self,
         interaction: Interaction,
@@ -57,9 +56,8 @@ class Session(commands.Cog):
         await interaction.response.defer(ephemeral=True)
         end_at = None
         if end:
-            try:
-                end_at = datetime.datetime.strptime(end, "%Y-%m-%d %H:%M").replace(tzinfo=datetime.timezone.utc)
-            except ValueError:
+            end_at = parse_utc(end)
+            if end_at is None:
                 await interaction.followup.send("❌ End must look like `2026-11-20 21:00` (UTC).")
                 return
         if not await confirm(interaction, "end_session_warning.json",
@@ -100,7 +98,7 @@ class Session(commands.Cog):
             "{timeline}": timeline, "{table}": "\n".join(lines), "{page}": str(page), "{pages}": str(pages), "{total}": str(total)}))
 
     @slash_command(description="Edit an existing session (only the fields you give are changed)", guild_ids=[TESTING_GUILD_ID] if TESTING_GUILD_ID else None)
-    @commands.has_role(CIVIL_SERVANT_ROLE_ID)
+    @application_checks.has_role(CIVIL_SERVANT_ROLE_ID)
     async def edit_session(
         self,
         interaction: Interaction,
@@ -119,9 +117,8 @@ class Session(commands.Cog):
         times = {}
         for key, value in (("start_at", start), ("end_at", end)):
             if value:
-                try:
-                    times[key] = datetime.datetime.strptime(value, "%Y-%m-%d %H:%M").replace(tzinfo=datetime.timezone.utc)
-                except ValueError:
+                times[key] = parse_utc(value)
+                if times[key] is None:
                     await interaction.followup.send(f"❌ {key[:-3].capitalize()} must look like `2026-11-20 19:00` (UTC).")
                     return
         changes = {"session_name": name and name.strip(), "operation": operation, "description": description,
@@ -138,7 +135,7 @@ class Session(commands.Cog):
         await interaction.followup.send(messages[status]())
 
     @slash_command(description="Permanently delete a session that has no attendance", guild_ids=[TESTING_GUILD_ID] if TESTING_GUILD_ID else None)
-    @commands.has_role(CIVIL_SERVANT_ROLE_ID)
+    @application_checks.has_role(CIVIL_SERVANT_ROLE_ID)
     async def delete_session(
         self,
         interaction: Interaction,

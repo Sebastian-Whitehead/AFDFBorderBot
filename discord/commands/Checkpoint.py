@@ -1,7 +1,7 @@
 # Checkpoint.py
 from typing import Optional
 
-from nextcord.ext import commands
+from nextcord.ext import application_checks, commands
 from nextcord import Interaction, Member, NotFound, SlashOption, slash_command
 
 from database import ensure_player_identity
@@ -15,7 +15,7 @@ class Checkpoint(commands.Cog):
         self.bot = bot
 
     @slash_command(description="Let them through the border", guild_ids=[TESTING_GUILD_ID] if TESTING_GUILD_ID else None)
-    @commands.has_role(BORDER_OFFICER_ROLE_ID)
+    @application_checks.has_role(BORDER_OFFICER_ROLE_ID)
     async def approve(self, ctx: Interaction, user: Member,
                       steam_id: Optional[str] = SlashOption(description="SteamID64 or Steam profile URL (optional)", required=False, default=None)):
         # Check if required roles/channels are configured

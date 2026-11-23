@@ -4,11 +4,15 @@ Settings management commands for AFDFBorderBot.
 Provides Discord slash commands to view and modify bot settings.
 """
 
+import logging
+
 import nextcord
-from nextcord.ext import commands
+from nextcord.ext import commands, application_checks
 from nextcord import Interaction, SlashOption
 
 from ..config import LEADERSHIP_ROLE_ID, TESTING_GUILD_ID, get_setting, update_setting, load_settings
+
+logger = logging.getLogger(__name__)
 
 class SettingsManagement(commands.Cog):
     """Commands for managing bot settings."""
@@ -29,18 +33,9 @@ class SettingsManagement(commands.Cog):
         name="list",
         description="List all current bot settings"
     )
+    @application_checks.has_role(LEADERSHIP_ROLE_ID)
     async def settings_list(self, interaction: Interaction):
         """List all current bot settings."""
-        
-        # Check if user has leadership role
-        if LEADERSHIP_ROLE_ID and not any(role.id == LEADERSHIP_ROLE_ID for role in interaction.user.roles):
-            embed = nextcord.Embed(
-                title="❌ Permission Denied",
-                description="You need the Leadership role to use this command.",
-                color=0xff0000
-            )
-            await interaction.response.send_message(embed=embed, ephemeral=True)
-            return
         # update the cache
         await load_settings()
         try:
@@ -49,7 +44,6 @@ class SettingsManagement(commands.Cog):
                 ('new-citizen-welcome', 'New Citizen Welcome (on /approve)'),
                 ('enlist-welcome', 'Enlistment Welcome (on /enlist)'),
                 ('listen-for-border-officer', 'Border Officer Monitor'),
-                ('listen-for-event-start', 'Event Start Listener'),
                 ('border-officer-check-interval', 'Border Officer Check Interval (seconds)')
             ]
             
@@ -97,6 +91,7 @@ class SettingsManagement(commands.Cog):
         name="set",
         description="Set a bot setting value"
     )
+    @application_checks.has_role(LEADERSHIP_ROLE_ID)
     async def settings_set(
         self,
         interaction: Interaction,
@@ -106,23 +101,12 @@ class SettingsManagement(commands.Cog):
                 "listen-for-join-leave",
                 "new-citizen-welcome",
                 "enlist-welcome",
-                "listen-for-border-officer",
-                "listen-for-event-start"
+                "listen-for-border-officer"
             ]
         ),
         value: bool = SlashOption(description="Value to set (true/false)")
     ):
         """Set a bot setting value."""
-        
-        # Check if user has leadership role
-        if LEADERSHIP_ROLE_ID and not any(role.id == LEADERSHIP_ROLE_ID for role in interaction.user.roles):
-            embed = nextcord.Embed(
-                title="❌ Permission Denied",
-                description="You need the Leadership role to use this command.",
-                color=0xff0000
-            )
-            await interaction.response.send_message(embed=embed, ephemeral=True)
-            return
         
         try:
             # Update the setting
@@ -162,6 +146,7 @@ class SettingsManagement(commands.Cog):
         name="set-interval",
         description="Set the Border Officer Monitor check interval"
     )
+    @application_checks.has_role(LEADERSHIP_ROLE_ID)
     async def settings_set_interval(
         self,
         interaction: Interaction,
@@ -172,16 +157,6 @@ class SettingsManagement(commands.Cog):
         )
     ):
         """Set the Border Officer Monitor check interval."""
-        
-        # Check if user has leadership role
-        if LEADERSHIP_ROLE_ID and not any(role.id == LEADERSHIP_ROLE_ID for role in interaction.user.roles):
-            embed = nextcord.Embed(
-                title="❌ Permission Denied",
-                description="You need the Leadership role to use this command.",
-                color=0xff0000
-            )
-            await interaction.response.send_message(embed=embed, ephemeral=True)
-            return
         
         try:
             # Convert minutes to seconds
@@ -194,12 +169,13 @@ class SettingsManagement(commands.Cog):
                 # Try to immediately update the BorderOfficerMonitor if it's loaded
                 try:
                     border_monitor = self.bot.get_cog('BorderOfficerMonitor')
-                    if border_monitor and hasattr(border_monitor, 'update_check_interval'):
+                    if border_monitor:
                         border_monitor.update_check_interval()
                         footer_text = "Setting saved to database and applied immediately."
                     else:
                         footer_text = "Setting saved to database. The change will take effect on the next check cycle."
                 except Exception:
+                    logger.exception("Could not apply check interval to BorderOfficerMonitor")
                     footer_text = "Setting saved to database. The change will take effect on the next check cycle."
                 
                 embed = nextcord.Embed(
@@ -234,15 +210,13 @@ class SettingsManagement(commands.Cog):
         name="set-modpack-url",
         description="Set the modpack link used in the /enlist welcome"
     )
+    @application_checks.has_role(LEADERSHIP_ROLE_ID)
     async def settings_set_modpack_url(
         self,
         interaction: Interaction,
         url: str = SlashOption(description="Full link starting with http:// or https://")
     ):
         """Set the modpack link shown in the enlist welcome embed."""
-        if LEADERSHIP_ROLE_ID and not any(role.id == LEADERSHIP_ROLE_ID for role in interaction.user.roles):
-            await interaction.response.send_message("❌ You need the Leadership role to use this command.", ephemeral=True)
-            return
         url = url.strip()
         if not url.startswith(("http://", "https://")):
             await interaction.response.send_message("❌ The link must start with http:// or https://", ephemeral=True)

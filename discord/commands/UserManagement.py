@@ -6,19 +6,17 @@ Includes functionality for adding members, promoting users, and managing user da
 """
 
 import nextcord
-from nextcord.ext import commands
+from nextcord.ext import application_checks, commands
 from nextcord import SlashOption
 from typing import Optional
-import datetime
-import json
 import logging
 
-from database import create_user, get_user_info, modify_user, merge_identities, merge_service_records, get_merge_preview, create_service_record, add_reprimand, add_service_event
-from database.rank_codes import rank_choices, rank_index
+from database import create_user, get_user_info, merge_identities, merge_service_records, get_merge_preview, create_service_record, add_reprimand, add_service_event
+from database.rank_codes import rank_choices
 from ..utils import RankManager
 from ..utils.steam import resolve_steam_id
 from ..utils.confirm import confirm
-from ..utils.rank_roles import sync_rank_roles
+from ..utils.parse import parse_utc, valid_json_object, DATE_OR_DATETIME_FMT
 from ..config import TESTING_GUILD_ID as GUILD_ID, LEADERSHIP_ROLE_ID
 
 logger = logging.getLogger(__name__)
@@ -36,16 +34,12 @@ class UserManagement(commands.Cog):
         self.bot = bot
         self.rank_manager = RankManager()
 
-    def _rank_text(self, code: str) -> str:
-        info = self.rank_manager.get_rank(code)
-        return f"{info['name']} ({info['code']})"
-
     @nextcord.slash_command(
         name="add_member",
         description="Add a new member to the database",
         guild_ids=[GUILD_ID] if GUILD_ID else None
     )
-    @commands.has_role(LEADERSHIP_ROLE_ID)
+    @application_checks.has_role(LEADERSHIP_ROLE_ID)
     async def add_member(
         self,
         interaction: nextcord.Interaction,
@@ -109,7 +103,7 @@ class UserManagement(commands.Cog):
             embed.add_field(name="Steam ID", value=steam_id or "Not set", inline=True)
             embed.add_field(name="Discord", value=user.mention, inline=True)
             if service_record:
-                embed.add_field(name="Rank", value=self._rank_text(rank), inline=True)
+                embed.add_field(name="Rank", value=self.rank_manager.rank_text(rank), inline=True)
             
             if notes:
                 embed.add_field(name="Notes", value=notes, inline=False)
@@ -128,7 +122,7 @@ class UserManagement(commands.Cog):
         description="Create a service record for an existing player",
         guild_ids=[GUILD_ID] if GUILD_ID else None
     )
-    @commands.has_role(LEADERSHIP_ROLE_ID)
+    @application_checks.has_role(LEADERSHIP_ROLE_ID)
     async def create_service_record_cmd(
         self,
         interaction: nextcord.Interaction,
@@ -139,7 +133,7 @@ class UserManagement(commands.Cog):
         await interaction.response.defer(ephemeral=True)
         result = await create_service_record(str(user.id), rank)
         messages = {
-            "created": f"✅ Service record created for {user.mention} at {self._rank_text(rank)}.",
+            "created": f"✅ Service record created for {user.mention} at {self.rank_manager.rank_text(rank)}.",
             "already_exists": f"❌ {user.mention} already has a service record.",
             "no_identity": f"❌ {user.mention} has no player record yet. Approve them (or /add_member) first.",
             "error": "❌ Database error, nothing changed.",
@@ -151,7 +145,7 @@ class UserManagement(commands.Cog):
         description="Add a Steam ID to an existing member",
         guild_ids=[GUILD_ID] if GUILD_ID else None
     )
-    @commands.has_role(LEADERSHIP_ROLE_ID)
+    @application_checks.has_role(LEADERSHIP_ROLE_ID)
     async def add_steam(
         self,
         interaction: nextcord.Interaction,
@@ -219,7 +213,7 @@ class UserManagement(commands.Cog):
         description="Force-merge a member's identity with a Steam identity (overwrites existing IDs)",
         guild_ids=[GUILD_ID] if GUILD_ID else None
     )
-    @commands.has_role(LEADERSHIP_ROLE_ID)
+    @application_checks.has_role(LEADERSHIP_ROLE_ID)
     async def force_merge(
         self,
         interaction: nextcord.Interaction,
@@ -249,7 +243,7 @@ class UserManagement(commands.Cog):
         description="Merge the service record on a Steam ID into a member's record (Steam wins)",
         guild_ids=[GUILD_ID] if GUILD_ID else None
     )
-    @commands.has_role(LEADERSHIP_ROLE_ID)
+    @application_checks.has_role(LEADERSHIP_ROLE_ID)
     async def merge_service_records_cmd(
         self,
         interaction: nextcord.Interaction,
@@ -278,173 +272,12 @@ class UserManagement(commands.Cog):
         }
         await interaction.edit_original_message(content=messages.get(result, "❌ Database error, nothing changed."), embeds=[], view=None)
 
-    @staticmethod
-    async def _sync_roles(embed, user, old_rank, new_rank):
-        """Swap Discord rank roles after the DB change; on failure keep the DB change and warn."""
-        try:
-            await sync_rank_roles(user.guild, user, old_rank, new_rank)
-        except Exception as e:
-            logger.warning(f"Rank role sync failed for {user.id}: {e}")
-            embed.add_field(name="⚠️ Roles not updated",
-                            value=f"Database rank changed, but Discord roles could not be updated: {e}", inline=False)
-
-# Disabled for now (backend modify_user/rank logic kept):
-#     @nextcord.slash_command(
-#         name="promote",
-#         description="Promote a member to a higher rank",
-#         guild_ids=[GUILD_ID] if GUILD_ID else None
-#     )
-#     @commands.has_role(LEADERSHIP_ROLE_ID)
-#     async def promote_member(
-#         self,
-#         interaction: nextcord.Interaction,
-#         user: nextcord.Member = SlashOption(description="User to promote"),
-#         new_rank: str = SlashOption(description="New rank", choices=rank_choices()),
-#         reason: Optional[str] = SlashOption(description="Reason for promotion", required=False)
-#     ):
-#         """Promote a member to a higher rank."""
-#         await interaction.response.defer(ephemeral=True)
-#         try:
-#             member = await get_user_info(str(user.id))
-
-#             if not member:
-#                 await interaction.followup.send(
-#                     f"❌ {user.mention} is not found in the database. Use `/add_member` first.",
-#                     ephemeral=True
-#                 )
-#                 return
-
-#             # Validate promotion
-#             if not self.rank_manager.is_valid_promotion(member["rank"], new_rank):
-#                 await interaction.followup.send(
-#                     f"❌ Cannot promote from {self.rank_manager.get_rank(member['rank'])['name']} "
-#                     f"to {self.rank_manager.get_rank(new_rank)['name']}. "
-#                     f"Invalid rank progression.",
-#                     ephemeral=True
-#                 )
-#                 return
-            
-#             # Update rank in database
-#             notes = f"Promoted to {self.rank_manager.get_rank(new_rank)['name']}"
-#             if reason:
-#                 notes += f" - Reason: {reason}"
-
-#             success = await modify_user(str(user.id), rank=new_rank, reason=notes)
-
-#             if success:
-
-#                 embed = nextcord.Embed(
-#                     title="🎉 Promotion Successful",
-#                     color=0x00ff00,
-#                     description=f"**{member['name']}** has been promoted!"
-#                 )
-#                 embed.add_field(
-#                     name="Previous Rank", 
-#                     value=self._rank_text(member["rank"]), 
-#                     inline=True
-#                 )
-#                 embed.add_field(
-#                     name="New Rank", 
-#                     value=self._rank_text(new_rank), 
-#                     inline=True
-#                 )
-#                 embed.add_field(name="Member", value=user.mention, inline=True)
-#                 await self._sync_roles(embed, user, member["rank"], new_rank)
-                
-#                 if reason:
-#                     embed.add_field(name="Reason", value=reason, inline=False)
-                
-#                 await interaction.followup.send(embed=embed)
-#             else:
-#                 await interaction.followup.send(
-#                     "❌ Failed to update rank in database.", 
-#                     ephemeral=True
-#                 )
-                
-#         except Exception as e:
-#             logger.error(f"Error promoting member: {e}")
-#             await interaction.followup.send(
-#                 f"❌ Failed to promote member: {str(e)}", 
-#                 ephemeral=True
-#             )
-
-#     @nextcord.slash_command(
-#         name="demote",
-#         description="Demote a member to a lower rank",
-#         guild_ids=[GUILD_ID] if GUILD_ID else None
-#     )
-#     @commands.has_role(LEADERSHIP_ROLE_ID)
-#     async def demote_member(
-#         self,
-#         interaction: nextcord.Interaction,
-#         user: nextcord.Member = SlashOption(description="User to demote"),
-#         new_rank: str = SlashOption(description="New rank", choices=rank_choices()),
-#         reason: str = SlashOption(description="Reason for demotion")
-#     ):
-#         """Demote a member to a lower rank."""
-#         await interaction.response.defer(ephemeral=True)
-#         try:
-#             member = await get_user_info(str(user.id))
-
-#             if not member:
-#                 await interaction.followup.send(
-#                     f"❌ {user.mention} is not found in the database.",
-#                     ephemeral=True
-#                 )
-#                 return
-
-#             if rank_index(new_rank) >= rank_index(member["rank"]):
-#                 await interaction.followup.send(
-#                     f"❌ New rank must be lower than current rank ({member['rank']}).",
-#                     ephemeral=True
-#                 )
-#                 return
-
-#             # Update rank in database
-#             notes = f"Demoted to {self.rank_manager.get_rank(new_rank)['name']} - Reason: {reason}"
-#             success = await modify_user(str(user.id), rank=new_rank, reason=notes)
-
-#             if success:
-
-#                 embed = nextcord.Embed(
-#                     title="⬇️ Demotion Applied",
-#                     color=0xff9900,
-#                     description=f"**{member['name']}** has been demoted."
-#                 )
-#                 embed.add_field(
-#                     name="Previous Rank", 
-#                     value=self._rank_text(member["rank"]), 
-#                     inline=True
-#                 )
-#                 embed.add_field(
-#                     name="New Rank", 
-#                     value=self._rank_text(new_rank), 
-#                     inline=True
-#                 )
-#                 embed.add_field(name="Member", value=user.mention, inline=True)
-#                 await self._sync_roles(embed, user, member["rank"], new_rank)
-#                 embed.add_field(name="Reason", value=reason, inline=False)
-                
-#                 await interaction.followup.send(embed=embed)
-#             else:
-#                 await interaction.followup.send(
-#                     "❌ Failed to update rank in database.", 
-#                     ephemeral=True
-#                 )
-                
-#         except Exception as e:
-#             logger.error(f"Error demoting member: {e}")
-#             await interaction.followup.send(
-#                 f"❌ Failed to demote member: {str(e)}", 
-#                 ephemeral=True
-#             )
-
     @nextcord.slash_command(
         name="reprimand",
         description="Log a reprimand on a member's service record",
         guild_ids=[GUILD_ID] if GUILD_ID else None
     )
-    @commands.has_role(LEADERSHIP_ROLE_ID)
+    @application_checks.has_role(LEADERSHIP_ROLE_ID)
     async def reprimand(
         self,
         interaction: nextcord.Interaction,
@@ -466,7 +299,7 @@ class UserManagement(commands.Cog):
         description="Add an event to a member's service record",
         guild_ids=[GUILD_ID] if GUILD_ID else None
     )
-    @commands.has_role(LEADERSHIP_ROLE_ID)
+    @application_checks.has_role(LEADERSHIP_ROLE_ID)
     async def create_service_event(
         self,
         interaction: nextcord.Interaction,
@@ -480,23 +313,13 @@ class UserManagement(commands.Cog):
     ):
         """Insert a row in military.service_events."""
         await interaction.response.defer(ephemeral=True)
-        when = None
-        for fmt in ("%Y-%m-%d %H:%M", "%Y-%m-%d"):
-            try:
-                when = datetime.datetime.strptime(date, fmt).replace(tzinfo=datetime.timezone.utc)
-                break
-            except ValueError:
-                pass
+        when = parse_utc(date, DATE_OR_DATETIME_FMT)
         if when is None:
             await interaction.followup.send("❌ Date must look like `2026-11-20` or `2026-11-20 19:00` (UTC).")
             return
-        if details:
-            try:
-                if not isinstance(json.loads(details), dict):
-                    raise ValueError
-            except ValueError:
-                await interaction.followup.send("❌ Details must be a JSON object, e.g. `{\"key\": \"value\"}`.")
-                return
+        if details and not valid_json_object(details):
+            await interaction.followup.send("❌ Details must be a JSON object, e.g. `{\"key\": \"value\"}`.")
+            return
         result = await add_service_event(str(user.id), event_type, when, rank, status, notes, details)
         messages = {
             "created": f"✅ `{event_type}` event added to {user.mention}'s service record ({date} UTC).",

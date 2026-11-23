@@ -14,3 +14,7 @@ class RankManager:
         if not (is_valid_rank(current_code) and is_valid_rank(target_code)):
             return False
         return 0 < rank_index(target_code) - rank_index(current_code) <= 2
+
+    def rank_text(self, code: str) -> str:
+        info = self.get_rank(code)
+        return f"{info['name']} ({info['code']})"
