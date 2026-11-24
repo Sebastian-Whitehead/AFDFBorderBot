@@ -71,7 +71,7 @@ class BorderOfficerMonitor(commands.Cog):
         # Check the online status of each member
         for member in members:
             #print(member.name, member.raw_status)
-            if member.status not in [nextcord.Status.offline, nextcord.Status.invisible, nextcord.Status.dnd]:
+            if member.status not in [nextcord.Status.offline, nextcord.Status.invisible]:
                 online_members.append(member)
 
         
