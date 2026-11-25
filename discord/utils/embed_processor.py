@@ -122,15 +122,14 @@ class EmbedProcessor:
     
     @staticmethod
     async def send_embed(channel, embed_data):
-        """Send processed embed data to a channel; True if sent."""
+        """Send processed embed data to a channel; returns the sent message (truthy), or None."""
         if not embed_data or not channel:
-            return False
+            return None
         try:
-            await channel.send(content=embed_data.get('content', ''), embeds=_to_embeds(embed_data))
-            return True
+            return await channel.send(content=embed_data.get('content', ''), embeds=_to_embeds(embed_data))
         except Exception as e:
             logger.exception(f"Error sending embed: {e}")
-            return False
+            return None
 
 
 def _to_embeds(data) -> list:
@@ -144,12 +143,12 @@ def load_embeds(filename: str, replacements: Dict[str, str]) -> list:
     return _to_embeds(EmbedProcessor.process_embed_data(EmbedProcessor.load_embed_data(filename), replacements))
 
 
-async def send_processed_embed(channel, filename: str, replacements: Dict[str, str]) -> bool:
-    """Load, process and send an embed file in one call; True if sent."""
+async def send_processed_embed(channel, filename: str, replacements: Dict[str, str]):
+    """Load, process and send an embed file in one call; returns the sent message (truthy), or None."""
     embed_data = EmbedProcessor.load_embed_data(filename)
     if not embed_data:
-        return False
+        return None
     processed_data = EmbedProcessor.process_embed_data(embed_data, replacements)
     if not processed_data:
-        return False
+        return None
     return await EmbedProcessor.send_embed(channel, processed_data)

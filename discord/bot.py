@@ -55,6 +55,7 @@ def load_extensions(bot):
     """Load all bot extensions (listeners and commands)."""
     # Listeners
     bot.load_extension("discord.listeners.BorderOfficerMonitor")
+    bot.load_extension("discord.listeners.OfficeHoursMonitor")
     bot.load_extension("discord.listeners.JoinLeaveHandler")
 
     # Commands

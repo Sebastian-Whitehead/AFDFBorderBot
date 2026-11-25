@@ -83,7 +83,8 @@ Stored in the bot's local database and cached at startup.
 | Command | What it does |
 |---|---|
 | `/settings list` | Shows the current values. |
-| `/settings set setting value` | Turns a setting on or off: `listen-for-join-leave`, `new-citizen-welcome`, `enlist-welcome`, `listen-for-border-officer`. |
+| `/settings set setting value` | Turns a setting on or off: `listen-for-join-leave`, `new-citizen-welcome`, `enlist-welcome`, `listen-for-border-officer`, `office-hours-enabled`. |
+| `/settings set-office-hours start end` | Office hours in UTC (0-23). Outside them a warning is posted in the checkpoint channel and removed again during office hours (default 9-17, off by default). |
 | `/settings set-interval minutes` | Sets how often the border-officer monitor checks (1-60 minutes). |
 | `/settings set-modpack-url url` | Sets the modpack link in the `/enlist` welcome (`modpack-url`). Must start with http:// or https://. |
 | `/test-msg msg_type channel?` | Leadership. Sends the `join`, `approve` or `enlist` welcome message for a fake member, John Doe (no ping, nothing saved). Posts in the given channel, or the current one. |

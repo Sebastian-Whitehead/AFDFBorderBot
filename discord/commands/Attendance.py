@@ -63,7 +63,7 @@ class Attendance(commands.Cog):
             await interaction.followup.send("❌ Join a voice channel first.")
             return
 
-        today = datetime.date.today()
+        today = datetime.datetime.now(datetime.timezone.utc).date()
         loas = {}
         for loa in await LOAManager.get_all_active_loas():
             if loa["start_date"] <= today <= datetime.date.fromisoformat(loa["end_date"]):

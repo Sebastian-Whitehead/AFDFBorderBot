@@ -60,6 +60,6 @@ def test_leadership_commands_enforce_role():
     bot.add_cog(BorderOfficerMonitor(bot))
     cmds = {c.qualified_name: c for c in bot.get_all_application_commands()}
     subs = list(cmds["settings"].children.values()) + [cmds["border_officer_monitor_start"]]
-    assert len(subs) == 5
+    assert len(subs) == 6
     for c in subs:
         assert c.checks, f"{c.qualified_name} has no enforced role check"

@@ -72,6 +72,13 @@ class SettingsManagement(commands.Cog):
                             inline=False
                         )
             
+            embed.add_field(
+                name="Office Hours Warning",
+                value=f"`office-hours-enabled`: {'✅ Enabled' if get_setting('office-hours-enabled', False) else '❌ Disabled'}\n"
+                      f"{get_setting('office-hours-start', 9):02d}:00-{get_setting('office-hours-end', 17):02d}:00 UTC",
+                inline=False
+            )
+
             modpack_url = get_setting('modpack-url', None)
             if modpack_url:
                 embed.add_field(name="Modpack Link (enlist welcome)", value=f"`modpack-url`: {modpack_url}", inline=False)
@@ -101,7 +108,8 @@ class SettingsManagement(commands.Cog):
                 "listen-for-join-leave",
                 "new-citizen-welcome",
                 "enlist-welcome",
-                "listen-for-border-officer"
+                "listen-for-border-officer",
+                "office-hours-enabled"
             ]
         ),
         value: bool = SlashOption(description="Value to set (true/false)")
@@ -144,7 +152,7 @@ class SettingsManagement(commands.Cog):
 
     @settings.subcommand(
         name="set-interval",
-        description="Set the Border Officer Monitor check interval"
+        description="Set the check interval for the Border Officer Monitor and office hours"
     )
     @application_checks.has_role(LEADERSHIP_ROLE_ID)
     async def settings_set_interval(
@@ -205,6 +213,26 @@ class SettingsManagement(commands.Cog):
                 color=0xff0000
             )
             await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    @settings.subcommand(
+        name="set-office-hours",
+        description="Set the office hours (UTC); outside them a warning is posted in the checkpoint"
+    )
+    @application_checks.has_role(LEADERSHIP_ROLE_ID)
+    async def settings_set_office_hours(
+        self,
+        interaction: Interaction,
+        start: int = SlashOption(description="Opening hour, UTC (0-23)", min_value=0, max_value=23),
+        end: int = SlashOption(description="Closing hour, UTC (0-23)", min_value=0, max_value=23)
+    ):
+        """Set the office hours used by the Office Hours Monitor."""
+        if start == end:
+            await interaction.response.send_message("❌ Start and end must differ.", ephemeral=True)
+            return
+        if await update_setting('office-hours-start', start) and await update_setting('office-hours-end', end):
+            await interaction.response.send_message(f"✅ Office hours set to {start:02d}:00-{end:02d}:00 UTC", ephemeral=True)
+        else:
+            await interaction.response.send_message("❌ Failed to update the office hours", ephemeral=True)
 
     @settings.subcommand(
         name="set-modpack-url",

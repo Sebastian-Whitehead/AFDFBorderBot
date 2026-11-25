@@ -1,7 +1,7 @@
 import nextcord
 from nextcord.ext import commands
 from nextcord import Interaction, SlashOption
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 
 from ..config import LOA_CHANNEL_ID, TESTING_GUILD_ID
@@ -64,7 +64,7 @@ class LOA(commands.Cog):
                 await interaction.followup.send("❌ End date cannot be before the start date.", ephemeral=True)
                 return
 
-            if parsed_end_date < datetime.now().date():
+            if parsed_end_date < datetime.now(timezone.utc).date():
                 await interaction.followup.send(
                     "❌ End date cannot be in the past. Please choose a date from today onwards.",
                     ephemeral=True
@@ -94,7 +94,7 @@ class LOA(commands.Cog):
                              else f"runs from {parsed_start_date} until {parsed_end_date} "
                                   f"({(parsed_end_date - parsed_start_date).days + 1} days)"),
                 '{reason}': display_reason if display_reason else "No reason provided",
-                '{submitted_date}': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                '{submitted_date}': datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
             }
             
             # Send the processed embed publicly to the channel
@@ -130,7 +130,7 @@ class LOA(commands.Cog):
                 return
             
             # Get today's date for comparison
-            today = datetime.now().date()
+            today = datetime.now(timezone.utc).date()
             
             # Process LOAs and filter active ones
             active_loas = []

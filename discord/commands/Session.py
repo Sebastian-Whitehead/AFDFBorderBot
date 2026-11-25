@@ -88,7 +88,7 @@ class Session(commands.Cog):
         if not rows:
             await interaction.followup.send(f"No sessions on page {page} for timeline **{timeline}** ({total} total).")
             return
-        fmt = "%Y-%m-%d %H:%M"
+        fmt = "%Y-%m-%d %H:%M"  # DB times are UTC
         # plain markdown list (no code block) so long lines wrap cleanly
         lines = [f"{(page - 1) * PAGE_SIZE + n:>2}. **{r['session_name'][:40]}**" + (f" ({r['operation'][:40]})" if r["operation"] else "")
                  + f"\n↳ {r['start_at'].strftime(fmt)} -> " + (r["end_at"].strftime(fmt) if r["end_at"] else "open")
