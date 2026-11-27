@@ -128,7 +128,10 @@ class EmbedProcessor:
         if not embed_data or not channel:
             return None
         try:
-            return await channel.send(content=embed_data.get('content', ''), embeds=_to_embeds(embed_data))
+            # "flags": 4096 in the JSON sends the message silently (no notifications)
+            silent = bool(embed_data.get('flags', 0) & 4096)
+            return await channel.send(content=embed_data.get('content', ''), embeds=_to_embeds(embed_data),
+                                      flags=nextcord.MessageFlags(suppress_notifications=silent))
         except Exception as e:
             logger.exception(f"Error sending embed: {e}")
             return None

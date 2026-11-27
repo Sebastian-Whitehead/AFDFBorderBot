@@ -3,6 +3,7 @@ import yaml
 import re
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -58,3 +59,10 @@ def test_generic_placeholders_resolve():
 def test_username_prefers_nick_then_global_name(nick, global_name, expected):
     member = SimpleNamespace(mention="", id=0, nick=nick, global_name=global_name, display_name=nick or "account")
     assert member_replacements(member)["{username}"] == expected
+
+
+async def test_only_office_hours_is_sent_silently():
+    channel = AsyncMock()
+    for name, silent in (("office_hours.json", True), ("newcitizen-main.json", False)):
+        assert await EmbedProcessor.send_embed(channel, EmbedProcessor.load_embed_data(name))
+        assert channel.send.await_args.kwargs["flags"].suppress_notifications is silent
