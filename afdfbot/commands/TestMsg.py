@@ -1,11 +1,12 @@
 from typing import Optional
 
-import nextcord
-from nextcord import Interaction, SlashOption
-from nextcord.ext import application_checks, commands
+import discord
+from discord import Interaction, app_commands
+from discord.ext import commands
 
-from ..config import LEADERSHIP_ROLE_ID, TESTING_GUILD_ID
+from ..config import LEADERSHIP_ROLE_ID
 from ..utils import send_processed_embed, member_replacements
+from ..utils.choices import to_choices
 
 
 class JohnDoe:
@@ -30,12 +31,11 @@ class TestMsg(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @nextcord.slash_command(name="test-msg", description="Send a welcome message for a fake member (John Doe)",
-                            guild_ids=[TESTING_GUILD_ID] if TESTING_GUILD_ID else None)
-    @application_checks.has_role(LEADERSHIP_ROLE_ID)
-    async def test_msg(self, ctx: Interaction,
-                       msg_type: str = SlashOption(name="msg_type", description="Which welcome message", choices=list(MESSAGES)),
-                       channel: Optional[nextcord.TextChannel] = SlashOption(description="Where to send it (default: this channel)", required=False, default=None)):
+    @app_commands.command(name="test-msg", description="Send a welcome message for a fake member (John Doe)")
+    @app_commands.checks.has_role(LEADERSHIP_ROLE_ID)
+    @app_commands.describe(msg_type="Which welcome message", channel="Where to send it (default: this channel)")
+    @app_commands.choices(msg_type=to_choices(list(MESSAGES)))
+    async def test_msg(self, ctx: Interaction, msg_type: str, channel: Optional[discord.TextChannel] = None):
         await ctx.response.defer(ephemeral=True)
         target = channel or ctx.channel
         if await send_processed_embed(target, MESSAGES[msg_type], member_replacements(JohnDoe())):
@@ -44,5 +44,5 @@ class TestMsg(commands.Cog):
             await ctx.followup.send(f"❌ Could not send the `{msg_type}` message in {target.mention}.", ephemeral=True)
 
 
-def setup(bot):
-    bot.add_cog(TestMsg(bot))
+async def setup(bot):
+    await bot.add_cog(TestMsg(bot))

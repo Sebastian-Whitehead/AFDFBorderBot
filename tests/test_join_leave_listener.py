@@ -1,6 +1,6 @@
 from unittest.mock import AsyncMock, MagicMock
 
-import nextcord
+import discord
 import pytest
 
 pytestmark = pytest.mark.asyncio
@@ -8,7 +8,7 @@ pytestmark = pytest.mark.asyncio
 
 @pytest.fixture
 def env(monkeypatch):
-    import discord.listeners.JoinLeaveHandler as m
+    import afdfbot.listeners.JoinLeaveHandler as m
     monkeypatch.setattr(m, "JOIN_ROLE_ID", 111)
     monkeypatch.setattr(m, "WELCOME_CHANNEL_ID", 222)
     monkeypatch.setattr(m, "get_setting", lambda k, d=None: True)
@@ -30,7 +30,7 @@ async def test_join_adds_role_and_welcomes(env):
 
 async def test_join_welcome_still_sent_if_role_fails(env):
     m, cog, member, sent = env
-    member.add_roles.side_effect = nextcord.Forbidden(MagicMock(status=403, reason="x"), "missing perms")
+    member.add_roles.side_effect = discord.Forbidden(MagicMock(status=403, reason="x"), "missing perms")
     await cog.on_member_join(member)
     assert sent.await_args.args[1] == "member_join.json"
 

@@ -38,7 +38,7 @@ async def test_s1_setting_round_trip(clean_settings):
 
 
 async def test_config_update_setting_false_when_db_write_fails(monkeypatch):
-    import discord.config as cfg
+    import afdfbot.config as cfg
 
     async def fail(key, value):
         return False
@@ -49,17 +49,24 @@ async def test_config_update_setting_false_when_db_write_fails(monkeypatch):
     assert cfg.get_setting(KEY) == "old"
 
 
-def test_leadership_commands_enforce_role():
-    import nextcord
-    from nextcord.ext import commands
-    from discord.commands.SettingsManagement import SettingsManagement
-    from discord.listeners.BorderOfficerMonitor import BorderOfficerMonitor
-    bot = commands.Bot(intents=nextcord.Intents.none())
-    bot.add_cog(SettingsManagement(bot))
-    BorderOfficerMonitor.check_online_status.start = lambda self: None  # no event loop in this sync test
-    bot.add_cog(BorderOfficerMonitor(bot))
-    cmds = {c.qualified_name: c for c in bot.get_all_application_commands()}
-    subs = list(cmds["settings"].children.values()) + [cmds["border_officer_monitor_start"]]
+def test_leadership_commands_enforce_role(monkeypatch):
+    from unittest.mock import AsyncMock
+    import asyncio
+    import discord
+    from discord.ext import commands
+    from afdfbot.commands.SettingsManagement import SettingsManagement
+    from afdfbot.listeners.BorderOfficerMonitor import BorderOfficerMonitor
+    bot = commands.Bot(command_prefix="!", intents=discord.Intents.none())
+
+    async def load():  # add_cog is async in discord.py
+        await bot.add_cog(SettingsManagement(bot))
+        await bot.add_cog(BorderOfficerMonitor(bot))
+
+    monkeypatch.setattr(BorderOfficerMonitor.check_online_status, "start", lambda *a: None, raising=False)
+    monkeypatch.setattr(BorderOfficerMonitor, "cog_load", AsyncMock(), raising=False)
+    asyncio.run(load())
+    cmds = {c.qualified_name: c for c in bot.tree.get_commands()}
+    subs = list(cmds["settings"].commands) + [cmds["border_officer_monitor_start"]]
     assert len(subs) == 6
     for c in subs:
         assert c.checks, f"{c.qualified_name} has no enforced role check"

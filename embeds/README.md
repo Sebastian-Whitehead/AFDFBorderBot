@@ -10,7 +10,7 @@ Write `{name}` where a value should be filled in. Preview the welcome messages w
 |---|---|
 | `{channel:loa_txt}` | a clickable channel mention. The name is any key under `channels` in `ids.yml`. |
 | `{role:leadership}` | a role mention. Any single-id key under `roles` in `ids.yml` (not `citizen` or `ranks`: those hold several ids). |
-| `{setting:modpack-url}` | the value of a bot setting (see `/settings list`). Falls back to `SETTING_DEFAULTS` in `discord/config.py`. |
+| `{setting:modpack-url}` | the value of a bot setting (see `/settings list`). Falls back to `SETTING_DEFAULTS` in `afdfbot/config.py`. |
 
 To use a new channel, add it to `ids.yml` and write `{channel:<its key>}`. No Python needed.
 

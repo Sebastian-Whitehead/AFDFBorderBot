@@ -1,10 +1,10 @@
-import nextcord
-from nextcord.ext import commands
-from nextcord import Interaction, SlashOption
+from discord import Interaction, app_commands
+from discord.ext import commands
 from datetime import datetime, timezone
 import logging
+from typing import Optional
 
-from ..config import LOA_CHANNEL_ID, TESTING_GUILD_ID
+from ..config import LOA_CHANNEL_ID
 from ..utils import send_processed_embed, member_replacements
 from database.loa_functions import LOAManager
 
@@ -24,23 +24,18 @@ class LOA(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @nextcord.slash_command(name="loa", description="Submit a Leave of Absence request", guild_ids=[TESTING_GUILD_ID] if TESTING_GUILD_ID else None)
+    @app_commands.command(name="loa", description="Submit a Leave of Absence request")
+    @app_commands.describe(
+        start_date="First day of your LOA, or the only day if no end date is given (YYYY-MM-DD, DD/MM/YYYY or DD/MM)",
+        end_date="Last day of your LOA (optional; leave empty for a single-day LOA)",
+        reason="Reason for your Leave of Absence (optional)"
+    )
     async def loa_command(
         self,
         interaction: Interaction,
-        start_date: str = SlashOption(
-            description="First day of your LOA, or the only day if no end date is given (YYYY-MM-DD, DD/MM/YYYY or DD/MM)"
-        ),
-        end_date: str = SlashOption(
-            description="Last day of your LOA (optional; leave empty for a single-day LOA)",
-            required=False,
-            default=None
-        ),
-        reason: str = SlashOption(
-            description="Reason for your Leave of Absence (optional)",
-            required=False,
-            default=None
-        )
+        start_date: str,
+        end_date: Optional[str] = None,
+        reason: Optional[str] = None
     ):
         """Submit a Leave of Absence request."""
         
@@ -110,7 +105,7 @@ class LOA(commands.Cog):
                 ephemeral=True
             )
 
-    @nextcord.slash_command(name="loa_list", description="List all current active LOAs", guild_ids=[TESTING_GUILD_ID] if TESTING_GUILD_ID else None)
+    @app_commands.command(name="loa_list", description="List all current active LOAs")
     async def loa_list_command(self, interaction: Interaction):
         """List all current active Leave of Absence requests."""
         
@@ -189,7 +184,7 @@ class LOA(commands.Cog):
                 ephemeral=True
             )
 
-    @nextcord.slash_command(name="loa_cancel", description="Cancel your active Leave of Absence", guild_ids=[TESTING_GUILD_ID] if TESTING_GUILD_ID else None)
+    @app_commands.command(name="loa_cancel", description="Cancel your active Leave of Absence")
     async def loa_cancel_command(self, interaction: Interaction):
         """Cancel your active Leave of Absence request."""
         
@@ -228,5 +223,5 @@ class LOA(commands.Cog):
             )
 
 # Function to set up the Cog
-def setup(bot):
-    bot.add_cog(LOA(bot))
+async def setup(bot):
+    await bot.add_cog(LOA(bot))

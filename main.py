@@ -3,7 +3,7 @@
 AFDFBorderBot - Discord Bot Entry Point
 
 This is the main entry point for the AFDFBorderBot Discord bot.
-The actual bot logic is contained in the discord package.
+The actual bot logic is contained in the afdfbot package.
 """
 
 import logging
@@ -16,8 +16,8 @@ logging.basicConfig(level=logging.INFO)
 current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, current_dir)
 
-# Import the run_bot function from the discord package
-from discord import run_bot
+# Import the run_bot function from the afdfbot package
+from afdfbot import run_bot
 
 if __name__ == "__main__":
     run_bot()

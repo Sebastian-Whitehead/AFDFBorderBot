@@ -8,7 +8,7 @@ import re
 from pathlib import Path
 from typing import Dict, Any, Optional
 
-import nextcord
+import discord
 
 from ..config import BORDER_OFFICER_ROLE_ID
 
@@ -128,8 +128,7 @@ class EmbedProcessor:
         try:
             # "flags": 4096 in the JSON sends the message silently (no notifications)
             silent = bool(embed_data.get('flags', 0) & 4096)
-            return await channel.send(content=embed_data.get('content', ''), embeds=_to_embeds(embed_data),
-                                      flags=nextcord.MessageFlags(suppress_notifications=silent))
+            return await channel.send(content=embed_data.get('content', ''), embeds=_to_embeds(embed_data), silent=silent)
         except Exception as e:
             logger.exception(f"Error sending embed: {e}")
             return None
@@ -137,12 +136,12 @@ class EmbedProcessor:
 
 def _to_embeds(data) -> list:
     # "id"/"type" come from Discord-exported JSON and make Embed.from_dict choke
-    return [nextcord.Embed.from_dict({k: v for k, v in e.items() if k not in ("id", "type")})
+    return [discord.Embed.from_dict({k: v for k, v in e.items() if k not in ("id", "type")})
             for e in (data or {}).get("embeds", [])]
 
 
 def load_embeds(filename: str, replacements: Dict[str, str]) -> list:
-    """Load an embed file, apply placeholders and return nextcord Embeds (for interaction replies)."""
+    """Load an embed file, apply placeholders and discord Embeds (for interaction replies)."""
     return _to_embeds(EmbedProcessor.process_embed_data(EmbedProcessor.load_embed_data(filename), replacements))
 
 

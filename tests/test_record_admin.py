@@ -9,7 +9,7 @@ pytestmark = pytest.mark.asyncio
 
 
 def _env(monkeypatch, **patches):
-    import discord.commands.RecordAdmin as ra
+    import afdfbot.commands.RecordAdmin as ra
     mocks = {}
     for name, ret in patches.items():
         mocks[name] = AsyncMock(return_value=ret)
@@ -17,7 +17,7 @@ def _env(monkeypatch, **patches):
     i = MagicMock()
     i.response.defer = AsyncMock()
     i.followup.send = AsyncMock()
-    i.edit_original_message = AsyncMock()
+    i.edit_original_response = AsyncMock()
     return ra, ra.RecordAdmin(bot=MagicMock()), i, mocks
 
 
@@ -58,7 +58,7 @@ async def test_delete_event_confirmed(monkeypatch):
     assert args.args[1] == "delete_service_event_warning.json"
     assert args.args[2] == {"{event_id}": "4", "{event_type}": "enlisted", "{date}": "2026-01-02 03:04 UTC"}
     m["delete_service_event"].assert_awaited_once_with(4)
-    assert "deleted" in i.edit_original_message.call_args.kwargs["content"]
+    assert "deleted" in i.edit_original_response.call_args.kwargs["content"]
 
 
 async def test_delete_event_declined_missing_and_error(monkeypatch):
@@ -76,7 +76,7 @@ async def test_delete_event_declined_missing_and_error(monkeypatch):
     m["confirm"].return_value = True
     m["delete_service_event"].return_value = "error"
     await ra.RecordAdmin.delete_service_event.callback(cog, i, 4)
-    assert "Database error" in i.edit_original_message.call_args.kwargs["content"]
+    assert "Database error" in i.edit_original_response.call_args.kwargs["content"]
 
 
 def _member():

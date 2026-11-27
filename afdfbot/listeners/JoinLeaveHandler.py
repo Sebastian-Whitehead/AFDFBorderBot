@@ -1,8 +1,8 @@
 import logging
 
-import nextcord
-from nextcord.ext import commands
-from nextcord import Member
+import discord
+from discord.ext import commands
+from discord import Member
 
 from ..config import JOIN_ROLE_ID, WELCOME_CHANNEL_ID, get_setting
 from ..utils import send_processed_embed, member_replacements
@@ -27,7 +27,7 @@ class JoinLeaveHandler(commands.Cog):
             if role_to_add:
                 try:
                     await member.add_roles(role_to_add)
-                except nextcord.HTTPException as e:  # e.g. Forbidden: bot role below the join role
+                except discord.HTTPException as e:  # e.g. Forbidden: bot role below the join role
                     logger.error(f"Could not give join role to {member.id}: {e}")
         
         # Send welcome embed
@@ -39,7 +39,7 @@ class JoinLeaveHandler(commands.Cog):
         logger.info(f"Join message for {member.id} {'sent' if sent else 'FAILED'}")
 
     @commands.Cog.listener()
-    async def on_raw_member_remove(self, payload: nextcord.RawMemberRemoveEvent):
+    async def on_raw_member_remove(self, payload: discord.RawMemberRemoveEvent):
         # Raw event: on_member_remove is skipped when the member isn't in the cache
         user = payload.user
         logger.info(f"Member left: {user} ({user.id})")
@@ -56,5 +56,5 @@ class JoinLeaveHandler(commands.Cog):
         logger.info(f"Leave message for {user.id} {'sent' if sent else 'FAILED'}")
 
 # Function to set up the Cog
-def setup(bot):
-    bot.add_cog(JoinLeaveHandler(bot))
+async def setup(bot):
+    await bot.add_cog(JoinLeaveHandler(bot))

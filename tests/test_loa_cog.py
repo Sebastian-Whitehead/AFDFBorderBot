@@ -7,7 +7,7 @@ pytestmark = pytest.mark.asyncio
 
 @pytest.fixture
 def env(monkeypatch):
-    import discord.commands.LOA as m
+    import afdfbot.commands.LOA as m
     monkeypatch.setattr(m, "LOA_CHANNEL_ID", None)
     monkeypatch.setattr(m, "send_processed_embed", AsyncMock())
     create = AsyncMock(return_value=(False, "submitted"))

@@ -1,4 +1,4 @@
-# Discord ids for the AFDF server (guild, channels, roles). Loaded by discord/config.py.
+# Discord ids for the AFDF server (guild, channels, roles). Loaded by afdfbot/config.py.
 testing_guild: 1140569342619168778
 # Channel ids. Use a key in an embed as {channel:<key>}.
 channels:

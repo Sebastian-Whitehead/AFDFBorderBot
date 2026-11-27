@@ -1,4 +1,4 @@
-from discord.listeners.OfficeHoursMonitor import in_office_hours
+from afdfbot.listeners.OfficeHoursMonitor import in_office_hours
 
 
 def test_in_office_hours():
@@ -10,7 +10,7 @@ def test_in_office_hours():
 
 async def test_loop_posts_and_removes_warning(monkeypatch):
     from unittest.mock import AsyncMock, MagicMock
-    import discord.listeners.OfficeHoursMonitor as m
+    import afdfbot.listeners.OfficeHoursMonitor as m
 
     sent = MagicMock(delete=AsyncMock(), id=1)
     channel = MagicMock(send=AsyncMock(), fetch_message=AsyncMock())

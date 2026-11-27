@@ -11,7 +11,7 @@ pytestmark = pytest.mark.asyncio
 
 
 def _env(monkeypatch, info=("found", {"session_name": "Op", "attendance_count": 0}), confirmed=True, deleted="deleted"):
-    import discord.commands.Session as ge
+    import afdfbot.commands.Session as ge
     m = {"info": AsyncMock(return_value=info), "confirm": AsyncMock(return_value=confirmed),
          "delete": AsyncMock(return_value=deleted)}
     monkeypatch.setattr(ge, "get_session_for_delete", m["info"])
@@ -20,7 +20,7 @@ def _env(monkeypatch, info=("found", {"session_name": "Op", "attendance_count": 
     i = MagicMock()
     i.response.defer = AsyncMock()
     i.followup.send = AsyncMock()
-    i.edit_original_message = AsyncMock()
+    i.edit_original_response = AsyncMock()
     return ge, i, m
 
 
@@ -36,7 +36,7 @@ async def test_delete_confirmed(monkeypatch):
     assert m["confirm"].await_args.args[1] == "delete_session_warning.json"
     assert m["confirm"].await_args.args[2]["{attendance_count}"] == "0"
     m["delete"].assert_awaited_once_with(5)
-    assert "deleted" in i.edit_original_message.call_args.kwargs["content"]
+    assert "deleted" in i.edit_original_response.call_args.kwargs["content"]
 
 
 async def test_declined_deletes_nothing(monkeypatch):
@@ -63,7 +63,7 @@ async def test_not_found_and_errors(monkeypatch):
     for status, text in [("blocked", "meanwhile"), ("not_found", "No session"), ("error", "Database error")]:
         ge, i, m = _env(monkeypatch, deleted=status)
         await _run(ge, i)
-        assert text in i.edit_original_message.call_args.kwargs["content"]
+        assert text in i.edit_original_response.call_args.kwargs["content"]
 
 
 async def test_db_delete_and_blocked(shared_db):

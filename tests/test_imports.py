@@ -4,13 +4,13 @@ import pkgutil
 
 import pytest
 
-import discord.commands
-import discord.listeners
+import afdfbot.commands
+import afdfbot.listeners
 
 
 def _names():
-    names = ["database", "discord.bot"]
-    for pkg in (discord.commands, discord.listeners):
+    names = ["database", "afdfbot.bot"]
+    for pkg in (afdfbot.commands, afdfbot.listeners):
         names += [f"{pkg.__name__}.{m.name}" for m in pkgutil.iter_modules(pkg.__path__)]
     return names
 
@@ -21,7 +21,7 @@ def test_import(name):
 
 
 def test_no_prefix_role_checks_on_slash_commands():
-    # commands.has_role is ignored by slash commands; only application_checks.has_role is enforced
+    # commands.has_role is ignored by slash commands; only app_commands.checks.has_role is enforced
     import pathlib
-    for p in pathlib.Path("discord").rglob("*.py"):
-        assert "commands.has_role" not in p.read_text(encoding="utf-8").replace("application_checks.has_role", ""), p
+    for p in pathlib.Path("afdfbot").rglob("*.py"):
+        assert "commands.has_role" not in p.read_text(encoding="utf-8"), p

@@ -3,14 +3,13 @@
 import logging
 import random
 
-import nextcord
-from nextcord import SlashOption
-from nextcord.ext import commands
+import discord
+from discord import app_commands
+from discord.ext import commands
 
 from database import get_user_info, get_service_events
 from database.rank_codes import RANKS
 from ..utils import RankManager
-from ..config import TESTING_GUILD_ID as GUILD_ID
 
 logger = logging.getLogger(__name__)
 
@@ -22,37 +21,35 @@ class Info(commands.Cog):
         self.bot = bot
         self.rank_manager = RankManager()
 
-    @nextcord.slash_command(
+    @app_commands.command(
         name="ping",
-        description="Check that the bot is alive",
-        guild_ids=[GUILD_ID] if GUILD_ID else None
+        description="Check that the bot is alive"
     )
-    async def ping(self, interaction: nextcord.Interaction):
+    async def ping(self, interaction: discord.Interaction):
         msg = "PONG! (╯°□°)╯︵ ┻━┻" if random.randint(1, 50) == 3 else "Pong!"
         await interaction.response.send_message(msg, ephemeral=True)
 
-    @nextcord.slash_command(
+    @app_commands.command(
         name="ranks",
-        description="Show the rank hierarchy",
-        guild_ids=[GUILD_ID] if GUILD_ID else None
+        description="Show the rank hierarchy"
     )
-    async def ranks(self, interaction: nextcord.Interaction):
+    async def ranks(self, interaction: discord.Interaction):
         """List all ranks, highest first."""
         lines = [f"`{c}` **{r['abbr']}** – {r['name']}" for c, r in reversed(RANKS.items())]
         await interaction.response.send_message(
-            embed=nextcord.Embed(title="Rank Hierarchy", description="\n".join(lines), color=0x0099ff),
+            embed=discord.Embed(title="Rank Hierarchy", description="\n".join(lines), color=0x0099ff),
             ephemeral=True
         )
 
-    @nextcord.slash_command(
+    @app_commands.command(
         name="profile",
-        description="View a member's profile and statistics",
-        guild_ids=[GUILD_ID] if GUILD_ID else None
+        description="View a member's profile and statistics"
     )
+    @app_commands.describe(user="User to view profile for")
     async def view_profile(
         self,
-        interaction: nextcord.Interaction,
-        user: nextcord.User = SlashOption(description="User to view profile for")
+        interaction: discord.Interaction,
+        user: discord.User
     ):
         """View a member's profile and statistics."""
         await interaction.response.defer(ephemeral=True)
@@ -66,7 +63,7 @@ class Info(commands.Cog):
                 )
                 return
 
-            embed = nextcord.Embed(
+            embed = discord.Embed(
                 title=f"👤 Profile: {member['name']}",
                 color=0x0099ff
             )
@@ -126,16 +123,16 @@ class Info(commands.Cog):
                 ephemeral=True
             )
 
-    @nextcord.slash_command(
+    @app_commands.command(
         name="service_record",
-        description="Show a member's latest service record events",
-        guild_ids=[GUILD_ID] if GUILD_ID else None
+        description="Show a member's latest service record events"
     )
+    @app_commands.describe(user="Member to look up", rows="How many events to show (default 10)")
     async def service_record(
         self,
-        interaction: nextcord.Interaction,
-        user: nextcord.User = SlashOption(description="Member to look up"),
-        rows: int = SlashOption(description="How many events to show (default 10)", default=10, min_value=1, max_value=20)
+        interaction: discord.Interaction,
+        user: discord.User,
+        rows: app_commands.Range[int, 1, 20] = 10
     ):
         await interaction.response.defer(ephemeral=True)
         events = await get_service_events(str(user.id), rows)
@@ -157,6 +154,6 @@ class Info(commands.Cog):
             f"Last {len(events)} service events for {user.mention}:\n```\n" + "\n".join(lines) + "\n```")
 
 
-def setup(bot):
+async def setup(bot):
     """Add the Info cog to the bot."""
-    bot.add_cog(Info(bot))
+    await bot.add_cog(Info(bot))

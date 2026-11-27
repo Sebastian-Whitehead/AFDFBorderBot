@@ -1,8 +1,8 @@
 import logging
 from datetime import datetime, timezone
 
-import nextcord
-from nextcord.ext import commands, tasks
+import discord
+from discord.ext import commands, tasks
 
 from ..config import TESTING_GUILD_ID, CHECKPOINT_CHANNEL_ID, get_setting
 from ..utils import send_processed_embed
@@ -22,9 +22,11 @@ class OfficeHoursMonitor(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.msg = None
+
+    async def cog_load(self):
         self.check_office_hours.start()
 
-    def cog_unload(self):
+    async def cog_unload(self):
         self.check_office_hours.cancel()
 
     @tasks.loop(seconds=DEFAULT_CHECK_INTERVAL)
@@ -51,7 +53,7 @@ class OfficeHoursMonitor(commands.Cog):
             if self.msg:
                 try:
                     await channel.fetch_message(self.msg.id)
-                except nextcord.NotFound:
+                except discord.NotFound:
                     self.msg = None
             else:
                 async for m in channel.history(limit=50):
@@ -64,9 +66,9 @@ class OfficeHoursMonitor(commands.Cog):
             elif not closed and self.msg:
                 await self.msg.delete()
                 self.msg = None
-        except nextcord.NotFound:
+        except discord.NotFound:
             self.msg = None  # already gone, which is the state wanted when opening
-        except nextcord.HTTPException:
+        except discord.HTTPException:
             logger.exception("OfficeHoursMonitor: failed to update office hours message, will retry")
 
     @check_office_hours.error
@@ -78,5 +80,5 @@ class OfficeHoursMonitor(commands.Cog):
         await self.bot.wait_until_ready()
 
 
-def setup(bot):
-    bot.add_cog(OfficeHoursMonitor(bot))
+async def setup(bot):
+    await bot.add_cog(OfficeHoursMonitor(bot))

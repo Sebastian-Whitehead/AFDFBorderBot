@@ -1,6 +1,6 @@
 import datetime
 
-from discord.utils.parse import DATE_OR_DATETIME_FMT, parse_utc, valid_json_object
+from afdfbot.utils.parse import DATE_OR_DATETIME_FMT, parse_utc, valid_json_object
 
 
 def test_parse_utc():

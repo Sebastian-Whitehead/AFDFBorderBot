@@ -1,6 +1,6 @@
 from unittest.mock import AsyncMock, MagicMock
 
-from discord.utils.rank_roles import rank_role_id, sync_rank_roles
+from afdfbot.utils.rank_roles import rank_role_id, sync_rank_roles
 
 
 async def test_swaps_old_for_new():

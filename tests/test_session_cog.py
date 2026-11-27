@@ -6,7 +6,7 @@ pytestmark = pytest.mark.asyncio
 
 
 def _env(monkeypatch, result=7):
-    import discord.commands.Session as ge
+    import afdfbot.commands.Session as ge
     create = AsyncMock(return_value=result)
     monkeypatch.setattr(ge, "create_session_row", create)
     i = MagicMock()
@@ -48,7 +48,7 @@ async def test_bad_start_and_blank_name_rejected(monkeypatch):
 
 async def test_end_session_messages(monkeypatch):
     import datetime
-    import discord.commands.Session as ge
+    import afdfbot.commands.Session as ge
     t = datetime.datetime(2026, 11, 20, 21, 0, tzinfo=datetime.timezone.utc)
     row = {"id": 3, "session_name": "Op", "start_at": t, "end_at": t}
     monkeypatch.setattr(ge, "confirm", AsyncMock(return_value=True))
@@ -58,20 +58,20 @@ async def test_end_session_messages(monkeypatch):
         i = MagicMock()
         i.response.defer = AsyncMock()
         i.followup.send = AsyncMock()
-        i.edit_original_message = AsyncMock()
+        i.edit_original_response = AsyncMock()
         await ge.Session.end_session.callback(ge.Session(bot=MagicMock()), i, None)
-        assert text in i.edit_original_message.call_args.kwargs["content"]
+        assert text in i.edit_original_response.call_args.kwargs["content"]
 
 
 async def test_end_session_not_confirmed(monkeypatch):
-    import discord.commands.Session as ge
+    import afdfbot.commands.Session as ge
     monkeypatch.setattr(ge, "confirm", AsyncMock(return_value=False))
     end = AsyncMock()
     monkeypatch.setattr(ge, "end_latest_session", end)
     i = MagicMock()
     i.response.defer = AsyncMock()
     i.followup.send = AsyncMock()
-    i.edit_original_message = AsyncMock()
+    i.edit_original_response = AsyncMock()
     await ge.Session.end_session.callback(ge.Session(bot=MagicMock()), i, None)
     end.assert_not_awaited()
 
@@ -84,7 +84,7 @@ async def test_db_error(monkeypatch):
 
 async def test_session_list_table_and_paging(monkeypatch):
     import datetime
-    import discord.commands.Session as ge
+    import afdfbot.commands.Session as ge
     t = datetime.datetime(2026, 11, 20, 19, 0, tzinfo=datetime.timezone.utc)
     rows = [{"id": 4, "timeline": "A", "session_name": "Op Night", "operation": None, "start_at": t, "end_at": None}]
     lister = AsyncMock(return_value=(rows, 11))
@@ -106,7 +106,7 @@ async def test_session_list_table_and_paging(monkeypatch):
 
 
 async def test_edit_session(monkeypatch):
-    import discord.commands.Session as ge
+    import afdfbot.commands.Session as ge
     upd = AsyncMock(return_value=("updated", {"session_name": "New"}))
     monkeypatch.setattr(ge, "update_session", upd)
 

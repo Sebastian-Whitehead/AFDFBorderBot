@@ -39,13 +39,13 @@ async def _approve(cog_mod, cog, i, user, steam):
 
 @pytest.fixture
 def checkpoint():
-    import discord.commands.Checkpoint as m
+    import afdfbot.commands.Checkpoint as m
     return m, m.Checkpoint(bot=MagicMock())
 
 
 @pytest.fixture
 def enlistment():
-    import discord.commands.Enlistment as m
+    import afdfbot.commands.Enlistment as m
     return m, m.Enlistment(bot=MagicMock())
 
 

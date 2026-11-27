@@ -1,23 +1,24 @@
 # Checkpoint.py
 from typing import Optional
 
-from nextcord.ext import application_checks, commands
-from nextcord import Interaction, Member, NotFound, SlashOption, slash_command
+from discord import Interaction, Member, NotFound, app_commands
+from discord.ext import commands
 
 from database import ensure_player_identity
 from ..utils import send_processed_embed, member_replacements
 from ..utils.steam import resolve_steam_id
-from ..config import get_setting, TESTING_GUILD_ID, JOIN_ROLE_ID, BORDER_OFFICER_ROLE_ID, CITIZEN_ROLE_IDS, MAIN_CHANNEL_ID
+from ..config import get_setting, JOIN_ROLE_ID, BORDER_OFFICER_ROLE_ID, CITIZEN_ROLE_IDS, MAIN_CHANNEL_ID
 
 
 class Checkpoint(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @slash_command(description="Let them through the border", guild_ids=[TESTING_GUILD_ID] if TESTING_GUILD_ID else None)
-    @application_checks.has_role(BORDER_OFFICER_ROLE_ID)
+    @app_commands.command(description="Let them through the border")
+    @app_commands.describe(user="No description provided.", steam_id="SteamID64 or Steam profile URL (optional)")
+    @app_commands.checks.has_role(BORDER_OFFICER_ROLE_ID)
     async def approve(self, ctx: Interaction, user: Member,
-                      steam_id: Optional[str] = SlashOption(description="SteamID64 or Steam profile URL (optional)", required=False, default=None)):
+                      steam_id: Optional[str] = None):
         # Check if required roles/channels are configured
         if not JOIN_ROLE_ID or not CITIZEN_ROLE_IDS or not MAIN_CHANNEL_ID:
             await ctx.response.send_message("❌ Bot configuration error - missing required roles or channels!", ephemeral=True)
@@ -71,5 +72,5 @@ class Checkpoint(commands.Cog):
             await ctx.followup.send("Member not found.", ephemeral=True)
 
 # Function to set up the Cog
-def setup(bot):
-    bot.add_cog(Checkpoint(bot))
+async def setup(bot):
+    await bot.add_cog(Checkpoint(bot))

@@ -6,11 +6,12 @@ Provides Discord slash commands to view and modify bot settings.
 
 import logging
 
-import nextcord
-from nextcord.ext import commands, application_checks
-from nextcord import Interaction, SlashOption
+import discord
+from discord import Interaction, app_commands
+from discord.ext import commands
 
-from ..config import LEADERSHIP_ROLE_ID, TESTING_GUILD_ID, get_setting, update_setting, load_settings
+from ..config import LEADERSHIP_ROLE_ID, get_setting, update_setting, load_settings
+from ..utils.choices import to_choices
 
 logger = logging.getLogger(__name__)
 
@@ -20,20 +21,13 @@ class SettingsManagement(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @nextcord.slash_command(
-        name="settings",
-        description="Manage bot settings",
-        guild_ids=[TESTING_GUILD_ID] if TESTING_GUILD_ID else None
-    )
-    async def settings(self, interaction: Interaction):
-        """Base command for settings management."""
-        pass
+    settings = app_commands.Group(name="settings", description="Manage bot settings")
 
-    @settings.subcommand(
+    @settings.command(
         name="list",
         description="List all current bot settings"
     )
-    @application_checks.has_role(LEADERSHIP_ROLE_ID)
+    @app_commands.checks.has_role(LEADERSHIP_ROLE_ID)
     async def settings_list(self, interaction: Interaction):
         """List all current bot settings."""
         # update the cache
@@ -47,7 +41,7 @@ class SettingsManagement(commands.Cog):
                 ('border-officer-check-interval', 'Border Officer Check Interval (seconds)')
             ]
             
-            embed = nextcord.Embed(
+            embed = discord.Embed(
                 title="🔧 Bot Settings",
                 description="Current configuration stored in database",
                 color=0x0099ff
@@ -87,33 +81,27 @@ class SettingsManagement(commands.Cog):
             await interaction.response.send_message(embed=embed, ephemeral=True)
             
         except Exception as e:
-            embed = nextcord.Embed(
+            embed = discord.Embed(
                 title="❌ Error",
                 description=f"Failed to retrieve settings: {str(e)}",
                 color=0xff0000
             )
             await interaction.response.send_message(embed=embed, ephemeral=True)
 
-    @settings.subcommand(
+    @settings.command(
         name="set",
         description="Set a bot setting value"
     )
-    @application_checks.has_role(LEADERSHIP_ROLE_ID)
-    async def settings_set(
-        self,
-        interaction: Interaction,
-        setting: str = SlashOption(
-            description="Setting to modify",
-            choices=[
-                "listen-for-join-leave",
-                "new-citizen-welcome",
-                "enlist-welcome",
-                "listen-for-border-officer",
-                "office-hours-enabled"
-            ]
-        ),
-        value: bool = SlashOption(description="Value to set (true/false)")
-    ):
+    @app_commands.checks.has_role(LEADERSHIP_ROLE_ID)
+    @app_commands.describe(setting="Setting to modify", value="Value to set (true/false)")
+    @app_commands.choices(setting=to_choices([
+        "listen-for-join-leave",
+        "new-citizen-welcome",
+        "enlist-welcome",
+        "listen-for-border-officer",
+        "office-hours-enabled"
+    ]))
+    async def settings_set(self, interaction: Interaction, setting: str, value: bool):
         """Set a bot setting value."""
         
         try:
@@ -122,7 +110,7 @@ class SettingsManagement(commands.Cog):
             
             if success:
                 status = "✅ Enabled" if value else "❌ Disabled"
-                embed = nextcord.Embed(
+                embed = discord.Embed(
                     title="✅ Setting Updated",
                     description=f"Setting `{setting}` has been {status.lower()}",
                     color=0x00ff00 if value else 0xff0000
@@ -134,7 +122,7 @@ class SettingsManagement(commands.Cog):
                 )
                 embed.set_footer(text="Setting saved to database")
             else:
-                embed = nextcord.Embed(
+                embed = discord.Embed(
                     title="❌ Error",
                     description=f"Failed to update setting `{setting}`",
                     color=0xff0000
@@ -143,27 +131,20 @@ class SettingsManagement(commands.Cog):
             await interaction.response.send_message(embed=embed, ephemeral=True)
             
         except Exception as e:
-            embed = nextcord.Embed(
+            embed = discord.Embed(
                 title="❌ Error",
                 description=f"Failed to update setting: {str(e)}",
                 color=0xff0000
             )
             await interaction.response.send_message(embed=embed, ephemeral=True)
 
-    @settings.subcommand(
+    @settings.command(
         name="set-interval",
         description="Set the check interval for the Border Officer Monitor and office hours"
     )
-    @application_checks.has_role(LEADERSHIP_ROLE_ID)
-    async def settings_set_interval(
-        self,
-        interaction: Interaction,
-        minutes: int = SlashOption(
-            description="Check interval in minutes (minimum 1, maximum 60)",
-            min_value=1,
-            max_value=60
-        )
-    ):
+    @app_commands.checks.has_role(LEADERSHIP_ROLE_ID)
+    @app_commands.describe(minutes="Check interval in minutes (minimum 1, maximum 60)")
+    async def settings_set_interval(self, interaction: Interaction, minutes: app_commands.Range[int, 1, 60]):
         """Set the Border Officer Monitor check interval."""
         
         try:
@@ -186,7 +167,7 @@ class SettingsManagement(commands.Cog):
                     logger.exception("Could not apply check interval to BorderOfficerMonitor")
                     footer_text = "Setting saved to database. The change will take effect on the next check cycle."
                 
-                embed = nextcord.Embed(
+                embed = discord.Embed(
                     title="✅ Setting Updated",
                     description=f"Border Officer Monitor check interval has been set to {minutes} minutes",
                     color=0x00ff00
@@ -198,7 +179,7 @@ class SettingsManagement(commands.Cog):
                 )
                 embed.set_footer(text=footer_text)
             else:
-                embed = nextcord.Embed(
+                embed = discord.Embed(
                     title="❌ Error",
                     description="Failed to update the check interval setting",
                     color=0xff0000
@@ -207,24 +188,20 @@ class SettingsManagement(commands.Cog):
             await interaction.response.send_message(embed=embed, ephemeral=True)
             
         except Exception as e:
-            embed = nextcord.Embed(
+            embed = discord.Embed(
                 title="❌ Error",
                 description=f"Failed to update setting: {str(e)}",
                 color=0xff0000
             )
             await interaction.response.send_message(embed=embed, ephemeral=True)
 
-    @settings.subcommand(
+    @settings.command(
         name="set-office-hours",
         description="Set the office hours (UTC); outside them a warning is posted in the checkpoint"
     )
-    @application_checks.has_role(LEADERSHIP_ROLE_ID)
-    async def settings_set_office_hours(
-        self,
-        interaction: Interaction,
-        start: int = SlashOption(description="Opening hour, UTC (0-23)", min_value=0, max_value=23),
-        end: int = SlashOption(description="Closing hour, UTC (0-23)", min_value=0, max_value=23)
-    ):
+    @app_commands.checks.has_role(LEADERSHIP_ROLE_ID)
+    @app_commands.describe(start="Opening hour, UTC (0-23)", end="Closing hour, UTC (0-23)")
+    async def settings_set_office_hours(self, interaction: Interaction, start: app_commands.Range[int, 0, 23], end: app_commands.Range[int, 0, 23]):
         """Set the office hours used by the Office Hours Monitor."""
         if start == end:
             await interaction.response.send_message("❌ Start and end must differ.", ephemeral=True)
@@ -234,16 +211,13 @@ class SettingsManagement(commands.Cog):
         else:
             await interaction.response.send_message("❌ Failed to update the office hours", ephemeral=True)
 
-    @settings.subcommand(
+    @settings.command(
         name="set-modpack-url",
         description="Set the modpack link used in the /enlist welcome"
     )
-    @application_checks.has_role(LEADERSHIP_ROLE_ID)
-    async def settings_set_modpack_url(
-        self,
-        interaction: Interaction,
-        url: str = SlashOption(description="Full link starting with http:// or https://")
-    ):
+    @app_commands.checks.has_role(LEADERSHIP_ROLE_ID)
+    @app_commands.describe(url="Full link starting with http:// or https://")
+    async def settings_set_modpack_url(self, interaction: Interaction, url: str):
         """Set the modpack link shown in the enlist welcome embed."""
         url = url.strip()
         if not url.startswith(("http://", "https://")):
@@ -255,6 +229,6 @@ class SettingsManagement(commands.Cog):
             await interaction.response.send_message("❌ Failed to update the modpack link", ephemeral=True)
 
 
-def setup(bot):
+async def setup(bot):
     """Set up the Settings Management cog."""
-    bot.add_cog(SettingsManagement(bot))
+    await bot.add_cog(SettingsManagement(bot))

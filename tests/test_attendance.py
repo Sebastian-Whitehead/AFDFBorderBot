@@ -14,7 +14,7 @@ def _i(members=()):
     i.user.voice.channel.members = [MagicMock(id=m, bot=False) for m in members]
     i.response.defer = AsyncMock()
     i.followup.send = AsyncMock()
-    i.edit_original_message = AsyncMock()
+    i.edit_original_response = AsyncMock()
     return i
 
 
@@ -24,7 +24,7 @@ def _user(uid):
 
 @pytest.fixture
 def env(monkeypatch):
-    import discord.commands.Attendance as am
+    import afdfbot.commands.Attendance as am
     monkeypatch.setattr(am.LOAManager, "get_all_active_loas", AsyncMock(return_value=[LOA]))
     monkeypatch.setattr(am, "get_open_session", AsyncMock(return_value={"id": 5, "session_name": "Op"}))
     monkeypatch.setattr(am, "find_unaccounted", AsyncMock(return_value=[]))
@@ -89,7 +89,7 @@ async def test_submit_direct(env):
     await am.Attendance.submit_attendance.callback(cog, i)
     sid, rows, by = am.submit_attendance.await_args.args
     assert sid == 5 and by == "99" and {r["discord_id"]: r["status"] for r in rows} == {"1": "present", "3": "on_leave"}
-    assert cog.active is None and "saved" in i.edit_original_message.call_args.kwargs["content"]
+    assert cog.active is None and "saved" in i.edit_original_response.call_args.kwargs["content"]
 
 
 @pytest.mark.parametrize("saved", [True, False])

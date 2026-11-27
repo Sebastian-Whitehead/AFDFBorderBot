@@ -1,7 +1,7 @@
 import pytest
 
 from database.rank_codes import RANKS, is_valid_rank, rank_choices, rank_index
-from discord.utils.rank_manager import RankManager
+from afdfbot.utils.rank_manager import RankManager
 
 
 def test_codes_and_order():

@@ -2,19 +2,19 @@
 
 from typing import Optional
 
-import nextcord
-from nextcord import Interaction, slash_command, SlashOption
-from nextcord.ext import application_checks, commands
+import discord
+from discord import Interaction, app_commands
+from discord.ext import commands
 
 from database.rank_codes import rank_choices
 from database.record_functions import get_service_event, update_service_event, delete_service_event, set_member_rank, update_member
 from ..utils import RankManager
+from ..utils.choices import to_choices
 from ..utils.confirm import confirm
 from ..utils.parse import parse_utc, valid_json_object, DATE_OR_DATETIME_FMT
 from ..utils.rank_roles import sync_rank_roles
-from ..config import TESTING_GUILD_ID, LEADERSHIP_ROLE_ID
+from ..config import LEADERSHIP_ROLE_ID
 
-GUILDS = [TESTING_GUILD_ID] if TESTING_GUILD_ID else None
 DB_ERROR = "❌ Database error, nothing changed."
 
 
@@ -23,17 +23,26 @@ class RecordAdmin(commands.Cog):
         self.bot = bot
         self.rank_manager = RankManager()
 
-    @slash_command(description="Edit a service event (only the fields you give are changed)", guild_ids=GUILDS)
-    @application_checks.has_role(LEADERSHIP_ROLE_ID)
+    @app_commands.command(description="Edit a service event (only the fields you give are changed)")
+    @app_commands.checks.has_role(LEADERSHIP_ROLE_ID)
+    @app_commands.describe(
+        event_id="Event ID (shown in /service_record)",
+        notes="New notes",
+        status="New status",
+        rank="New rank",
+        date="New date, UTC: YYYY-MM-DD or YYYY-MM-DD HH:MM",
+        details="New details as a JSON object (replaces the old ones)",
+    )
+    @app_commands.choices(rank=to_choices(rank_choices()))
     async def edit_service_event(
         self,
         interaction: Interaction,
-        event_id: int = SlashOption(description="Event ID (shown in /service_record)", min_value=1),
-        notes: Optional[str] = SlashOption(description="New notes", required=False),
-        status: Optional[str] = SlashOption(description="New status", required=False),
-        rank: Optional[str] = SlashOption(description="New rank", choices=rank_choices(), required=False),
-        date: Optional[str] = SlashOption(description="New date, UTC: YYYY-MM-DD or YYYY-MM-DD HH:MM", required=False),
-        details: Optional[str] = SlashOption(description="New details as a JSON object (replaces the old ones)", required=False),
+        event_id: app_commands.Range[int, 1],
+        notes: Optional[str] = None,
+        status: Optional[str] = None,
+        rank: Optional[str] = None,
+        date: Optional[str] = None,
+        details: Optional[str] = None,
     ):
         await interaction.response.defer(ephemeral=True)
         when = parse_utc(date, DATE_OR_DATETIME_FMT) if date else None
@@ -53,12 +62,13 @@ class RecordAdmin(commands.Cog):
         }
         await interaction.followup.send(messages[result])
 
-    @slash_command(description="Delete a service event", guild_ids=GUILDS)
-    @application_checks.has_role(LEADERSHIP_ROLE_ID)
+    @app_commands.command(description="Delete a service event")
+    @app_commands.checks.has_role(LEADERSHIP_ROLE_ID)
+    @app_commands.describe(event_id="Event ID (shown in /service_record)")
     async def delete_service_event(
         self,
         interaction: Interaction,
-        event_id: int = SlashOption(description="Event ID (shown in /service_record)", min_value=1),
+        event_id: app_commands.Range[int, 1],
     ):
         await interaction.response.defer(ephemeral=True)
         status, event = await get_service_event(event_id)
@@ -76,16 +86,18 @@ class RecordAdmin(commands.Cog):
             "not_found": f"❌ No service event with id {event_id}.",
             "error": DB_ERROR,
         }
-        await interaction.edit_original_message(content=messages[result], embeds=[], view=None)
+        await interaction.edit_original_response(content=messages[result], embeds=[], view=None)
 
-    @slash_command(description="Set a member's rank directly (no promotion rules)", guild_ids=GUILDS)
-    @application_checks.has_role(LEADERSHIP_ROLE_ID)
+    @app_commands.command(description="Set a member's rank directly (no promotion rules)")
+    @app_commands.checks.has_role(LEADERSHIP_ROLE_ID)
+    @app_commands.describe(user="Member to change", rank="Rank to set", reason="Reason (optional)")
+    @app_commands.choices(rank=to_choices(rank_choices()))
     async def set_rank(
         self,
         interaction: Interaction,
-        user: nextcord.Member = SlashOption(description="Member to change"),
-        rank: str = SlashOption(description="Rank to set", choices=rank_choices()),
-        reason: Optional[str] = SlashOption(description="Reason (optional)", required=False),
+        user: discord.Member,
+        rank: str,
+        reason: Optional[str] = None,
     ):
         await interaction.response.defer(ephemeral=True)
         name = self.rank_manager.get_rank(rank)["name"]
@@ -105,14 +117,15 @@ class RecordAdmin(commands.Cog):
             return
         await interaction.followup.send(f"✅ {user.mention} set from {old_rank} to {name} ({rank}).")
 
-    @slash_command(description="Edit a member's name and/or notes", guild_ids=GUILDS)
-    @application_checks.has_role(LEADERSHIP_ROLE_ID)
+    @app_commands.command(description="Edit a member's name and/or notes")
+    @app_commands.checks.has_role(LEADERSHIP_ROLE_ID)
+    @app_commands.describe(user="Member to edit", name="New name", notes="New notes (replaces the old ones)")
     async def edit_member(
         self,
         interaction: Interaction,
-        user: nextcord.Member = SlashOption(description="Member to edit"),
-        name: Optional[str] = SlashOption(description="New name", required=False),
-        notes: Optional[str] = SlashOption(description="New notes (replaces the old ones)", required=False),
+        user: discord.Member,
+        name: Optional[str] = None,
+        notes: Optional[str] = None,
     ):
         await interaction.response.defer(ephemeral=True)
         if name is not None and not name.strip():
@@ -128,5 +141,5 @@ class RecordAdmin(commands.Cog):
         await interaction.followup.send(messages[result])
 
 
-def setup(bot):
-    bot.add_cog(RecordAdmin(bot))
+async def setup(bot):
+    await bot.add_cog(RecordAdmin(bot))

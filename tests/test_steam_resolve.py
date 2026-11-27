@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from discord.utils import steam
+from afdfbot.utils import steam
 
 pytestmark = pytest.mark.asyncio
 SID = "76561197960287930"

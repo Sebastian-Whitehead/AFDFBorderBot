@@ -3,21 +3,20 @@
 import datetime
 import logging
 
-import nextcord
-from nextcord import Interaction, SlashOption, slash_command
-from nextcord.ext import application_checks, commands
+import discord
+from discord import Interaction, app_commands
+from discord.ext import commands
 
 from database.attendance_functions import find_unaccounted, get_attendance_history, submit_attendance, load_session_attendance
 from database.session_functions import get_open_session
 from database.loa_functions import LOAManager
+from ..utils.choices import to_choices
 from ..utils.confirm import confirm
-from ..config import TESTING_GUILD_ID, CIVIL_SERVANT_ROLE_ID
+from ..config import CIVIL_SERVANT_ROLE_ID
 
 logger = logging.getLogger(__name__)
 
 STATUSES = ["present", "absent", "on_leave", "excused"]
-GUILDS = [TESTING_GUILD_ID] if TESTING_GUILD_ID else None
-
 
 
 def _loa_text(loa):
@@ -48,8 +47,8 @@ class Attendance(commands.Cog):
     def _entry(self, status, in_vc, loa, note=None):
         return {"status": status, "in_vc": in_vc, "loa": loa, "note": note}
 
-    @slash_command(description="Start an attendance list from your voice channel", guild_ids=GUILDS)
-    @application_checks.has_role(CIVIL_SERVANT_ROLE_ID)
+    @app_commands.command(name="start_attendance", description="Start an attendance list from your voice channel")
+    @app_commands.checks.has_role(CIVIL_SERVANT_ROLE_ID)
     async def start_attendance(self, interaction: Interaction):
         await interaction.response.defer(ephemeral=True)
         if self.active:
@@ -77,12 +76,13 @@ class Attendance(commands.Cog):
         self.active = {"entries": entries, "loas": loas, "session": None}
         await interaction.followup.send(_render(self.active))
 
-    @slash_command(description="Edit the attendance of an existing session", guild_ids=GUILDS)
-    @application_checks.has_role(CIVIL_SERVANT_ROLE_ID)
+    @app_commands.command(name="modify_attendance", description="Edit the attendance of an existing session")
+    @app_commands.checks.has_role(CIVIL_SERVANT_ROLE_ID)
+    @app_commands.describe(session_id="Session ID (see /session_list)")
     async def modify_attendance(
         self,
         interaction: Interaction,
-        session_id: int = SlashOption(description="Session ID (see /session_list)", min_value=1),
+        session_id: app_commands.Range[int, 1, None],
     ):
         """Load a session's saved attendance as the active list. Edit it, then /submit_attendance saves it back."""
         await interaction.response.defer(ephemeral=True)
@@ -101,19 +101,21 @@ class Attendance(commands.Cog):
         self.active = {"entries": entries, "loas": {}, "session": session}
         await interaction.followup.send(_render(self.active))
 
-    @slash_command(description="Show the current attendance list", guild_ids=GUILDS)
-    @application_checks.has_role(CIVIL_SERVANT_ROLE_ID)
+    @app_commands.command(name="view_attendance", description="Show the current attendance list")
+    @app_commands.checks.has_role(CIVIL_SERVANT_ROLE_ID)
     async def view_attendance(self, interaction: Interaction):
         await interaction.response.defer(ephemeral=True)
         await interaction.followup.send(_render(self.active) if self.active else "ℹ️ No active attendance list.")
 
-    @slash_command(description="Add or change a person on the attendance list", guild_ids=GUILDS)
-    @application_checks.has_role(CIVIL_SERVANT_ROLE_ID)
+    @app_commands.command(name="add_attendance", description="Add or change a person on the attendance list")
+    @app_commands.checks.has_role(CIVIL_SERVANT_ROLE_ID)
+    @app_commands.describe(user="Member to add", attendance_status="Status (default present)")
+    @app_commands.choices(attendance_status=to_choices(STATUSES))
     async def add_attendance(
         self,
         interaction: Interaction,
-        user: nextcord.User = SlashOption(description="Member to add"),
-        attendance_status: str = SlashOption(description="Status (default present)", choices=STATUSES, default="present"),
+        user: discord.User,
+        attendance_status: str = "present",
     ):
         await interaction.response.defer(ephemeral=True)
         if not self.active:
@@ -124,8 +126,8 @@ class Attendance(commands.Cog):
         self.active["entries"][uid] = self._entry(attendance_status, bool(old and old["in_vc"]), self.active["loas"].get(uid), old and old["note"])
         await interaction.followup.send(_render(self.active))
 
-    @slash_command(description="Add everyone currently in your voice channel to the attendance list", guild_ids=GUILDS)
-    @application_checks.has_role(CIVIL_SERVANT_ROLE_ID)
+    @app_commands.command(name="log_attendance", description="Add everyone currently in your voice channel to the attendance list")
+    @app_commands.checks.has_role(CIVIL_SERVANT_ROLE_ID)
     async def log_attendance(self, interaction: Interaction):
         await interaction.response.defer(ephemeral=True)
         if not self.active:
@@ -149,9 +151,10 @@ class Attendance(commands.Cog):
                     old["status"] = "present"
         await interaction.followup.send(_render(self.active))
 
-    @slash_command(description="Remove a person from the attendance list", guild_ids=GUILDS)
-    @application_checks.has_role(CIVIL_SERVANT_ROLE_ID)
-    async def remove_attendance(self, interaction: Interaction, user: nextcord.User = SlashOption(description="Member to remove")):
+    @app_commands.command(name="remove_attendance", description="Remove a person from the attendance list")
+    @app_commands.checks.has_role(CIVIL_SERVANT_ROLE_ID)
+    @app_commands.describe(user="Member to remove")
+    async def remove_attendance(self, interaction: Interaction, user: discord.User):
         await interaction.response.defer(ephemeral=True)
         if not self.active:
             await interaction.followup.send("❌ No active attendance list. Use /start_attendance first.")
@@ -161,16 +164,16 @@ class Attendance(commands.Cog):
             return
         await interaction.followup.send(_render(self.active))
 
-    @slash_command(description="Throw away the active attendance list (nothing is saved)", guild_ids=GUILDS)
-    @application_checks.has_role(CIVIL_SERVANT_ROLE_ID)
+    @app_commands.command(name="discard_attendance", description="Throw away the active attendance list (nothing is saved)")
+    @app_commands.checks.has_role(CIVIL_SERVANT_ROLE_ID)
     async def discard_attendance(self, interaction: Interaction):
         await interaction.response.defer(ephemeral=True)
         had = self.active is not None
         self.active = None
         await interaction.followup.send("🗑️ Attendance list discarded." if had else "ℹ️ There was no active attendance list.")
 
-    @slash_command(description="Save the attendance list to the database", guild_ids=GUILDS)
-    @application_checks.has_role(CIVIL_SERVANT_ROLE_ID)
+    @app_commands.command(name="submit_attendance", description="Save the attendance list to the database")
+    @app_commands.checks.has_role(CIVIL_SERVANT_ROLE_ID)
     async def submit_attendance(self, interaction: Interaction):
         await interaction.response.defer(ephemeral=True)
         active = self.active
@@ -193,7 +196,7 @@ class Attendance(commands.Cog):
                     declined="↩️ Not submitted, back to the list.", timed_out="⌛ Timed out, not submitted. The list is kept."):
                 return
             if self.active is not active:
-                await interaction.edit_original_message(content="❌ The list changed while waiting. Run /submit_attendance again.", embeds=[], view=None)
+                await interaction.edit_original_response(content="❌ The list changed while waiting. Run /submit_attendance again.", embeds=[], view=None)
                 return
         else:
             await interaction.followup.send("⏳ Submitting…")
@@ -203,21 +206,22 @@ class Attendance(commands.Cog):
         rows += [{"discord_id": m, "status": "absent", "notes": None} for m in missing]
         result = await submit_attendance(session["id"], rows, str(interaction.user.id))
         if result is None:
-            await interaction.edit_original_message(content="❌ Database error, nothing saved. The list is kept.", embeds=[], view=None)
+            await interaction.edit_original_response(content="❌ Database error, nothing saved. The list is kept.", embeds=[], view=None)
             return
         self.active = None
         msg = f"✅ Attendance saved to **{session['session_name']}** (id {session['id']}): {len(result['saved'])} recorded."
         if result["skipped"]:
             msg += "\nNo service record, not saved:\n" + "\n".join(f"- <@{m}>" for m in result["skipped"])
-        await interaction.edit_original_message(content=msg, embeds=[], view=None)
+        await interaction.edit_original_response(content=msg, embeds=[], view=None)
 
-    @slash_command(description="Show a member's attendance history", guild_ids=GUILDS)
-    @application_checks.has_role(CIVIL_SERVANT_ROLE_ID)
+    @app_commands.command(name="attendance_history", description="Show a member's attendance history")
+    @app_commands.checks.has_role(CIVIL_SERVANT_ROLE_ID)
+    @app_commands.describe(user="Member", rows="Recent sessions to list (default 10)")
     async def attendance_history(
         self,
         interaction: Interaction,
-        user: nextcord.User = SlashOption(description="Member"),
-        rows: int = SlashOption(description="Recent sessions to list (default 10)", default=10, min_value=1, max_value=25),
+        user: discord.User,
+        rows: app_commands.Range[int, 1, 25] = 10,
     ):
         await interaction.response.defer(ephemeral=True)
         hist = await get_attendance_history(str(user.id), rows)
@@ -235,11 +239,11 @@ class Attendance(commands.Cog):
         summary = " · ".join(f"{s} {counts[s]}" for s in STATUSES if s in counts)
         lines = [f"**{r['session_name'][:60]}** · {r['start_at'].astimezone(datetime.timezone.utc):%Y-%m-%d} · {r['status']}"
                  + (f" · {r['notes'][:50]}" if r["notes"] else "") for r in hist["recent"]]
-        embed = nextcord.Embed(
+        embed = discord.Embed(
             title=f"Attendance: {user.display_name}",
             description=f"{summary}\nAttendance rate: {counts.get('present', 0) / total:.0%} ({total} sessions)\n\n" + "\n".join(lines))
         await interaction.followup.send(embed=embed)
 
 
-def setup(bot):
-    bot.add_cog(Attendance(bot))
+async def setup(bot):
+    await bot.add_cog(Attendance(bot))

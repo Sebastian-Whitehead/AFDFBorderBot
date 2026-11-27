@@ -5,19 +5,20 @@ This module contains commands for managing members, promotions, and user profile
 Includes functionality for adding members, promoting users, and managing user data.
 """
 
-import nextcord
-from nextcord.ext import application_checks, commands
-from nextcord import SlashOption
+import discord
+from discord import app_commands
+from discord.ext import commands
 from typing import Optional
 import logging
 
 from database import create_user, get_user_info, merge_identities, merge_service_records, get_merge_preview, create_service_record, add_reprimand, add_service_event
 from database.rank_codes import rank_choices
 from ..utils import RankManager
+from ..utils.choices import to_choices
 from ..utils.steam import resolve_steam_id
 from ..utils.confirm import confirm
 from ..utils.parse import parse_utc, valid_json_object, DATE_OR_DATETIME_FMT
-from ..config import TESTING_GUILD_ID as GUILD_ID, LEADERSHIP_ROLE_ID
+from ..config import LEADERSHIP_ROLE_ID
 
 logger = logging.getLogger(__name__)
 
@@ -34,20 +35,27 @@ class UserManagement(commands.Cog):
         self.bot = bot
         self.rank_manager = RankManager()
 
-    @nextcord.slash_command(
+    @app_commands.command(
         name="add_member",
-        description="Add a new member to the database",
-        guild_ids=[GUILD_ID] if GUILD_ID else None
+        description="Add a new member to the database"
     )
-    @application_checks.has_role(LEADERSHIP_ROLE_ID)
+    @app_commands.checks.has_role(LEADERSHIP_ROLE_ID)
+    @app_commands.describe(
+        user="Member to add",
+        steam_id="Member's SteamID64 or Steam profile URL (optional)",
+        service_record="Also create a military service record (default: no)",
+        rank="Starting rank (only with service_record)",
+        notes="Additional notes"
+    )
+    @app_commands.choices(rank=to_choices(rank_choices()))
     async def add_member(
         self,
-        interaction: nextcord.Interaction,
-        user: nextcord.User = SlashOption(description="Member to add"),
-        steam_id: Optional[str] = SlashOption(description="Member's SteamID64 or Steam profile URL (optional)", required=False),
-        service_record: bool = SlashOption(description="Also create a military service record (default: no)", default=False),
-        rank: Optional[str] = SlashOption(description="Starting rank (only with service_record)", required=False, choices=rank_choices()),
-        notes: Optional[str] = SlashOption(description="Additional notes", required=False)
+        interaction: discord.Interaction,
+        user: discord.User,
+        steam_id: Optional[str] = None,
+        service_record: bool = False,
+        rank: Optional[str] = None,
+        notes: Optional[str] = None
     ):
         """Add a player identity; a military service record only if service_record is true."""
         await interaction.response.defer(ephemeral=True)
@@ -95,7 +103,7 @@ class UserManagement(commands.Cog):
                 )
                 return
 
-            embed = nextcord.Embed(
+            embed = discord.Embed(
                 title="✅ Member Added Successfully",
                 color=0x00ff00,
                 description=f"Added **{name}** to the database"
@@ -117,17 +125,18 @@ class UserManagement(commands.Cog):
                 ephemeral=True
             )
 
-    @nextcord.slash_command(
+    @app_commands.command(
         name="create_service_record",
-        description="Create a service record for an existing player",
-        guild_ids=[GUILD_ID] if GUILD_ID else None
+        description="Create a service record for an existing player"
     )
-    @application_checks.has_role(LEADERSHIP_ROLE_ID)
+    @app_commands.checks.has_role(LEADERSHIP_ROLE_ID)
+    @app_commands.describe(user="Player to create the record for", rank="Starting rank")
+    @app_commands.choices(rank=to_choices(rank_choices()))
     async def create_service_record_cmd(
         self,
-        interaction: nextcord.Interaction,
-        user: nextcord.User = SlashOption(description="Player to create the record for"),
-        rank: str = SlashOption(description="Starting rank", choices=rank_choices())
+        interaction: discord.Interaction,
+        user: discord.User,
+        rank: str
     ):
         """Create just the service record (no enlistment event, no Discord role changes)."""
         await interaction.response.defer(ephemeral=True)
@@ -140,17 +149,17 @@ class UserManagement(commands.Cog):
         }
         await interaction.followup.send(messages[result], ephemeral=result != "created")
 
-    @nextcord.slash_command(
+    @app_commands.command(
         name="add_steam",
-        description="Add a Steam ID to an existing member",
-        guild_ids=[GUILD_ID] if GUILD_ID else None
+        description="Add a Steam ID to an existing member"
     )
-    @application_checks.has_role(LEADERSHIP_ROLE_ID)
+    @app_commands.checks.has_role(LEADERSHIP_ROLE_ID)
+    @app_commands.describe(user="Member to update", steam_url="Steam profile URL (/profiles/ or /id/) or SteamID64")
     async def add_steam(
         self,
-        interaction: nextcord.Interaction,
-        user: nextcord.User = SlashOption(description="Member to update"),
-        steam_url: str = SlashOption(description="Steam profile URL (/profiles/ or /id/) or SteamID64")
+        interaction: discord.Interaction,
+        user: discord.User,
+        steam_url: str
     ):
         """Attach a Steam ID to an existing player identity."""
         await interaction.response.defer(ephemeral=True)
@@ -208,17 +217,17 @@ class UserManagement(commands.Cog):
             return None
         return steam_id, prev
 
-    @nextcord.slash_command(
+    @app_commands.command(
         name="force_merge",
-        description="Force-merge a member's identity with a Steam identity (overwrites existing IDs)",
-        guild_ids=[GUILD_ID] if GUILD_ID else None
+        description="Force-merge a member's identity with a Steam identity (overwrites existing IDs)"
     )
-    @application_checks.has_role(LEADERSHIP_ROLE_ID)
+    @app_commands.checks.has_role(LEADERSHIP_ROLE_ID)
+    @app_commands.describe(user="Member to merge", steam_url="Steam profile URL (/profiles/ or /id/) or SteamID64")
     async def force_merge(
         self,
-        interaction: nextcord.Interaction,
-        user: nextcord.User = SlashOption(description="Member to merge"),
-        steam_url: str = SlashOption(description="Steam profile URL (/profiles/ or /id/) or SteamID64")
+        interaction: discord.Interaction,
+        user: discord.User,
+        steam_url: str
     ):
         """Merge the Discord and Steam identities, ignoring IDs either side already has."""
         got = await self._confirm_merge(
@@ -236,19 +245,19 @@ class UserManagement(commands.Cog):
             "service_record_conflict": _BOTH_RECORDS,
             "error": "❌ Database error, nothing changed.",
         }
-        await interaction.edit_original_message(content=messages.get(result, "❌ Database error, nothing changed."), embeds=[], view=None)
+        await interaction.edit_original_response(content=messages.get(result, "❌ Database error, nothing changed."), embeds=[], view=None)
 
-    @nextcord.slash_command(
+    @app_commands.command(
         name="merge_service_records",
-        description="Merge the service record on a Steam ID into a member's record (Steam wins)",
-        guild_ids=[GUILD_ID] if GUILD_ID else None
+        description="Merge the service record on a Steam ID into a member's record (Steam wins)"
     )
-    @application_checks.has_role(LEADERSHIP_ROLE_ID)
+    @app_commands.checks.has_role(LEADERSHIP_ROLE_ID)
+    @app_commands.describe(user="Member whose record is kept", steam_url="Steam profile URL (/profiles/ or /id/) or SteamID64")
     async def merge_service_records_cmd(
         self,
-        interaction: nextcord.Interaction,
-        user: nextcord.User = SlashOption(description="Member whose record is kept"),
-        steam_url: str = SlashOption(description="Steam profile URL (/profiles/ or /id/) or SteamID64")
+        interaction: discord.Interaction,
+        user: discord.User,
+        steam_url: str
     ):
         """Merge the Steam identity's service record into the member's; rank and status come from Steam."""
         def check(p):
@@ -270,19 +279,19 @@ class UserManagement(commands.Cog):
             "no_record": "❌ Both sides need a service record to merge.",
             "different_organization": "❌ The two records belong to different organizations.",
         }
-        await interaction.edit_original_message(content=messages.get(result, "❌ Database error, nothing changed."), embeds=[], view=None)
+        await interaction.edit_original_response(content=messages.get(result, "❌ Database error, nothing changed."), embeds=[], view=None)
 
-    @nextcord.slash_command(
+    @app_commands.command(
         name="reprimand",
-        description="Log a reprimand on a member's service record",
-        guild_ids=[GUILD_ID] if GUILD_ID else None
+        description="Log a reprimand on a member's service record"
     )
-    @application_checks.has_role(LEADERSHIP_ROLE_ID)
+    @app_commands.checks.has_role(LEADERSHIP_ROLE_ID)
+    @app_commands.describe(user="Member to reprimand", reason="Reason for the reprimand")
     async def reprimand(
         self,
-        interaction: nextcord.Interaction,
-        user: nextcord.User = SlashOption(description="Member to reprimand"),
-        reason: str = SlashOption(description="Reason for the reprimand")
+        interaction: discord.Interaction,
+        user: discord.User,
+        reason: str
     ):
         """Add a reprimand event to the member's service record."""
         await interaction.response.defer(ephemeral=True)
@@ -294,22 +303,32 @@ class UserManagement(commands.Cog):
         }
         await interaction.followup.send(messages[result], ephemeral=result != "recorded")
 
-    @nextcord.slash_command(
+    @app_commands.command(
         name="create_service_event",
-        description="Add an event to a member's service record",
-        guild_ids=[GUILD_ID] if GUILD_ID else None
+        description="Add an event to a member's service record"
     )
-    @application_checks.has_role(LEADERSHIP_ROLE_ID)
+    @app_commands.checks.has_role(LEADERSHIP_ROLE_ID)
+    @app_commands.describe(
+        user="Member the event belongs to",
+        event_type="Event type",
+        date="When it happened, UTC: YYYY-MM-DD or YYYY-MM-DD HH:MM",
+        rank="Rank at the time (optional)",
+        status="Status (optional)",
+        notes="Notes (optional)",
+        details="Extra details as a JSON object (optional)"
+    )
+    @app_commands.rename(event_type="type")
+    @app_commands.choices(event_type=to_choices(EVENT_TYPES), rank=to_choices(rank_choices()))
     async def create_service_event(
         self,
-        interaction: nextcord.Interaction,
-        user: nextcord.User = SlashOption(description="Member the event belongs to"),
-        event_type: str = SlashOption(name="type", description="Event type", choices=EVENT_TYPES),
-        date: str = SlashOption(description="When it happened, UTC: YYYY-MM-DD or YYYY-MM-DD HH:MM"),
-        rank: Optional[str] = SlashOption(description="Rank at the time (optional)", choices=rank_choices(), required=False),
-        status: Optional[str] = SlashOption(description="Status (optional)", required=False),
-        notes: Optional[str] = SlashOption(description="Notes (optional)", required=False),
-        details: Optional[str] = SlashOption(description="Extra details as a JSON object (optional)", required=False),
+        interaction: discord.Interaction,
+        user: discord.User,
+        event_type: str,
+        date: str,
+        rank: Optional[str] = None,
+        status: Optional[str] = None,
+        notes: Optional[str] = None,
+        details: Optional[str] = None,
     ):
         """Insert a row in military.service_events."""
         await interaction.response.defer(ephemeral=True)
@@ -329,6 +348,6 @@ class UserManagement(commands.Cog):
         await interaction.followup.send(messages[result])
 
 
-def setup(bot):
+async def setup(bot):
     """Add the UserManagement cog to the bot."""
-    bot.add_cog(UserManagement(bot))
+    await bot.add_cog(UserManagement(bot))

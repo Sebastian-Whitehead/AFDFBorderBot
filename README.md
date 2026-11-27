@@ -1,10 +1,10 @@
 # AFDF Border Bot
 
-Discord bot (nextcord) for the AFDF server: border approval, enlistment, service records, LOA, events and border-officer monitoring.
+Discord bot (discord.py) for the AFDF server: border approval, enlistment, service records, LOA, events and border-officer monitoring.
 
 ## Setup
 
-Requirements: Python 3.10+, Docker (for the local settings DB), a Discord bot token, a Supabase connection string.
+Requirements: Python 3.12 (as in the Dockerfile), Docker (for the local settings DB), a Discord bot token, a Supabase connection string.
 
 ```bash
 cp .env.example .env            # then fill it in
@@ -30,7 +30,7 @@ Tests read `.env.test`: `TEST_LOCAL_DATABASE_URL`, `TEST_SHARED_DATABASE_URL`, `
 
 ## Architecture
 
-- `discord/` is a local package (not pip `discord`): `bot.py`, `config.py` (settings cache), `commands/` (Attendance, Checkpoint, Enlistment, Info, LOA, Session, SettingsManagement, UserManagement), `listeners/` (BorderOfficerMonitor, JoinLeaveHandler), `utils/` (EmbedProcessor, RankManager, steam, `confirm.py`: shared Approve/Decline prompt that shows an embed from `embeds/`).
+- `afdfbot/` is the bot package (built on `discord.py`): `bot.py`, `config.py` (settings cache), `commands/` (Attendance, Checkpoint, Enlistment, Info, LOA, Session, SettingsManagement, UserManagement), `listeners/` (BorderOfficerMonitor, JoinLeaveHandler), `utils/` (EmbedProcessor, RankManager, steam, `confirm.py`: shared Approve/Decline prompt that shows an embed from `embeds/`).
 - `database/`: `db_manager.py` (local + shared engines), `user_functions.py`, `session_functions.py` (sessions), `attendance_functions.py` (attendance rows), `loa_functions.py`, `settings_manager.py`, `rank_codes.py`, `models.py`.
 - `embeds/`, `Settings.json`, `ids.yml`: static config and data.
 

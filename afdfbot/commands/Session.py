@@ -2,31 +2,32 @@
 
 from typing import Optional
 
-from nextcord import Interaction, slash_command, SlashOption
-from nextcord.ext import application_checks, commands
+from discord import Interaction, app_commands
+from discord.ext import commands
 
 from database.session_functions import create_session as create_session_row, end_latest_session, get_session_for_delete, delete_session as delete_session_row, list_sessions, update_session, PAGE_SIZE
 from ..utils import load_embeds
 from ..utils.confirm import confirm
 from ..utils.parse import parse_utc
-from ..config import TESTING_GUILD_ID, CIVIL_SERVANT_ROLE_ID
+from ..config import CIVIL_SERVANT_ROLE_ID
 
 
 class Session(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @slash_command(description="Create a session record", guild_ids=[TESTING_GUILD_ID] if TESTING_GUILD_ID else None)
-    @application_checks.has_role(CIVIL_SERVANT_ROLE_ID)
+    @app_commands.command(name="create_session", description="Create a session record")
+    @app_commands.checks.has_role(CIVIL_SERVANT_ROLE_ID)
+    @app_commands.describe(name="Session name", operation="Operation name", description="Description", start="Start time in UTC, YYYY-MM-DD HH:MM (default: now)", external_event_id="Discord scheduled event ID to link (optional)", timeline="Timeline (default A)")
     async def create_session(
         self,
         interaction: Interaction,
-        name: str = SlashOption(description="Session name"),
-        operation: Optional[str] = SlashOption(description="Operation name", required=False),
-        description: Optional[str] = SlashOption(description="Description", required=False),
-        start: Optional[str] = SlashOption(description="Start time in UTC, YYYY-MM-DD HH:MM (default: now)", required=False),
-        external_event_id: Optional[str] = SlashOption(description="Discord scheduled event ID to link (optional)", required=False),
-        timeline: str = SlashOption(description="Timeline (default A)", default="A"),
+        name: str,
+        operation: Optional[str] = None,
+        description: Optional[str] = None,
+        start: Optional[str] = None,
+        external_event_id: Optional[str] = None,
+        timeline: str = "A",
     ):
         """Create a row in military.sessions."""
         await interaction.response.defer(ephemeral=True)
@@ -45,12 +46,13 @@ class Session(commands.Cog):
             return
         await interaction.followup.send(f"✅ Session **{name.strip()}** created (id {new_id}).")
 
-    @slash_command(description="End the most recently started open session", guild_ids=[TESTING_GUILD_ID] if TESTING_GUILD_ID else None)
-    @application_checks.has_role(CIVIL_SERVANT_ROLE_ID)
+    @app_commands.command(name="end_session", description="End the most recently started open session")
+    @app_commands.checks.has_role(CIVIL_SERVANT_ROLE_ID)
+    @app_commands.describe(end="End time in UTC, YYYY-MM-DD HH:MM (default: now)")
     async def end_session(
         self,
         interaction: Interaction,
-        end: Optional[str] = SlashOption(description="End time in UTC, YYYY-MM-DD HH:MM (default: now)", required=False),
+        end: Optional[str] = None,
     ):
         """Set end_at on the open session with the latest start time."""
         await interaction.response.defer(ephemeral=True)
@@ -70,14 +72,15 @@ class Session(commands.Cog):
             "before_start": lambda: f"❌ End time is before **{row['session_name']}** started ({row['start_at']:%Y-%m-%d %H:%M} UTC).",
             "error": lambda: "❌ Database error, nothing changed.",
         }
-        await interaction.edit_original_message(content=messages[status](), embeds=[], view=None)
+        await interaction.edit_original_response(content=messages[status](), embeds=[], view=None)
 
-    @slash_command(description="List sessions, 10 per page (newest first)", guild_ids=[TESTING_GUILD_ID] if TESTING_GUILD_ID else None)
+    @app_commands.command(name="session_list", description="List sessions, 10 per page (newest first)")
+    @app_commands.describe(timeline="Timeline (default A)", page="Page number (default 1)")
     async def session_list(
         self,
         interaction: Interaction,
-        timeline: str = SlashOption(description="Timeline (default A)", default="A"),
-        page: int = SlashOption(description="Page number (default 1)", default=1, min_value=1),
+        timeline: str = "A",
+        page: app_commands.Range[int, 1, None] = 1,
     ):
         await interaction.response.defer(ephemeral=True)
         result = await list_sessions(timeline.strip(), page)
@@ -97,18 +100,19 @@ class Session(commands.Cog):
         await interaction.followup.send(embeds=load_embeds("session_list.json", {
             "{timeline}": timeline, "{table}": "\n".join(lines), "{page}": str(page), "{pages}": str(pages), "{total}": str(total)}))
 
-    @slash_command(description="Edit an existing session (only the fields you give are changed)", guild_ids=[TESTING_GUILD_ID] if TESTING_GUILD_ID else None)
-    @application_checks.has_role(CIVIL_SERVANT_ROLE_ID)
+    @app_commands.command(name="edit_session", description="Edit an existing session (only the fields you give are changed)")
+    @app_commands.checks.has_role(CIVIL_SERVANT_ROLE_ID)
+    @app_commands.describe(session_id="Session ID (see /session_list)", name="New name", operation="New operation", description="New description", timeline="New timeline", start="New start, UTC YYYY-MM-DD HH:MM", end="New end, UTC YYYY-MM-DD HH:MM")
     async def edit_session(
         self,
         interaction: Interaction,
-        session_id: int = SlashOption(description="Session ID (see /session_list)", min_value=1),
-        name: Optional[str] = SlashOption(description="New name", required=False),
-        operation: Optional[str] = SlashOption(description="New operation", required=False),
-        description: Optional[str] = SlashOption(description="New description", required=False),
-        timeline: Optional[str] = SlashOption(description="New timeline", required=False),
-        start: Optional[str] = SlashOption(description="New start, UTC YYYY-MM-DD HH:MM", required=False),
-        end: Optional[str] = SlashOption(description="New end, UTC YYYY-MM-DD HH:MM", required=False),
+        session_id: app_commands.Range[int, 1, None],
+        name: Optional[str] = None,
+        operation: Optional[str] = None,
+        description: Optional[str] = None,
+        timeline: Optional[str] = None,
+        start: Optional[str] = None,
+        end: Optional[str] = None,
     ):
         await interaction.response.defer(ephemeral=True)
         if name is not None and not name.strip():
@@ -134,12 +138,13 @@ class Session(commands.Cog):
         }
         await interaction.followup.send(messages[status]())
 
-    @slash_command(description="Permanently delete a session that has no attendance", guild_ids=[TESTING_GUILD_ID] if TESTING_GUILD_ID else None)
-    @application_checks.has_role(CIVIL_SERVANT_ROLE_ID)
+    @app_commands.command(name="delete_session", description="Permanently delete a session that has no attendance")
+    @app_commands.checks.has_role(CIVIL_SERVANT_ROLE_ID)
+    @app_commands.describe(session_id="Session ID (see /session_list)")
     async def delete_session(
         self,
         interaction: Interaction,
-        session_id: int = SlashOption(description="Session ID (see /session_list)", min_value=1),
+        session_id: app_commands.Range[int, 1, None],
     ):
         await interaction.response.defer(ephemeral=True)
         status, row = await get_session_for_delete(session_id)
@@ -165,8 +170,8 @@ class Session(commands.Cog):
             "blocked": "❌ Attendance was recorded for this session meanwhile, so it can't be deleted. Nothing changed.",
             "error": "❌ Database error, nothing changed.",
         }
-        await interaction.edit_original_message(content=messages[await delete_session_row(session_id)], embeds=[], view=None)
+        await interaction.edit_original_response(content=messages[await delete_session_row(session_id)], embeds=[], view=None)
 
 
-def setup(bot):
-    bot.add_cog(Session(bot))
+async def setup(bot):
+    await bot.add_cog(Session(bot))

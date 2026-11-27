@@ -1,7 +1,8 @@
 import logging
 
-import nextcord
-from nextcord.ext import application_checks, commands, tasks
+import discord
+from discord import app_commands
+from discord.ext import commands, tasks
 
 from ..config import LEADERSHIP_ROLE_ID, TESTING_GUILD_ID, BORDER_OFFICER_ROLE_ID, CHECKPOINT_CHANNEL_ID, get_setting
 
@@ -18,9 +19,11 @@ class BorderOfficerMonitor(commands.Cog):
         self.msg = None  # Initialize the message attribute
         self.check_count = 0
         self.current_interval = DEFAULT_CHECK_INTERVAL  # Track current interval
+
+    async def cog_load(self):
         self.check_online_status.start()  # Start the online status checking loop
 
-    def cog_unload(self):
+    async def cog_unload(self):
         self.check_online_status.cancel()  # Cancel the online status checking loop
 
     @tasks.loop(seconds=DEFAULT_CHECK_INTERVAL)
@@ -31,7 +34,7 @@ class BorderOfficerMonitor(commands.Cog):
             if self.msg:
                 try:
                     await self.msg.delete()
-                except nextcord.HTTPException:
+                except discord.HTTPException:
                     pass  # already gone or not deletable; don't keep retrying
                 self.msg = None
             self.LastOnlineStatus = None
@@ -71,7 +74,7 @@ class BorderOfficerMonitor(commands.Cog):
         # Check the online status of each member
         for member in members:
             #print(member.name, member.raw_status)
-            if member.status not in [nextcord.Status.offline, nextcord.Status.invisible]:
+            if member.status not in [discord.Status.offline, discord.Status.invisible]:
                 online_members.append(member)
 
         
@@ -81,10 +84,10 @@ class BorderOfficerMonitor(commands.Cog):
         if self.msg and not current_status:
             try:
                 await check_channel.fetch_message(self.msg.id)
-            except nextcord.NotFound:
+            except discord.NotFound:
                 self.msg = None
                 self.LastOnlineStatus = None
-            except nextcord.HTTPException:
+            except discord.HTTPException:
                 pass
 
         if self.LastOnlineStatus == current_status:
@@ -109,10 +112,10 @@ class BorderOfficerMonitor(commands.Cog):
                 await self.msg.delete()
                 self.msg = None
             self.LastOnlineStatus = current_status  # Only after success, so failures retry next check
-        except nextcord.NotFound:
+        except discord.NotFound:
             self.msg = None  # Message already gone, which is the state we wanted when going online
             self.LastOnlineStatus = current_status
-        except nextcord.HTTPException:
+        except discord.HTTPException:
             logger.exception("BorderOfficerMonitor: failed to update closing message, will retry")
             return
         logger.debug(f"{self.check_count} - check complete. {len(online_members)} Online border agents")
@@ -127,13 +130,12 @@ class BorderOfficerMonitor(commands.Cog):
     async def before_check(self):
         await self.bot.wait_until_ready()  # Wait until the bot is ready before starting the loop
 
-    @nextcord.slash_command(
+    @app_commands.command(
         name="border_officer_monitor_start",
         description="Restart the border officer monitor loop if it has stopped",
-        guild_ids=[TESTING_GUILD_ID] if TESTING_GUILD_ID else None,
     )
-    @application_checks.has_role(LEADERSHIP_ROLE_ID)
-    async def monitor_start(self, interaction: nextcord.Interaction):
+    @app_commands.checks.has_role(LEADERSHIP_ROLE_ID)
+    async def monitor_start(self, interaction: discord.Interaction):
         if self.check_online_status.is_running():
             await interaction.response.send_message("The monitor is already running.", ephemeral=True)
             return
@@ -152,5 +154,5 @@ class BorderOfficerMonitor(commands.Cog):
         return False
 
 
-def setup(bot):
-    bot.add_cog(BorderOfficerMonitor(bot))
+async def setup(bot):
+    await bot.add_cog(BorderOfficerMonitor(bot))

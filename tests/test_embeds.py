@@ -7,8 +7,8 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from discord.config import CHANNELS, ROLES
-from discord.utils.embed_processor import EmbedProcessor, member_replacements
+from afdfbot.config import CHANNELS, ROLES
+from afdfbot.utils.embed_processor import EmbedProcessor, member_replacements
 
 EMBEDS = Path(__file__).parent.parent / "embeds"
 SPEC = yaml.safe_load((EMBEDS / "placeholders.yml").read_text(encoding="utf-8"))
@@ -58,4 +58,4 @@ async def test_only_office_hours_is_sent_silently():
     channel = AsyncMock()
     for name, silent in (("office_hours.json", True), ("newcitizen-main.json", False)):
         assert await EmbedProcessor.send_embed(channel, EmbedProcessor.load_embed_data(name))
-        assert channel.send.await_args.kwargs["flags"].suppress_notifications is silent
+        assert channel.send.await_args.kwargs["silent"] is silent

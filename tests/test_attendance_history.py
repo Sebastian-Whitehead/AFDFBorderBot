@@ -61,7 +61,7 @@ def _i():
 
 @pytest.fixture
 def env(monkeypatch):
-    import discord.commands.Attendance as am
+    import afdfbot.commands.Attendance as am
     hist = {"has_record": True, "counts": {"present": 3, "absent": 1},
             "recent": [{"session_name": "Op", "start_at": datetime.datetime(2030, 1, 2, 23, tzinfo=datetime.timezone.utc),
                         "status": "absent", "notes": "late"}]}
@@ -74,7 +74,7 @@ def _user():
 
 
 async def test_cog_has_role_check():
-    import discord.commands.Attendance as am
+    import afdfbot.commands.Attendance as am
     assert am.Attendance.attendance_history.checks
 
 

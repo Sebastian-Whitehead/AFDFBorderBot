@@ -9,7 +9,7 @@ import pytest_asyncio
 from dotenv import load_dotenv
 
 ROOT = Path(__file__).resolve().parent.parent
-# Local `discord/` and `database/` packages must win over any pip package.
+# Local `afdfbot/` and `database/` packages must win over any pip package.
 sys.path.insert(0, str(ROOT))
 load_dotenv(ROOT / ".env.test")
 

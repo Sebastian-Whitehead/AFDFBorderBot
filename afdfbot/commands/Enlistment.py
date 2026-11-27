@@ -1,14 +1,14 @@
 # Enlistment.py
 from typing import Optional
 
-from nextcord import Interaction, Member, NotFound, SlashOption, slash_command
-from nextcord.ext import application_checks, commands
+from discord import Interaction, Member, NotFound, app_commands
+from discord.ext import commands
 
 from database import enlist_member, discharge_member, get_user_info
 from ..utils import send_processed_embed, member_replacements
 from ..utils.rank_roles import rank_role_id as code_role_id
 from ..config import (get_setting, MILITARY_MAIN_CHANNEL_ID,
-                      LEADERSHIP_ROLE_ID, TESTING_GUILD_ID, MILITARY_PERSONNEL_ROLE_ID,
+                      LEADERSHIP_ROLE_ID, MILITARY_PERSONNEL_ROLE_ID,
                       DISTINGUISHED_CITIZEN_ROLE_ID)
 
 BASE_RANK = "EN0"  # everyone enlists at this rank; its role is the "enlistment" role
@@ -22,10 +22,11 @@ class Enlistment(commands.Cog):
         info = await get_user_info(str(user.id))
         return code_role_id(info["rank"]) if info else None
 
-    @slash_command(description="Enlist in the army", guild_ids=[TESTING_GUILD_ID] if TESTING_GUILD_ID else None)
-    @application_checks.has_role(LEADERSHIP_ROLE_ID)
+    @app_commands.command(description="Enlist in the army")
+    @app_commands.describe(user="No description provided.", msg="Send the welcome tour (default: server setting)")
+    @app_commands.checks.has_role(LEADERSHIP_ROLE_ID)
     async def enlist(self, ctx: Interaction, user: Member,
-                     msg: Optional[bool] = SlashOption(description="Send the welcome tour (default: server setting)", required=False)):
+                     msg: Optional[bool] = None):
         await ctx.response.defer(ephemeral=True)
         # Check if required roles are configured
         if not code_role_id(BASE_RANK) or not MILITARY_PERSONNEL_ROLE_ID or not LEADERSHIP_ROLE_ID:
@@ -70,10 +71,11 @@ class Enlistment(commands.Cog):
         except Exception as e:
             await ctx.followup.send(f"❌ An error occurred: {str(e)}", ephemeral=True)
     
-    @slash_command(description="Discharge a member: marks their service record inactive", guild_ids=[TESTING_GUILD_ID] if TESTING_GUILD_ID else None)
-    @application_checks.has_role(LEADERSHIP_ROLE_ID)
+    @app_commands.command(description="Discharge a member: marks their service record inactive")
+    @app_commands.describe(user="No description provided.", reason="Reason (optional)")
+    @app_commands.checks.has_role(LEADERSHIP_ROLE_ID)
     async def discharge(self, ctx: Interaction, user: Member,
-                        reason: Optional[str] = SlashOption(description="Reason (optional)", required=False)):
+                        reason: Optional[str] = None):
         await ctx.response.defer(ephemeral=True)
         result = await discharge_member(str(user.id), reason)
         if result != "discharged":
@@ -91,10 +93,11 @@ class Enlistment(commands.Cog):
             return
         await ctx.followup.send(f"✅ {user.mention} has been discharged.")
 
-    @slash_command(description="Retire a member: marks their service record retired and gives Distinguished Citizen", guild_ids=[TESTING_GUILD_ID] if TESTING_GUILD_ID else None)
-    @application_checks.has_role(LEADERSHIP_ROLE_ID)
+    @app_commands.command(description="Retire a member: marks their service record retired and gives Distinguished Citizen")
+    @app_commands.describe(user="No description provided.", reason="Reason (optional)")
+    @app_commands.checks.has_role(LEADERSHIP_ROLE_ID)
     async def retire(self, ctx: Interaction, user: Member,
-                     reason: Optional[str] = SlashOption(description="Reason (optional)", required=False)):
+                     reason: Optional[str] = None):
         await ctx.response.defer(ephemeral=True)
         if not DISTINGUISHED_CITIZEN_ROLE_ID:
             await ctx.followup.send("❌ Bot configuration error - distinguished citizen role missing!", ephemeral=True)
@@ -121,5 +124,5 @@ class Enlistment(commands.Cog):
 
 
 # Function to set up the Cog
-def setup(bot):
-    bot.add_cog(Enlistment(bot))
+async def setup(bot):
+    await bot.add_cog(Enlistment(bot))

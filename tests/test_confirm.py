@@ -2,7 +2,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-import discord.utils.confirm as c
+import afdfbot.utils.confirm as c
 
 pytestmark = pytest.mark.asyncio
 
@@ -11,7 +11,7 @@ def _interaction():
     i = MagicMock()
     i.user.id = 1
     i.followup.send = AsyncMock()
-    i.edit_original_message = AsyncMock()
+    i.edit_original_response = AsyncMock()
     return i
 
 
@@ -32,9 +32,9 @@ async def test_confirm(monkeypatch, approved, ok, text):
     assert await c.confirm(i, "end_session_warning.json", declined="no", timed_out="late") is ok
     assert "Are you sure" in i.followup.send.call_args.kwargs["embeds"][0].description
     if ok:
-        i.edit_original_message.assert_not_awaited()
+        i.edit_original_response.assert_not_awaited()
     else:
-        assert i.edit_original_message.call_args.kwargs["content"] == text
+        assert i.edit_original_response.call_args.kwargs["content"] == text
 
 
 async def test_placeholders_filled(monkeypatch):

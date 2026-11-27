@@ -3,7 +3,7 @@ import re
 
 # Replies are private by default: a deferred reply is only ephemeral if the defer says so.
 # (utils/confirm.py defers button clicks, which is a different thing.)
-COMMANDS = pathlib.Path(__file__).parent.parent / "discord" / "commands"
+COMMANDS = pathlib.Path(__file__).parent.parent / "afdfbot" / "commands"
 
 
 def test_commands_defer_ephemerally():

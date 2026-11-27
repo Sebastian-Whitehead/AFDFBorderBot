@@ -1,5 +1,5 @@
 def test_g0_cog_imports():
-    import discord.commands.UserManagement as um
+    import afdfbot.commands.UserManagement as um
     assert um
 
 
@@ -14,7 +14,7 @@ DISCORD = "900000000000000001"
 
 @pytest.fixture
 def env():
-    import discord.commands.UserManagement as um
+    import afdfbot.commands.UserManagement as um
     interaction = MagicMock()
     interaction.id = 42
     interaction.response.defer = AsyncMock(); interaction.followup.send = AsyncMock()
@@ -83,7 +83,7 @@ def test_g8_no_money(env):
 
 async def test_g9_profile(env, monkeypatch):
     _, i, user, _ = env
-    import discord.commands.Info as info
+    import afdfbot.commands.Info as info
     monkeypatch.setattr(info, "get_user_info", AsyncMock(return_value=_member("EN2")))
     await info.Info.view_profile.callback(info.Info(bot=MagicMock()), i, user)
     embed = _sent(i).kwargs["embed"]
@@ -99,14 +99,14 @@ async def test_g11_flow_shared_db(shared_db, env, monkeypatch):
     user.id = int(discord_id)
     await _add(um, cog, i, user, rank="EN2", steam=steam, service_record=True)
     assert _sent(i).kwargs["embed"].title == "✅ Member Added Successfully"
-    import discord.commands.Info as info
+    import afdfbot.commands.Info as info
     await info.Info.view_profile.callback(info.Info(bot=MagicMock()), i, user)
     assert "Money" not in [f.name for f in _sent(i).kwargs["embed"].fields]
     assert (await get_user_info(discord_id))["rank"] == "EN2"
 
 
 def test_add_steam_parse():
-    from discord.utils.steam import parse_steam_id
+    from afdfbot.utils.steam import parse_steam_id
     s = "76561198150696236"
     assert parse_steam_id(s) == s
     assert parse_steam_id(f"https://steamcommunity.com/profiles/{s}/") == s
@@ -152,11 +152,9 @@ async def test_create_service_record_command(env, monkeypatch):
 
 
 def test_rank_options_have_22_choices(env):
-    import inspect
     um, _, _, _ = env
     for cmd, param in [(um.UserManagement.add_member, "rank"), (um.UserManagement.create_service_record_cmd, "rank")]:
-        opt = inspect.signature(cmd.callback).parameters[param].default
-        assert len(opt.choices) == 22
+        assert len(cmd.get_parameter(param).choices) == 22
 
 
 @pytest.mark.parametrize("result,text", [("recorded", "Reprimand logged"), ("no_record", "no service record"), ("error", "Database error")])
@@ -173,7 +171,7 @@ async def test_reprimand_messages(env, monkeypatch, result, text):
 
 async def test_service_record_table(env, monkeypatch):
     import datetime
-    import discord.commands.Info as info
+    import afdfbot.commands.Info as info
     _, i, user, _ = env
     ev = [{"id": 5, "occured_at": datetime.datetime(2026, 1, 2), "event_type": "reprimand", "rank": "EN2", "notes": "late\nagain"},
           {"id": 4, "occured_at": datetime.datetime(2026, 1, 1), "event_type": "enlisted", "rank": None, "notes": None}]
@@ -245,15 +243,15 @@ async def test_force_merge_declined(env, monkeypatch):
 async def test_force_merge_approved_and_conflict(env, monkeypatch):
     um, i, user, cog = env
     _merge_env(um, monkeypatch, True, _side(), _side())
-    i.edit_original_message = AsyncMock()
+    i.edit_original_response = AsyncMock()
     merge = AsyncMock(return_value="merged")
     monkeypatch.setattr(um, "merge_identities", merge)
     await um.UserManagement.force_merge.callback(cog, i, user, URL)
     merge.assert_awaited_once_with(DISCORD, "76561198150696236", force=True)
-    assert "merged" in i.edit_original_message.call_args.kwargs["content"]
+    assert "merged" in i.edit_original_response.call_args.kwargs["content"]
     merge.return_value = "service_record_conflict"
     await um.UserManagement.force_merge.callback(cog, i, user, URL)
-    assert "/merge_service_records" in i.edit_original_message.call_args.kwargs["content"]
+    assert "/merge_service_records" in i.edit_original_response.call_args.kwargs["content"]
 
 
 async def test_force_merge_no_identity_skips_prompt(env, monkeypatch):
@@ -282,8 +280,8 @@ async def test_merge_service_records_declined_and_approved(env, monkeypatch):
     await um.UserManagement.merge_service_records_cmd.callback(cog, i, user, URL)
     merge.assert_not_awaited()
     um.confirm.return_value = True
-    i.edit_original_message = AsyncMock()
+    i.edit_original_response = AsyncMock()
     await um.UserManagement.merge_service_records_cmd.callback(cog, i, user, URL)
     merge.assert_awaited_once_with(DISCORD, "76561198150696236")
-    msg = i.edit_original_message.call_args.kwargs["content"]
+    msg = i.edit_original_response.call_args.kwargs["content"]
     assert "EN1" in msg and "EN2" in msg and "/set_rank" in msg
