@@ -167,7 +167,7 @@ async def test_c_welcome_setting_on_posts_to_main(checkpoint, monkeypatch):
     i, user, _ = _setup(monkeypatch, m)
     monkeypatch.setattr(m, "ensure_player_identity", AsyncMock(return_value=True))
     monkeypatch.setattr(m, "get_setting", lambda key, default=None: default)  # unset -> default True
-    user.display_name = "Bob"
+    user.nick = user.display_name = "Bob"
     await _approve(m, cog, i, user, STEAM)
     send = i.guild.get_channel.return_value.send
     send.assert_awaited_once()
