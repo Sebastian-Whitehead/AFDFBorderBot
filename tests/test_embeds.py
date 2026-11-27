@@ -54,13 +54,6 @@ def test_generic_placeholders_resolve():
     assert out.endswith("{role:nope}")  # unknown stays literal
 
 
-@pytest.mark.parametrize("nick,global_name,expected", [
-    ("Nick", "Global", "Nick"), (None, "Global", "Global"), (None, None, "account")])
-def test_username_prefers_nick_then_global_name(nick, global_name, expected):
-    member = SimpleNamespace(mention="", id=0, nick=nick, global_name=global_name, display_name=nick or "account")
-    assert member_replacements(member)["{username}"] == expected
-
-
 async def test_only_office_hours_is_sent_silently():
     channel = AsyncMock()
     for name, silent in (("office_hours.json", True), ("newcitizen-main.json", False)):

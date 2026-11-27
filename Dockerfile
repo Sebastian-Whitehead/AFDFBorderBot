@@ -1,5 +1,5 @@
-# Use Python 3.11 with build tools
-FROM python:3.11
+# Use Python 3.12 with build tools
+FROM python:3.12
 
 # Set working directory
 WORKDIR /app

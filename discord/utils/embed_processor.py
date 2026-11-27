@@ -34,13 +34,11 @@ def _resolve_generic(match):
 
 def member_replacements(member) -> Dict[str, str]:
     """Per-member placeholders shared by the join/leave/approve/enlist embeds (and /test-msg)."""
-    # nextcord 2.6 display_name is only nick-or-username, it skips the account's display name (global_name)
-    name = getattr(member, 'nick', None) or getattr(member, 'global_name', None) or member.display_name
     return {
         '{user}': member.mention,
-        '{username}': name,
+        '{username}': member.display_name,
         '{User}': member.mention,
-        '{Username}': name,
+        '{Username}': member.display_name,
         '{userid}': str(member.id),
         '{usertag}': str(member),
         '{border_officer}': f'<@&{BORDER_OFFICER_ROLE_ID}>' if BORDER_OFFICER_ROLE_ID else 'Border Officers',
